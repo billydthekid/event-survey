@@ -5,7 +5,6 @@ import { X, RefreshCw, Copy, KeyRound, CheckCircle2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Role, User } from "@/types";
 
-// แสดงวันที่แบบไทย (ล็อก timezone ไว้ server/browser จะได้ตรงกัน)
 const fmt = new Intl.DateTimeFormat("th-TH", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -30,8 +29,8 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   // ---------- Drawer (2 ขั้น) ----------
-  const [drawerStep, setDrawerStep] = useState<0 | 1 | 2>(0);   // 0 = ปิด
-  const [draftFor, setDraftFor] = useState<User | null>(null);  // user ที่จะสร้าง Draft ให้
+  const [drawerStep, setDrawerStep] = useState<0 | 1 | 2>(0);
+  const [draftFor, setDraftFor] = useState<User | null>(null);
   const [role, setRole] = useState<Role>("event");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
@@ -43,6 +42,8 @@ export default function UsersPage() {
   // ---------- Modal reset password ----------
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   const [newPass, setNewPass] = useState("");
+  const [resetInput, setResetInput] = useState("");
+  const [resetError, setResetError] = useState("");
 
   // ---------- กรองรายการ ----------
   const filtered = users.filter((u) => {
@@ -62,7 +63,7 @@ export default function UsersPage() {
       ? "ทุก Event"
       : u.eventIds.map((id) => events.find((e) => e.id === id)?.name.th).filter(Boolean).join(", ") || "-";
 
-  // ---------- เปิด Drawer ขั้น 1 ----------
+  // ---------- Drawer ----------
   const openAddUser = () => {
     setRole("event");
     setPassword(randomPassword());
@@ -70,7 +71,6 @@ export default function UsersPage() {
     setDrawerStep(1);
   };
 
-  // ---------- เปิด Drawer ขั้น 2 ตรงๆ (ปุ่ม + เพิ่ม Event ในตาราง) ----------
   const openAddEvent = (u: User) => {
     setDraftFor(u);
     setFormError("");
@@ -82,7 +82,6 @@ export default function UsersPage() {
     setDraftFor(null);
   };
 
-  // ---------- บันทึกขั้น 1: สร้างบัญชี ----------
   const handleAddUser = () => {
     const name = nameRef.current?.value.trim() ?? "";
     const base = baseRef.current?.value.trim() ?? "";
@@ -95,17 +94,14 @@ export default function UsersPage() {
     const newUser = addUser({ name, base, org, role, password });
 
     if (role === "event") {
-      // Event Admin → ไปขั้น 2 สร้าง Draft ต่อ
       setDraftFor(newUser);
       setFormError("");
       setDrawerStep(2);
     } else {
-      // Super Admin → ไม่ต้องมี Draft ปิดเลย
       closeDrawer();
     }
   };
 
-  // ---------- บันทึกขั้น 2: สร้าง Draft ----------
   const handleCreateDraft = () => {
     const eventName = eventNameRef.current?.value.trim() ?? "";
     if (eventName === "") {
@@ -116,15 +112,29 @@ export default function UsersPage() {
     closeDrawer();
   };
 
-  // ---------- Reset password ----------
+  // ---------- Reset password (ตั้งรหัสเองได้) ----------
+  const openReset = (u: User) => {
+    setResetTarget(u);
+    setResetInput(randomPassword());   // ใส่รหัสสุ่มไว้ก่อน แก้เองได้
+    setResetError("");
+    setNewPass("");
+  };
+
   const handleConfirmReset = () => {
     if (!resetTarget) return;
-    setNewPass(resetPassword(resetTarget.id));
+    if (resetInput.trim().length < 4) {
+      setResetError("password ต้องมีอย่างน้อย 4 ตัวอักษร");
+      return;
+    }
+    resetPassword(resetTarget.id, resetInput.trim());
+    setNewPass(resetInput.trim());
   };
 
   const closeReset = () => {
     setResetTarget(null);
     setNewPass("");
+    setResetInput("");
+    setResetError("");
   };
 
   return (
@@ -244,7 +254,7 @@ export default function UsersPage() {
                         + เพิ่ม Event
                       </button>
                     )}
-                    <button onClick={() => setResetTarget(u)} className="text-blue-600 hover:underline">
+                    <button onClick={() => openReset(u)} className="text-blue-600 hover:underline">
                       รีเซ็ต password
                     </button>
                     <button
@@ -285,7 +295,6 @@ export default function UsersPage() {
               <div className="mt-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{formError}</div>
             )}
 
-            {/* ----- ขั้นที่ 1 ----- */}
             {drawerStep === 1 && (
               <div className="mt-4 flex flex-col gap-4">
                 <div>
@@ -340,7 +349,6 @@ export default function UsersPage() {
               </div>
             )}
 
-            {/* ----- ขั้นที่ 2 ----- */}
             {drawerStep === 2 && draftFor && (
               <div className="mt-4 flex flex-col gap-4">
                 <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -363,7 +371,6 @@ export default function UsersPage() {
               </div>
             )}
 
-            {/* ปุ่มล่าง */}
             <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
               <button onClick={closeDrawer} className="rounded-lg bg-slate-100 px-4 py-2 text-sm">
                 {drawerStep === 1 ? "ยกเลิก" : "ข้าม ทำทีหลัง"}
@@ -398,6 +405,26 @@ export default function UsersPage() {
                   <p className="font-semibold">{resetTarget.name}</p>
                   <p className="text-slate-500">Username: {resetTarget.username} · {resetTarget.org}</p>
                 </div>
+
+                {/* ช่องตั้งรหัสใหม่ */}
+                <div className="mt-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">ตั้ง password ใหม่ *</label>
+                    <button
+                      onClick={() => setResetInput(randomPassword())}
+                      className="flex items-center gap-1 text-sm text-blue-600"
+                    >
+                      <RefreshCw size={14} /> สุ่ม password
+                    </button>
+                  </div>
+                  <input
+                    value={resetInput}
+                    onChange={(e) => setResetInput(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                  {resetError && <p className="mt-1 text-xs text-red-500">{resetError}</p>}
+                </div>
+
                 <div className="mt-6 flex justify-end gap-2">
                   <button onClick={closeReset} className="rounded-lg bg-slate-100 px-4 py-2 text-sm">ยกเลิก</button>
                   <button onClick={handleConfirmReset}
@@ -410,7 +437,7 @@ export default function UsersPage() {
                 <p className="mt-1 text-sm text-slate-500">
                   {resetTarget.name} · Username: {resetTarget.username}
                 </p>
-                <p className="mt-4 text-sm font-medium">password ชั่วคราว</p>
+                <p className="mt-4 text-sm font-medium">password ใหม่</p>
                 <div className="mt-1 flex items-center justify-between rounded-lg bg-slate-100 p-4">
                   <span className="text-xl font-bold">{newPass}</span>
                   <button onClick={() => navigator.clipboard.writeText(newPass)}
