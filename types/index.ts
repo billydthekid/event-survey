@@ -85,6 +85,7 @@ export interface Event {
 
   createdBy: string;
   adminIds: string[];
+  prevStatus?: EventStatus;
   deletedAt?: string;
   purgeAt?: string;
 }
