@@ -33,7 +33,7 @@ interface StoreState {
 
   addUser: (input: NewUserInput) => User;
   createDraftEvent: (eventName: string, adminId: string) => Event;
-  resetPassword: (userId: string) => string;
+  resetPassword: (userId: string, newPassword: string) => void;
   toggleActive: (userId: string) => void;
   addLog: (action: string, targetType: string, targetId: string, detail?: string) => void;
   deleteEvent: (eventId: string) => void;
@@ -99,14 +99,12 @@ export const useStore = create<StoreState>()(
         return event;
       },
 
-      // ---------- รีเซ็ต password ----------
-      resetPassword: (userId) => {
-        const newPass = "Reset@" + Math.floor(1000 + Math.random() * 9000);
+          // ---------- รีเซ็ต password (Super ตั้งรหัสเองได้) ----------
+        resetPassword: (userId, newPassword) => {
         set({
-          users: get().users.map((u) => (u.id === userId ? { ...u, password: newPass } : u)),
+          users: get().users.map((u) => (u.id === userId ? { ...u, password: newPassword } : u)),
         });
         get().addLog("reset_password", "user", userId, "รีเซ็ต password");
-        return newPass;
       },
 
       // ---------- เปิด/ปิดบัญชี ----------
