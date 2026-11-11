@@ -8,11 +8,6 @@
 import { Suspense } from "react";
 import { QrView } from "./QrView";
 
-// ยอมให้หน้านี้ "รอ" ตอนเปิด (ไม่ต้อง prerender ล่วงหน้า)
-// เหตุผล: EventSidebar ใน layout ใช้ usePathname() นอก <Suspense>
-// ซึ่งเป็นค่าที่รู้ได้ตอนเปิดหน้าจริงเท่านั้น ถ้าไม่ใส่บรรทัดนี้ next build จะ error
-export const instant = false;
-
 export default function QrPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <Suspense fallback={<p className="text-sm text-slate-400">Loading…</p>}>
