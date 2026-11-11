@@ -22,6 +22,7 @@ interface EventTableProps {
   users: User[];
   registered: Record<string, number>;   // { eventId: จำนวนลงทะเบียน } จาก countByEvent
   responded: Record<string, number>;    // { eventId: จำนวนตอบ Survey }
+  onSelect?: (eventId: string) => void; // กดแถวแล้วทำอะไร (ไม่ส่งมา = แถวกดไม่ได้)
 }
 
 // เวลา "ข้อมูล ณ ..." ตอนเปิดหน้า
@@ -33,7 +34,7 @@ function UpdatedAt() {
   return <span suppressHydrationWarning>{formatThaiDateTime(new Date())}</span>;
 }
 
-export function EventTable({ events, users, registered, responded }: EventTableProps) {
+export function EventTable({ events, users, registered, responded, onSelect }: EventTableProps) {
   return (
     <div className="rounded-xl bg-white shadow-sm">
       {/* หัวการ์ด */}
@@ -59,7 +60,11 @@ export function EventTable({ events, users, registered, responded }: EventTableP
           {events.map((e) => {
             const s = STATUS_LABEL[e.status];
             return (
-              <tr key={e.id} className="border-t border-slate-100">
+              <tr
+                key={e.id}
+                onClick={onSelect ? () => onSelect(e.id) : undefined}
+                className={`border-t border-slate-100 ${onSelect ? "cursor-pointer hover:bg-slate-50" : ""}`}
+              >
                 <td className="px-5 py-4 font-semibold">{e.name.th}</td>
                 <td className="px-5 py-4">{formatThaiDate(e.date)}</td>
                 <td className="px-5 py-4">

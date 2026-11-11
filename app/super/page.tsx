@@ -1,6 +1,7 @@
 // app/super/page.tsx
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronDown, ClipboardCheck, Download, UserPlus, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { countByEvent, responseRate, summarize, topByRegistrations, visibleEvents } from "@/lib/utils/stats";
@@ -13,6 +14,7 @@ import { DonutCard } from "@/components/dashboard/DonutCard";
 import { EventTable, adminNames } from "@/components/dashboard/EventTable";
 
 export default function SuperDashboard() {
+  const router = useRouter();
   const events = useStore((s) => s.events);
   const users = useStore((s) => s.users);
   const registrations = useStore((s) => s.registrations);
@@ -113,7 +115,14 @@ export default function SuperDashboard() {
 
       {/* ---------- ตาราง ---------- */}
       <div className="mt-4">
-        <EventTable events={list} users={users} registered={registered} responded={responded} />
+        {/* กดแถว = ไปหน้า Dashboard ของ Event นั้น (เหมือนเลือกใน popup) */}
+        <EventTable
+          events={list}
+          users={users}
+          registered={registered}
+          responded={responded}
+          onSelect={(id) => router.push(`/super/events/${id}/dashboard`)}
+        />
       </div>
     </div>
   );
