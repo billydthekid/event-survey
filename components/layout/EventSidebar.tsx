@@ -21,7 +21,13 @@ const MAIN_MENU: Menu[] = [
 
 function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   const Icon = menu.icon;
-  const active = pathname === menu.href;
+  // Dashboard (/admin) ต้องตรงทุกตัวอักษร เพราะทุกหน้าขึ้นต้นด้วย /admin/
+  // เมนูอื่น: ตรงเป๊ะ หรือเป็นหน้าย่อย เช่น /admin/events/e-workshop/qr → "Event ของฉัน"
+  // (ต่อ "/" ก่อนเทียบ กัน /admin/events-archive ไปตรงกับ /admin/events โดยบังเอิญ)
+  const active =
+    menu.href === "/admin"
+      ? pathname === "/admin"
+      : pathname === menu.href || pathname.startsWith(menu.href + "/");
   return (
     <Link
       href={menu.href}
