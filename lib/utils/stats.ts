@@ -59,3 +59,54 @@ export function topByRegistrations(events: Event[], registrations: Registration[
     .sort((a, b) => b.registered - a.registered)
     .slice(0, n);
 }
+
+
+// ============ Dashboard เจาะ Event (หน้า ③) ============
+// ฟังก์ชันกลุ่มนี้รับรายการของ Event เดียว (หน้าเว็บกรอง eventId มาแล้ว)
+
+const SLOT_MS = 30 * 60 * 1000;   // 30 นาที
+
+export interface Slot {
+  start: Date;
+  count: number;
+  future: boolean;   // ช่วงที่ยังไม่ถึงเวลา → กราฟวาดเป็นกล่องเส้นประ
+}
+
+// คนลงทะเบียนต่อช่วง 30 นาที ตั้งแต่เริ่มงานถึงจบงาน (กราฟแท่ง)
+// คนที่ลงทะเบียนล่วงหน้า (ก่อนเริ่มงาน) ไม่อยู่ในช่วงไหนเลย → ไม่ถูกนับในกราฟ
+export function registrationSlots(
+  range: { start: Date; end: Date },
+  registrations: Registration[],
+  now: Date
+): Slot[] {
+  const times = registrations.map((r) => new Date(r.createdAt).getTime());
+  const slots: Slot[] = [];
+  for (let t = range.start.getTime(); t < range.end.getTime(); t += SLOT_MS) {
+    slots.push({
+      start: new Date(t),
+      count: times.filter((x) => x >= t && x < t + SLOT_MS).length,
+      future: t > now.getTime(),
+    });
+  }
+  return slots;
+}
+
+// ความพึงพอใจ: นับแต่ละคะแนน (เรียง 5 → 1) + ค่าเฉลี่ยทศนิยม 1 ตำแหน่ง
+export function satisfactionSummary(responses: SurveyResponse[]) {
+  const levels = [5, 4, 3, 2, 1].map((score) => ({
+    score,
+    count: responses.filter((r) => Number(r.answers.satisfaction) === score).length,
+  }));
+  const total = levels.reduce((sum, l) => sum + l.count, 0);
+  const points = levels.reduce((sum, l) => sum + l.score * l.count, 0);
+  return {
+    levels,
+    total,
+    average: total === 0 ? 0 : Math.round((points / total) * 10) / 10,
+  };
+}
+
+// เวลาของรายการล่าสุด (ISO string เทียบกันแบบตัวอักษรได้เลย เพราะรูปแบบเดียวกันหมด) · ไม่มี → undefined
+export function latestAt(list: { createdAt: string }[]): string | undefined {
+  return list.reduce<string | undefined>((max, r) => (!max || r.createdAt > max ? r.createdAt : max), undefined);
+}
