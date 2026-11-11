@@ -45,3 +45,59 @@ export function formatDayMonth(date: string): { day: string; month: string } | n
 export function formatThaiDateTime(d: Date): string {
   return `${dateFmt.format(d)} · ${timeFmt.format(d)} น.`;
 }
+
+
+// ============ เวลา / ช่วงเวลางาน (หน้า ③) ============
+
+// "14:30" (แกนกราฟแท่ง, "คนล่าสุด 12:38 น.")
+export function formatTime(d: Date): string {
+  return timeFmt.format(d);
+}
+
+// วันที่ "2026-10-23" ตรงกับวันนี้ (เวลาไทย) ไหม — sv-SE ให้รูปแบบ ปี-เดือน-วัน เหมือนใน mock
+const keyFmt = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Bangkok" });
+export function isToday(date: string, now: Date): boolean {
+  return !!date && keyFmt.format(now) === date;
+}
+
+// เวลาคนลงทะเบียนล่าสุด: วันนี้ → "12:38 น." · วันอื่น → "23 ต.ค. 12:38 น."
+export function formatRecent(iso: string, now: Date): string {
+  const d = new Date(iso);
+  if (keyFmt.format(d) === keyFmt.format(now)) return `${timeFmt.format(d)} น.`;
+  return `${dayFmt.format(d)} ${monthFmt.format(d)} ${timeFmt.format(d)} น.`;
+}
+
+// เวลาเริ่ม–จบงานเป็น Date · ยังไม่กำหนดวันหรือเวลา → null
+export function eventRange(event: { date: string; startTime: string; endTime: string }) {
+  if (!event.date || !event.startTime || !event.endTime) return null;
+  return {
+    start: new Date(`${event.date}T${event.startTime}:00+07:00`),
+    end: new Date(`${event.date}T${event.endTime}:00+07:00`),
+  };
+}
+
+// ระยะเวลาเป็นข้อความ: ≥ 1 วัน → "3 วัน" · น้อยกว่า → "2 ชม. 20 น." / "45 น."
+export function formatDuration(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes >= 24 * 60) return `${Math.floor(minutes / (24 * 60))} วัน`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h} ชม. ${m} น.` : `${m} น.`;
+}
+
+// การ์ด "เหลือเวลา" — ข้อความเปลี่ยนตามช่วง: ก่อนงาน / ระหว่างงาน / หลังงาน / ยังไม่กำหนด
+export function countdown(
+  event: { date: string; startTime: string; endTime: string },
+  now: Date
+): { label: string; value: string } {
+  const range = eventRange(event);
+  if (!range) return { label: "เหลือเวลา", value: "ยังไม่กำหนด" };
+  const t = now.getTime();
+  if (t < range.start.getTime()) {
+    return { label: "เริ่มงานในอีก", value: formatDuration(range.start.getTime() - t) };
+  }
+  if (t < range.end.getTime()) {
+    return { label: "เหลือเวลา", value: formatDuration(range.end.getTime() - t) };
+  }
+  return { label: "เหลือเวลา", value: "จบงานแล้ว" };
+}
