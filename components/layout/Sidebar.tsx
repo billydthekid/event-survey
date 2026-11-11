@@ -1,13 +1,15 @@
 // components/layout/Sidebar.tsx
 "use client";
+import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, BarChart3,
   History, Users, Trash2, Settings, LogOut, Plus, Ticket,
   type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { EventSwitcher } from "@/components/layout/EventPicker";
 
 type Menu = { href: string; label: string; icon: LucideIcon };
 
@@ -17,6 +19,16 @@ const MAIN_MENU: Menu[] = [
   { href: "/super/survey", label: "Survey", icon: ClipboardList },
   { href: "/super/report", label: "Report", icon: BarChart3 },
 ];
+
+// เมนูหลักตอนเลือก Event เจาะจง (Jin) — ลิงก์ไปหน้าของ Event นั้น /super/events/[id]/...
+function eventMenu(id: string): Menu[] {
+  return [
+    { href: `/super/events/${id}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
+    { href: `/super/events/${id}/event`, label: "Event", icon: CalendarDays },
+    { href: `/super/events/${id}/survey`, label: "Survey", icon: ClipboardList },
+    { href: `/super/events/${id}/report`, label: "Report", icon: BarChart3 },
+  ];
+}
 
 const ADMIN_MENU: Menu[] = [
   { href: "/super/action-log", label: "Action log", icon: History },
@@ -41,10 +53,25 @@ function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   );
 }
 
+// ครอบ <Suspense> (Jin): มีหน้า /super/events/[id]/... แล้ว + โปรเจกต์เปิด cacheComponents
+// → usePathname / useParams ต้องรอ URL ตอนเปิดหน้าจริง ถ้าไม่ครอบ Next build ไม่ผ่าน
+// fallback = แถบว่างกว้างเท่าเดิม (layout ซ่อนหน้าไว้จนโหลด localStorage เสร็จอยู่แล้ว)
 export function Sidebar() {
+  return (
+    <Suspense fallback={<aside className="h-screen w-60 border-r border-slate-200 bg-[#F4F2F7]" />}>
+      <SidebarContent />
+    </Suspense>
+  );
+}
+
+function SidebarContent() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useStore((s) => s.logout);
+
+  // อยู่ใต้ /super/events/[id]/... → มี id = กำลังดู Event นั้น · หน้าอื่นได้ {} = ดูทุก Event
+  const { id: eventId } = useParams<{ id?: string }>();
+  const mainMenu = eventId ? eventMenu(eventId) : MAIN_MENU;
 
   const handleLogout = () => {
     logout();
@@ -63,6 +90,9 @@ export function Sidebar() {
         </span>
       </div>
 
+      {/* ช่องเลือก Event (กดแล้วเปิด popup) */}
+      <EventSwitcher eventId={eventId} />
+
       {/* ปุ่มสร้าง Event */}
       <Link
         href="/super/users"
@@ -73,7 +103,7 @@ export function Sidebar() {
 
       {/* เมนูหลัก */}
       <nav className="flex flex-col gap-1">
-        {MAIN_MENU.map((m) => <MenuItem key={m.href} menu={m} pathname={pathname} />)}
+        {mainMenu.map((m) => <MenuItem key={m.href} menu={m} pathname={pathname} />)}
       </nav>
 
       {/* เมนู Admin */}
@@ -97,4 +127,4 @@ export function Sidebar() {
       </div>
     </aside>
   );
-}
+}
