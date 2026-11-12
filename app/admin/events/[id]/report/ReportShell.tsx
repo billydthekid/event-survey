@@ -6,6 +6,7 @@ import { createContext, useContext, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { ChevronLeft, ShieldAlert, BarChart3 } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { Event, Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,11 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const access = useEventAccess(id);
   const pathname = usePathname();
 
-  const [lang, setLang] = useState<Lang>("th");
+  // ภาษา (ทาง C): ค่าตั้งต้นจากบัญชี (currentUser.lang) / กดปุ่มในหน้า → override ชั่วคราว ไม่บันทึกลงบัญชี
+  // override อยู่ใน ReportShell (report/layout) → สลับแท็บใน Report แล้วยังคงภาษาที่เลือกไว้
+  const user = useStore((s) => s.currentUser);
+  const [override, setOverride] = useState<Lang | null>(null);
+  const lang: Lang = override ?? user?.lang ?? "th";
   const t = TEXT[lang];
 
   if (access.status === "loading") return null;
@@ -84,7 +89,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     return (
       <div>
         <div className="flex justify-end">
-          <LangToggle lang={lang} setLang={setLang} />
+          <LangToggle lang={lang} setLang={setOverride} />
         </div>
         <Card className="mt-4 items-center gap-2 rounded-2xl py-12 text-center ring-slate-200">
           <ShieldAlert size={32} className="text-slate-400" />
@@ -135,7 +140,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           {data && <p className="mt-1 text-sm text-slate-500">{summaryText}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <LangToggle lang={lang} setLang={setLang} />
+          <LangToggle lang={lang} setLang={setOverride} />
           {/* ปุ่ม Export: อยู่หลังด่านสิทธิ์แล้ว และแสดงเฉพาะเมื่อมีข้อมูลรายงาน */}
           {data && <ExportButtons event={event} data={data} lang={lang} />}
         </div>

@@ -75,13 +75,15 @@ export function QrView({ params }: { params: Promise<{ id: string }> }) {
   const event = useStore((s) => s.events.find((e) => e.id === id));
   const origin = useOrigin();
 
-  const [lang, setLang] = useState<Lang>("th");
+  // ภาษา (ทาง C): ค่าตั้งต้นจากบัญชี (currentUser.lang) / กดปุ่มในหน้า → override ชั่วคราว ไม่บันทึกลงบัญชี
+  const [override, setOverride] = useState<Lang | null>(null);
+  const lang: Lang = override ?? user?.lang ?? "th";
   const t = TEXT[lang];
 
   // ยังโหลดข้อมูลจาก localStorage ไม่เสร็จ → ยังไม่ตัดสินอะไร (กันขึ้น "ไม่พบ" แวบหนึ่ง)
   if (!hydrated) return null;
 
-  const langToggle = <LangToggle lang={lang} setLang={setLang} />;
+  const langToggle = <LangToggle lang={lang} setLang={setOverride} />;
 
   // ด่านที่ 1: ไม่พบ / ถูกลบ / ไม่ได้รับมอบหมาย → ไม่แสดงข้อมูล Event ใดๆ
   const allowed =
