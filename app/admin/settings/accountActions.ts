@@ -35,3 +35,26 @@ function updateMe(patch: MyPatch) {
 export function setMyLang(lang: Lang) {
   updateMe({ lang });
 }
+
+// ============ เปลี่ยนชื่อที่แสดง ============
+// รับ: ชื่อจากช่องกรอก (ตัดช่องว่างหัวท้ายให้)
+// ทำ: บันทึกชื่อใหม่ + เก็บ log "update_profile"
+// คืน: { ok: true } หรือ { ok: false, error: "empty" | "no_user" }
+// ตัวอย่าง:
+//   updateDisplayName("  ณัฐพล ใจดีมาก ") → { ok: true } + log 'เปลี่ยนชื่อ "ณัฐพล ใจดี" → "ณัฐพล ใจดีมาก"'
+//   updateDisplayName("   ")              → { ok: false, error: "empty" } (ไม่บันทึกอะไร)
+//   updateDisplayName("ณัฐพล ใจดี")        → { ok: true } แต่ชื่อเหมือนเดิม → ไม่บันทึก ไม่เก็บ log
+export function updateDisplayName(
+  name: string
+): { ok: true } | { ok: false; error: "empty" | "no_user" } {
+  const me = useStore.getState().currentUser;
+  if (!me) return { ok: false, error: "no_user" };
+
+  const next = name.trim();
+  if (next === "") return { ok: false, error: "empty" };
+  if (next === me.name) return { ok: true }; // ไม่มีอะไรเปลี่ยน → ไม่ต้องเก็บ log
+
+  updateMe({ name: next });
+  useStore.getState().addLog("update_profile", "user", me.id, `เปลี่ยนชื่อ "${me.name}" → "${next}"`);
+  return { ok: true };
+}
