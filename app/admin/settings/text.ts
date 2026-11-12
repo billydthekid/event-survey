@@ -14,6 +14,8 @@ export const TEXT = {
       nameEmpty: "กรุณากรอกชื่อ-นามสกุล",
       usernameLabel: "Username",
       orgLabel: "หน่วยงาน",
+      eventsLabel: "Event ที่ดูแล",
+      noEvents: "ยังไม่มี Event ที่ได้รับมอบหมาย",
       lockedHint: "Username, หน่วยงาน, Role และ Event ที่ดูแล เปลี่ยนได้โดย Super Admin เท่านั้น",
     },
     actions: {
@@ -64,6 +66,8 @@ export const TEXT = {
       nameEmpty: "Please enter your full name",
       usernameLabel: "Username",
       orgLabel: "Organization",
+      eventsLabel: "Assigned events",
+      noEvents: "No assigned events yet",
       lockedHint: "Username, organization, role and assigned events can only be changed by Super Admin",
     },
     actions: {
