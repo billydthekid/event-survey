@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/wizard-store";
 import { qtype } from "@/lib/survey-types";
 
-
+// ขั้นที่ 6: แสดงสรุป Survey แบบอ่านอย่างเดียว — แก้ไขคำถามได้ที่ Survey Builder เท่านั้น (กดปุ่มด้านล่าง)
 export function StepSurvey() {
   const draft = useWizardStore((s) => s.draft);
   const qs = draft.survey.questions;
@@ -22,20 +22,16 @@ export function StepSurvey() {
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">
+        {qs.length === 0 && <p className="py-2 text-sm text-muted-foreground">ยังไม่มีคำถาม กดปุ่มด้านล่างเพื่อเปิด Survey Builder แล้วเพิ่มคำถาม</p>}
         {qs.map((q, i) => (
           <div key={q.id} className="rounded-lg border px-4 py-3 text-sm">
-            <span className="font-semibold text-primary">{i + 1}</span> · {q.titleTh} ·{" "}
+            <span className="font-semibold text-primary">{i + 1}</span> · {q.titleTh || "(ยังไม่ตั้งชื่อคำถาม)"} ·{" "}
             <span className="text-muted-foreground">{qtype(q.type).th}</span>
           </div>
         ))}
-        {/* TODO: สร้างหน้า Survey builder ที่ /admin/events/[id]/survey */}
-        <Button
-          variant="secondary"
-          className="text-primary"
-          nativeButton={false}
-          render={<Link href={`/admin/events/${draft.id}/survey`} />}
-        >
-          เปิด Survey builder
+        <p className="text-xs text-muted-foreground">ขั้นตอนนี้ดูได้อย่างเดียว · แก้ไขคำถามได้ที่ Survey Builder</p>
+        <Button nativeButton={false} render={<Link href={`/admin/events/${draft.id}/survey/builder`} />}>
+          เปิด Survey Builder
         </Button>
       </CardContent>
     </Card>

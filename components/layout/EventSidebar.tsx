@@ -125,8 +125,9 @@ type Menu = {
   soon?: boolean;      // แสดงป้าย "เร็วๆ นี้"
 };
 
-// เมนูของ Event ที่ยังไม่มีหน้า (เมื่อทำหน้าเสร็จ ลบ key ออกจากรายการนี้)
-const NOT_BUILT = new Set(["edit", "survey"]);
+// มีหน้าแล้ว แต่ยังไม่สร้างคอมโพเนนต์ → กดไม่ได้ (สีเทา + ป้าย "เร็วๆ นี้") เพื่อกัน 404
+const NOT_BUILT = new Set(["edit"]);
+
 
 export function EventSidebar() {
   const pathname = usePathname(); // เช่น "/admin/events/e-workshop/report/survey"
