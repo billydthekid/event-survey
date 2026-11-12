@@ -216,7 +216,8 @@ export function EventSidebar() {
   ];
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-[#F4F2F7] p-4">
+    // sticky top-0: หน้ายาวแล้วเลื่อน → Sidebar ติดจอไว้ (ตัวที่เลื่อนยังเป็นทั้งหน้าเหมือนเดิม)
+    <aside className="sticky top-0 flex h-screen w-60 flex-col border-r border-slate-200 bg-[#F4F2F7] p-4">
       {/* ===== โลโก้ (กดแล้วกลับหน้า Event ของฉัน) ===== */}
       {/* ใช้ class เดิมทุกตัว → หน้าตาไม่เปลี่ยน แค่กดได้ */}
       <Link href="/admin/events" aria-label={t.myEvents} className="mb-6 flex items-center gap-2 px-2">
@@ -228,6 +229,10 @@ export function EventSidebar() {
         </span>
       </Link>
 
+      {/* ===== ส่วนกลาง: เลื่อนได้เองเมื่อเมนูยาวเกินจอ (โลโก้กับ Settings/Logout อยู่กับที่) =====
+          flex-1 = กินที่ที่เหลือ → ส่วนล่างติดขอบล่างเสมอ
+          min-h-0 = ยอมให้หดเตี้ยกว่าเนื้อหา (ไม่ใส่ overflow จะไม่ทำงานใน flex) */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {/* ===== เมนูหลัก ===== */}
       <nav className="flex flex-col gap-1">
         {mainMenu.map((m) => <MenuItem key={m.key} menu={m} t={t} />)}
@@ -249,6 +254,7 @@ export function EventSidebar() {
       <nav className="mt-3 flex flex-col gap-1">
         {eventMenu.map((m) => <MenuItem key={m.key} menu={m} t={t} />)}
       </nav>
+      </div>
 
       {/* ===== ล่างสุด ===== */}
       <div className="mt-auto flex flex-col gap-1 border-t border-slate-200 pt-3">
