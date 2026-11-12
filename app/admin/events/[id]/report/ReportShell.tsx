@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
 import { getReportData, ReportData } from "./mockData";
 import { ExportButtons } from "./ExportButtons";
+import { isReportPrintPath } from "./printPath";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
 const TEXT = {
@@ -54,6 +55,7 @@ interface ReportContextValue {
   event: Event;
   data: ReportData;
   lang: Lang;
+  summaryText: string; // บรรทัดสรุปผู้ตอบ/ผู้ลงทะเบียน (หน้า print ใช้ซ้ำ)
 }
 const ReportContext = createContext<ReportContextValue | null>(null);
 
@@ -116,6 +118,16 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
 
   const base = `/admin/events/${event.id}/report`;
 
+  // บรรทัดสรุป เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง ..." (ใช้ทั้งส่วนหัวและหน้า print)
+  const summaryText = data ? t.summaryLine(data.responses.length, data.registrations.length, latestText) : "";
+
+  // ===== หน้าพิมพ์ (/report/print): ผ่านด่านที่ 1 มาแล้ว แต่ไม่แสดงหัว/แท็บ/ปุ่ม =====
+  // ยังส่งข้อมูลผ่าน Context เหมือนแท็บอื่น และถ้ายังไม่มีข้อมูล (ด่านที่ 2) ก็แสดงการ์ดเดิม
+  if (isReportPrintPath(pathname)) {
+    if (!data) return <NoDataCard t={t} />;
+    return <ReportContext value={{ event, data, lang, summaryText }}>{children}</ReportContext>;
+  }
+
   return (
     <div>
       {/* ===== ส่วนหัว ===== */}
@@ -126,11 +138,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
         <div>
           <h1 className="text-3xl font-bold">{t.title}</h1>
           {/* ตัวเลขนับจากข้อมูลจริงของ Event นี้ (getReportData) ไม่ได้ฝังค่าไว้ */}
-          {data && (
-            <p className="mt-1 text-sm text-slate-500">
-              {t.summaryLine(data.responses.length, data.registrations.length, latestText)}
-            </p>
-          )}
+          {data && <p className="mt-1 text-sm text-slate-500">{summaryText}</p>}
         </div>
         <div className="flex items-center gap-3">
           <LangToggle lang={lang} setLang={setLang} />
@@ -143,11 +151,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <Toaster />
 
       {!data ? (
-        <Card className="mt-6 items-center gap-2 rounded-2xl py-12 text-center ring-slate-200">
-          <BarChart3 size={32} className="text-slate-400" />
-          <p className="text-lg font-semibold">{t.noData}</p>
-          <p className="text-sm text-slate-500">{t.noDataHint}</p>
-        </Card>
+        <NoDataCard t={t} />
       ) : (
         <>
           {/* ===== แถบแท็บ (ลิงก์ไปแต่ละ route) ===== */}
@@ -170,12 +174,23 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* ===== เนื้อหาของแท็บที่เปิดอยู่ ===== */}
-          <ReportContext value={{ event, data, lang }}>
+          <ReportContext value={{ event, data, lang, summaryText }}>
             <div className="mt-5">{children}</div>
           </ReportContext>
         </>
       )}
     </div>
+  );
+}
+
+// ============ การ์ด "ยังไม่มีข้อมูลรายงาน" (ใช้ทั้งหน้าปกติและหน้า print) ============
+function NoDataCard({ t }: { t: (typeof TEXT)["th"] }) {
+  return (
+    <Card className="mt-6 items-center gap-2 rounded-2xl py-12 text-center ring-slate-200">
+      <BarChart3 size={32} className="text-slate-400" />
+      <p className="text-lg font-semibold">{t.noData}</p>
+      <p className="text-sm text-slate-500">{t.noDataHint}</p>
+    </Card>
   );
 }
 
