@@ -79,7 +79,10 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const isFullscreen = useIsFullscreen();
   const router = useRouter();
 
-  const [lang, setLang] = useState<Lang>("th");
+  // ภาษา (ทาง C): ค่าตั้งต้นจากบัญชี (currentUser.lang) / กดปุ่มบนจอ Kiosk → override ชั่วคราว
+  // (ผู้เข้าร่วมกดสลับภาษาที่จอได้ โดยไม่ไปเปลี่ยนภาษาในบัญชีของ admin)
+  const [override, setOverride] = useState<Lang | null>(null);
+  const lang: Lang = override ?? user?.lang ?? "th";
   const t = TEXT[lang];
 
   // rootRef = กล่องเต็มจอทั้งหน้า (ตัวที่จะสั่ง requestFullscreen)
@@ -126,7 +129,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
         Event<span className="-ml-2 text-blue-600">Survey</span>
       </div>
       <div className="flex items-center gap-2">
-        <LangToggle lang={lang} setLang={setLang} />
+        <LangToggle lang={lang} setLang={setOverride} />
         <Button variant="outline" onClick={toggleFullscreen} className="bg-white">
           {isFullscreen ? <Minimize /> : <Maximize />}
           {isFullscreen ? t.exitFullscreen : t.fullscreen}
