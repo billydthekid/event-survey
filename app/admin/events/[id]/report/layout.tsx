@@ -10,6 +10,10 @@
 import { Suspense } from "react";
 import { ReportShell } from "./ReportShell";
 
+// ปิดการตรวจ instant navigation ของ Report: ReportShell (client) รอ useParams + ข้อมูลจาก localStorage
+// ตอน prerender จึงไม่ render แท็บลูก → Next แจ้ง "dropped segment" (หน้านี้รอโหลดได้อยู่แล้ว)
+export const instant = false;
+
 // LayoutProps<"..."> เป็น type ที่ Next.js สร้างให้อัตโนมัติตาม route (คู่มือแนะนำให้ใช้กับ layout)
 export default function ReportLayout(props: LayoutProps<"/admin/events/[id]/report">) {
   return (
