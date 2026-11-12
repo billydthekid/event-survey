@@ -216,14 +216,18 @@ function Stat({ value, label }: { value: number | undefined; label: string }) {
 //    เมื่อหน้า edit เสร็จ ให้เปลี่ยนส่วนนี้เป็นลิงก์ไป `${base}/edit`)
 function EventAction({ event, view, t }: { event: Event; view: ViewStatus; t: Text }) {
   if (view === "draft") {
+    // ไปหน้า Wizard 7 ขั้นของเพื่อน (feature/create-event)
     return (
-      <span
-        aria-disabled="true"
-        className="flex w-40 shrink-0 cursor-not-allowed items-center justify-end gap-2 text-sm font-semibold text-slate-400"
-      >
-        {t.continueSetup}
-        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-normal text-slate-500">{t.soon}</span>
-      </span>
+      <div className="flex w-40 shrink-0 justify-end">
+        <Button
+          variant="link"
+          nativeButton={false}
+          render={<Link href={`/admin/events/${event.id}/edit`} />}
+          className="px-0 font-semibold text-blue-600"
+        >
+          {t.continueSetup}
+        </Button>
+      </div>
     );
   }
 
