@@ -29,6 +29,15 @@ export type Summary =
       n: number;
     };
 
+// answersOf: คำตอบของข้อนี้ ตัดคนที่ข้าม (undefined) และ array ว่างออก
+// → ความยาวที่ได้ = "จำนวนคนที่ตอบข้อนี้" (1 คน = 1 ช่อง แม้เลือกหลายตัวเลือก)
+// ใช้ทั้งใน summarize และ exportCsv (ข้อข้อความต้องการคำตอบทั้งหมด ไม่ใช่แค่ตัวอย่าง 3 ข้อ)
+export function answersOf(question: Question, responses: SurveyResponse[]) {
+  return responses
+    .map((r) => r.answers[question.id])
+    .filter((a) => a !== undefined && !(Array.isArray(a) && a.length === 0));
+}
+
 // summarize: รับคำถาม + คำตอบทั้งหมด → คืนผลสรุปของข้อนั้น
 export function summarize(
   question: Question,
@@ -36,11 +45,7 @@ export function summarize(
   lang: Lang,
   scale?: RatingLabel
 ): Summary {
-  // คำตอบของข้อนี้ ตัดคนที่ข้าม (undefined) และ array ว่างออก
-  // → answers.length = "จำนวนคนที่ตอบข้อนี้" (1 คน = 1 ช่อง แม้เลือกหลายตัวเลือก)
-  const answers = responses
-    .map((r) => r.answers[question.id])
-    .filter((a) => a !== undefined && !(Array.isArray(a) && a.length === 0));
+  const answers = answersOf(question, responses);
   const n = answers.length;
 
   switch (question.type) {
