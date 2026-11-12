@@ -1,6 +1,7 @@
 // app/admin/settings/page.tsx
 // หน้า Settings ของ Event Admin (ต้นฉบับ docs/figma/setting.png)
 // ขั้น a: หัวหน้า + การ์ดภาษา | ขั้น b: การ์ดโปรไฟล์ + ปุ่ม ยกเลิก/บันทึก (ใช้กับชื่ออย่างเดียว)
+// ขั้น c: การ์ดเปลี่ยน password (มีปุ่มของตัวเอง)
 "use client";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "@/components/ui/toast";
 import { updateDisplayName } from "./accountActions";
 import { LanguageCard } from "./LanguageCard";
+import { PasswordCard } from "./PasswordCard";
 import { ProfileCard } from "./ProfileCard";
 import { TEXT } from "./text";
 
@@ -64,6 +66,7 @@ function SettingsContent({ user }: { user: User }) {
       <div className="mt-6 grid gap-5">
         <ProfileCard user={user} name={name} onNameChange={handleNameChange} nameError={nameError} t={t} />
         <LanguageCard lang={lang} t={t} />
+        <PasswordCard t={t} />
       </div>
 
       {/* ปุ่มล่าง: ใช้กับชื่ออย่างเดียว (ภาษาบันทึกทันทีที่เลือก) */}

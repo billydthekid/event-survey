@@ -8,6 +8,7 @@
 // ถ้าอัปเดตที่เดียว ข้อมูลจะไม่ตรงกัน → ทุกฟังก์ชันต้องผ่าน updateMe ที่อัปเดตทั้งสองที่พร้อมกัน
 import { useStore } from "@/lib/store";
 import { Lang, User } from "@/types";
+import { failedRules, PasswordRule } from "./passwordRules";
 
 // ฟิลด์ที่ผู้ใช้แก้เองได้ (username, org, role แก้ได้โดย Super Admin เท่านั้น)
 type MyPatch = Partial<Pick<User, "name" | "lang" | "password">>;
@@ -56,5 +57,41 @@ export function updateDisplayName(
 
   updateMe({ name: next });
   useStore.getState().addLog("update_profile", "user", me.id, `เปลี่ยนชื่อ "${me.name}" → "${next}"`);
+  return { ok: true };
+}
+
+// ============ เปลี่ยนรหัสผ่าน ============
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; error: "no_user" | "wrong_current" | "mismatch" }
+  | { ok: false; error: "weak"; failed: PasswordRule[] }; // failed = ข้อที่ไม่ผ่าน
+
+// รับ: { current: รหัสปัจจุบัน, next: รหัสใหม่, confirm: ยืนยันรหัสใหม่ }
+// ทำ: ตรวจตามลำดับ 1) รหัสปัจจุบันถูก 2) รหัสใหม่ผ่านทุกกฎ 3) ยืนยันตรงกัน
+//     ผ่านครบ → บันทึกรหัสใหม่ + เก็บ log "change_password" (ไม่ใส่รหัสเก่า/ใหม่ใน log)
+// คืน: ChangePasswordResult
+// ตัวอย่าง (รหัสเดิมใน mock = "1234"):
+//   { current: "0000", next: "Abcdefgh123!", confirm: "Abcdefgh123!" } → { ok: false, error: "wrong_current" }
+//   { current: "1234", next: "abcdefghijkl", confirm: "abcdefghijkl" } → { ok: false, error: "weak", failed: ["upper", "digit", "special"] }
+//   { current: "1234", next: "Abcdefgh123!", confirm: "Abcdefgh123?" } → { ok: false, error: "mismatch" }
+//   { current: "1234", next: "Abcdefgh123!", confirm: "Abcdefgh123!" } → { ok: true } → login ครั้งหน้าใช้ "Abcdefgh123!"
+export function changeMyPassword(input: { current: string; next: string; confirm: string }): ChangePasswordResult {
+  const { currentUser: me, users } = useStore.getState();
+  if (!me) return { ok: false, error: "no_user" };
+
+  // 1) เทียบกับรหัสใน users[] เพราะ login ตรวจจากที่นี่
+  //    (ถ้า Super รีเซ็ตรหัสให้ระหว่างที่ login อยู่ users[] จะใหม่กว่า currentUser)
+  const saved = users.find((u) => u.id === me.id)?.password ?? me.password;
+  if (input.current !== saved) return { ok: false, error: "wrong_current" };
+
+  // 2) กฎของรหัสใหม่
+  const failed = failedRules(input.next);
+  if (failed.length > 0) return { ok: false, error: "weak", failed };
+
+  // 3) ยืนยันต้องตรงกันทุกตัวอักษร
+  if (input.next !== input.confirm) return { ok: false, error: "mismatch" };
+
+  updateMe({ password: input.next });
+  useStore.getState().addLog("change_password", "user", me.id, "เปลี่ยน password ด้วยตนเอง");
   return { ok: true };
 }
