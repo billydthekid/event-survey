@@ -10,13 +10,17 @@ import { useStore } from "@/lib/store";
 import { Event, Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/toast";
 import { getReportData, ReportData } from "./mockData";
+import { ExportButtons } from "./ExportButtons";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
 const TEXT = {
   th: {
     title: "Report",
-    dataAsOf: (when: string) => `ข้อมูลถึง ${when} · เฉพาะ Event นี้`,
+    // เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง 23 ต.ค. 2569 15:00"
+    summaryLine: (responses: number, regs: number, when: string) =>
+      `${responses} คำตอบ จากผู้ลงทะเบียน ${regs} คน · ข้อมูลถึง ${when}`,
     tabs: { overview: "Overview", participants: "ผู้เข้าร่วม", survey: "Survey", answers: "คำตอบรายคน" },
     noData: "ยังไม่มีข้อมูลรายงาน",
     noDataHint: "รายงานจะมีข้อมูลเมื่อ Event เริ่มจัดงานแล้ว",
@@ -26,7 +30,8 @@ const TEXT = {
   },
   en: {
     title: "Report",
-    dataAsOf: (when: string) => `Data as of ${when} · This event only`,
+    summaryLine: (responses: number, regs: number, when: string) =>
+      `${responses} responses from ${regs} registrations · Data as of ${when}`,
     tabs: { overview: "Overview", participants: "Participants", survey: "Survey", answers: "Responses" },
     noData: "No report data yet",
     noDataHint: "The report will have data once the event has started",
@@ -120,10 +125,22 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
       <div className="mt-1 flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold">{t.title}</h1>
-          {data && <p className="mt-1 text-sm text-slate-500">{t.dataAsOf(latestText)}</p>}
+          {/* ตัวเลขนับจากข้อมูลจริงของ Event นี้ (getReportData) ไม่ได้ฝังค่าไว้ */}
+          {data && (
+            <p className="mt-1 text-sm text-slate-500">
+              {t.summaryLine(data.responses.length, data.registrations.length, latestText)}
+            </p>
+          )}
         </div>
-        <LangToggle lang={lang} setLang={setLang} />
+        <div className="flex items-center gap-3">
+          <LangToggle lang={lang} setLang={setLang} />
+          {/* ปุ่ม Export: อยู่หลังด่านสิทธิ์แล้ว และแสดงเฉพาะเมื่อมีข้อมูลรายงาน */}
+          {data && <ExportButtons event={event} data={data} lang={lang} />}
+        </div>
       </div>
+
+      {/* ที่แสดง Toast (มุมขวาล่าง) ของหน้า Report */}
+      <Toaster />
 
       {!data ? (
         <Card className="mt-6 items-center gap-2 rounded-2xl py-12 text-center ring-slate-200">
