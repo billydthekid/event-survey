@@ -38,7 +38,7 @@ export function LanguageCard({ lang, t }: { lang: Lang; t: SettingsText }) {
 
 // ============ ชิ้นส่วนที่การ์ดอื่นจะใช้ร่วม (ขั้น b, c) ============
 
-// สไตล์ช่องอ่านอย่างเดียว: พื้นเทา ไม่มีกรอบเด่น (ตามรูปช่อง Username / Timezone)
+// สไตล์ช่องอ่านอย่างเดียว: พื้นเทา ไม่มีกรอบเด่น (ตามรูปช่อง Username / หน่วยงาน)
 export const READONLY = "h-10 cursor-default border-transparent bg-slate-100 focus-visible:ring-0";
 
 // การ์ด 1 ส่วน: ซ้าย = หัวข้อ + คำอธิบาย, ขวา = ช่องกรอก
