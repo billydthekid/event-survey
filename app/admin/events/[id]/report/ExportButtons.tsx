@@ -5,6 +5,7 @@
 // - ถูกวางไว้ใน ReportShell หลังผ่านด่านสิทธิ์แล้วเท่านั้น → Export ได้เฉพาะ Event ที่ได้รับมอบหมาย
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Loader2 } from "lucide-react";
 import { Event, Lang } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,6 @@ const TEXT = {
     started: "ดาวน์โหลดเริ่ม",
     failed: "Export ไม่สำเร็จ",
     retry: "กรุณาลองใหม่อีกครั้ง",
-    pdfSoon: "Export PDF จะเปิดใช้ในขั้นถัดไป",
   },
   en: {
     csv: "CSV",
@@ -32,7 +32,6 @@ const TEXT = {
     started: "Download started",
     failed: "Export failed",
     retry: "Please try again",
-    pdfSoon: "PDF export is coming in the next step",
   },
 };
 
@@ -42,6 +41,7 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 
 export function ExportButtons({ event, data, lang }: { event: Event; data: ReportData; lang: Lang }) {
   const t = TEXT[lang];
+  const router = useRouter();
   // ปุ่มที่กำลังทำงานอยู่ (null = ว่าง) ระหว่างทำงาน ทั้ง 2 ปุ่มกดไม่ได้ กันกดซ้ำ
   const [busy, setBusy] = useState<"csv" | "pdf" | null>(null);
 
@@ -59,6 +59,22 @@ export function ExportButtons({ event, data, lang }: { event: Event; data: Repor
     }
   }
 
+  // ----- Export PDF -----
+  // ไปหน้า report/print ในแท็บเดิม (router.push ไม่โดนบล็อกแบบ popup ของ window.open)
+  // หน้า print จะสั่ง window.print() เอง → ผู้ใช้เลือก "บันทึกเป็น PDF"
+  async function handlePdf() {
+    setBusy("pdf");
+    try {
+      await wait(FAKE_DELAY_MS);
+      router.push(`/admin/events/${event.id}/report/print`);
+      // สำเร็จ: ไม่คืนปุ่ม — ปุ่มนี้หายไปพร้อมส่วนหัวเมื่อเข้าหน้า print
+      // (ถ้าคืนตอนนี้ ปุ่มจะกระพริบกลับเป็นปกติแวบหนึ่งก่อนหน้าเปลี่ยน)
+    } catch {
+      toast.add({ type: "error", title: t.failed, description: t.retry });
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="flex gap-2">
       <Button variant="outline" className="bg-white" disabled={busy !== null} onClick={handleCsv}>
@@ -66,12 +82,7 @@ export function ExportButtons({ event, data, lang }: { event: Event; data: Repor
         {busy === "csv" ? t.makingCsv : t.csv}
       </Button>
 
-      {/* PDF: ยังปิดไว้ — จะเชื่อมกับหน้า report/print ในขั้นที่ 3 */}
-      <Button
-        className="bg-blue-600 text-white hover:bg-blue-700"
-        disabled
-        title={t.pdfSoon}
-      >
+      <Button className="bg-blue-600 text-white hover:bg-blue-700" disabled={busy !== null} onClick={handlePdf}>
         {busy === "pdf" ? <Loader2 className="animate-spin" /> : <Download />}
         {busy === "pdf" ? t.makingPdf : t.pdf}
       </Button>
