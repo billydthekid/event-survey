@@ -128,7 +128,7 @@ type Menu = {
 };
 
 // เมนูของ Event ที่ยังไม่มีหน้า (เมื่อทำหน้าเสร็จ ลบ key ออกจากรายการนี้)
-const NOT_BUILT = new Set(["dashboard", "edit", "survey"]);
+const NOT_BUILT = new Set(["edit", "survey"]);
 
 export function EventSidebar() {
   const pathname = usePathname(); // เช่น "/admin/events/e-workshop/report/survey"
