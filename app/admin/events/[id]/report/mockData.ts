@@ -4,13 +4,22 @@
 // - เมื่อมีข้อมูลจริง (store หรือ API) ให้ลบไฟล์นี้ แล้วเปลี่ยน getReportData() ไปอ่านจากแหล่งจริง
 // - ชื่อทั้งหมดเป็นชื่อสมมติ เบอร์โทรปิดบางส่วน
 // - สร้างแบบคงที่: ไม่ใช้ Math.random ตัวเลขจึงเท่าเดิมทุกครั้งที่เปิด
-import { Question, Registration, Survey, SurveyResponse } from "@/types";
+import { BiText, Question, Registration, Survey, SurveyResponse } from "@/types";
 
 // ============ ข้อมูลที่หน้า Report ใช้ ============
 export interface ReportData {
   survey: Survey;
   registrations: Registration[];
   responses: SurveyResponse[];
+  // คำกำกับปลายสเกล Rating ต่อคำถาม (type Question ยังไม่มีช่องนี้) ไม่มี → แสดงแค่ตัวเลข
+  // เช่น { q1: { max: "ดีมาก", min: "ควรปรับปรุง" } } → แถว "5 ดีมาก" และ "1 ควรปรับปรุง"
+  ratingLabels?: Record<string, RatingLabel>;
+}
+
+export interface RatingLabel {
+  max: BiText;   // คำกำกับคะแนน 5
+  min: BiText;   // คำกำกับคะแนน 1
+  hint?: BiText; // คำอธิบายสเกลในบรรทัดสรุป เช่น "1 = ง่าย, 5 = ยาก"
 }
 
 // ค่าเพศที่เก็บใน answers.gender (หน้าจอแปลงเป็นข้อความ TH/EN เอง)
@@ -166,9 +175,13 @@ const workshopSurvey: Survey = {
     q("q4", 4, "multi", "หัวข้อที่ได้ประโยชน์มากที่สุด", "Most useful topics", [
       ["Auto layout", "Auto layout"], ["Component", "Component"], ["Prototype", "Prototype"], ["Frame & Grid", "Frame & Grid"],
     ]),
-    q("q5", 5, "single", "ความเหมาะสมของระยะเวลา", "Session length", [
-      ["สั้นไป", "Too short"], ["พอดี", "Just right"], ["ยาวไป", "Too long"],
-    ]),
+    // ข้อนี้ไม่บังคับตอบ (ตาม design: 26 จาก 31 คนตอบ) — ทับค่า required ที่ตัวช่วย q() ตั้งให้
+    {
+      ...q("q5", 5, "single", "ความเหมาะสมของระยะเวลา", "Session length", [
+        ["สั้นไป", "Too short"], ["พอดี", "Just right"], ["ยาวไป", "Too long"],
+      ]),
+      required: false,
+    },
     q("q6", 6, "short", "อยากให้จัดหัวข้ออะไรต่อ", "Topics for next time"),
     q("q7", 7, "long", "ข้อเสนอแนะเพิ่มเติม", "Other suggestions"),
   ],
@@ -176,6 +189,15 @@ const workshopSurvey: Survey = {
 
 const workshop: ReportData = {
   survey: workshopSurvey,
+  // คำกำกับปลายสเกลของข้อ Rating (ตาม design)
+  ratingLabels: {
+    q1: { max: { th: "ดีมาก", en: "Excellent" }, min: { th: "ควรปรับปรุง", en: "Needs work" } },
+    q3: {
+      max: { th: "ยากมาก", en: "Very hard" },
+      min: { th: "ง่ายมาก", en: "Very easy" },
+      hint: { th: "1 = ง่าย, 5 = ยาก", en: "1 = easy, 5 = hard" },
+    },
+  },
   registrations: makeRegistrations(
     "e-workshop", "2026-10-23", 8 * 60,
     [["male", 24], ["female", 19], ["unspecified", 3]],
