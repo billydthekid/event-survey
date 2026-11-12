@@ -6,12 +6,12 @@ import { createContext, useContext, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { ChevronLeft, ShieldAlert, BarChart3 } from "lucide-react";
-import { useStore } from "@/lib/store";
 import { Event, Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
-import { getReportData, ReportData } from "./mockData";
+import { useEventAccess } from "../eventAccess";
+import { ReportData } from "./mockData";
 import { ExportButtons } from "./ExportButtons";
 import { isReportPrintPath } from "./printPath";
 
@@ -70,24 +70,17 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   // อ่าน id จาก URL ด้วย useParams() (ใน layout ใช้วิธีนี้แทน use(params) — ดูเหตุผลใน layout.tsx)
   const { id } = useParams<{ id: string }>(); // เช่น { id: "e-workshop" }
 
-  const user = useStore((s) => s.currentUser);
-  const hydrated = useStore((s) => s.hydrated);
-  const event = useStore((s) => s.events.find((e) => e.id === id));
+  // ด่านสิทธิ์ใช้ร่วมกับ Dashboard (กฎอยู่ใน ../eventAccess.ts)
+  const access = useEventAccess(id);
   const pathname = usePathname();
 
   const [lang, setLang] = useState<Lang>("th");
   const t = TEXT[lang];
 
-  if (!hydrated) return null;
+  if (access.status === "loading") return null;
 
   // ด่านที่ 1: ไม่พบ / ถูกลบ / ไม่มีสิทธิ์ → ไม่แสดงข้อมูล Event
-  const allowed =
-    event !== undefined &&
-    event.status !== "deleted" &&
-    user !== null &&
-    event.adminIds.includes(user.id);
-
-  if (!allowed) {
+  if (access.status === "denied") {
     return (
       <div>
         <div className="flex justify-end">
@@ -105,8 +98,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // ด่านที่ 2: draft / scheduled (หรือยังไม่มีข้อมูล) → ยังไม่มีรายงาน
-  const data = event.status === "active" || event.status === "ended" ? getReportData(event.id) : null;
+  // ด่านที่ 2: draft / scheduled (หรือยังไม่มีข้อมูล) → data = null → การ์ด "ยังไม่มีข้อมูลรายงาน"
+  const { event } = access;
+  const data = access.status === "ok" ? access.data : null;
 
   // "ข้อมูลถึง ..." = เวลาของรายการล่าสุด (ลงทะเบียนหรือตอบ Survey)
   const latest = data
