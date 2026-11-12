@@ -62,5 +62,5 @@ function TopbarUnlessPrint() {
 
 // กรอบ sidebar ว่าง ขนาด/สี/เส้นขอบเท่ากับ <aside> ใน EventSidebar → หน้าไม่กระตุกตอนเมนูจริงโหลดเข้ามา
 function SidebarFallback() {
-  return <aside className="h-screen w-60 border-r border-slate-200 bg-[#F4F2F7]" />;
+  return <aside className="sticky top-0 h-screen w-60 border-r border-slate-200 bg-[#F4F2F7]" />;
 }
