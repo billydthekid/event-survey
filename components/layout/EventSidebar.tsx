@@ -253,7 +253,13 @@ export function EventSidebar() {
       {/* ===== ล่างสุด ===== */}
       <div className="mt-auto flex flex-col gap-1 border-t border-slate-200 pt-3">
         <MenuItem
-          menu={{ key: "settings", label: t.settings, icon: SlidersHorizontal, href: null, active: false, soon: true }}
+          menu={{
+            key: "settings",
+            label: t.settings,
+            icon: SlidersHorizontal,
+            href: "/admin/settings",
+            active: pathname.startsWith("/admin/settings"),
+          }}
           t={t}
         />
         <button
