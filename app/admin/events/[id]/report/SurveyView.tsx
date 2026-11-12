@@ -59,7 +59,8 @@ export function SurveyView() {
 
   return (
     // 2 คอลัมน์บนจอกว้าง; ข้อความยาวกินเต็มแถว (md:col-span-2) แบบ design ข้อ 7
-    <div className="grid gap-4 md:grid-cols-2">
+    // print:grid-cols-2 = ตอนพิมพ์ก็ 2 คอลัมน์ (กระดาษ A4 แคบกว่าจุด md จึงต้องบังคับเอง)
+    <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2">
       {questions.map((question) => (
         <QuestionCard
           key={question.id}
@@ -102,7 +103,12 @@ function QuestionCard({
   const subtitle = parts.join(" · ") + (question.required ? "" : ` ${t.optional}`);
 
   return (
-    <Card className={`gap-3 rounded-2xl px-5 ring-slate-200 ${question.type === "long" ? "md:col-span-2" : ""}`}>
+    // print:break-inside-avoid = ตอนพิมพ์ไม่ตัดการ์ดครึ่งใบข้ามหน้ากระดาษ
+    <Card
+      className={`gap-3 rounded-2xl px-5 ring-slate-200 print:break-inside-avoid ${
+        question.type === "long" ? "md:col-span-2 print:col-span-2" : ""
+      }`}
+    >
       <div>
         <p className="text-xs font-semibold text-blue-600">{t.qLabel(question.order, t.types[question.type])}</p>
         <p className="mt-1 font-semibold">{tr(question.title, lang)}</p>
@@ -150,7 +156,8 @@ function TextBody({ samples, t, answersHref }: { samples: string[]; t: Text; ans
           </p>
         ))}
       </div>
-      <Link href={answersHref} className="text-sm text-blue-600 underline underline-offset-2">
+      {/* ลิงก์กดในกระดาษไม่ได้ → ซ่อนตอนพิมพ์ */}
+      <Link href={answersHref} className="text-sm text-blue-600 underline underline-offset-2 print:hidden">
         {t.seeAll}
       </Link>
     </>
