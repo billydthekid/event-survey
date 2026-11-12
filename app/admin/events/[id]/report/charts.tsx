@@ -1,6 +1,45 @@
 // app/admin/events/[id]/report/charts.tsx
-// กราฟที่วาดเอง (โปรเจกต์ไม่มีไลบรารีกราฟ): แท่งแนวนอน + วงแหวน SVG
+// กราฟที่วาดเอง (โปรเจกต์ไม่มีไลบรารีกราฟ): แท่งแนวนอน + แท่งแนวตั้ง + วงแหวน SVG
 // เป็น component ธรรมดา ไม่มี state ใช้ได้ทั้งฝั่ง server และ client
+
+// ============ แท่งแนวตั้งหลายแท่ง ============
+//   14
+//   ██  8
+//   ██  ██  ┆┆   ← future = กรอบเส้นประ (ช่วงที่ยังมาไม่ถึง ไม่มีตัวเลข)
+//  10:30 11:00 13:00
+// ความสูงแท่ง = value ÷ ค่ามากสุด × ความสูงกราฟ (แท่งที่มากสุดสูงเต็ม)
+// state: "normal" สีอ่อน | "peak" สีเข้ม (ช่วงที่มากสุด) | "future" เส้นประ
+export type VBar = { label: string; value: number; state: "normal" | "peak" | "future" };
+
+export function VBars({ bars, height = 112 }: { bars: VBar[]; height?: number }) {
+  const max = Math.max(0, ...bars.filter((b) => b.state !== "future").map((b) => b.value));
+  return (
+    <div className="flex items-end gap-3">
+      {bars.map((b) => {
+        // แท่งค่า 0 ยังสูง 4px ให้เห็นว่ามีช่วงนี้ | future สูงคงที่ 12px
+        const barHeight = b.state === "future" ? 12 : max > 0 ? Math.max(4, (b.value / max) * height) : 4;
+        return (
+          <div key={b.label} className="flex flex-1 flex-col items-center gap-1">
+            <span className="h-4 text-xs font-semibold text-slate-700">{b.state === "future" ? "" : b.value}</span>
+            <div className="flex w-full items-end justify-center" style={{ height }}>
+              <div
+                className={`w-full max-w-11 rounded-md ${
+                  b.state === "peak"
+                    ? "bg-blue-600"
+                    : b.state === "future"
+                      ? "border border-dashed border-slate-300"
+                      : "bg-[#BFD0FB]"
+                }`}
+                style={{ height: barHeight }}
+              />
+            </div>
+            <span className="text-xs text-slate-500">{b.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ============ แท่งแนวนอน 1 แถว ============
 // label | ████████░░░░ | right

@@ -69,22 +69,40 @@ const AGE_POOL: Record<string, number[]> = {
   a31: [31, 35, 42],
 };
 
+// ============ เวลาลงทะเบียนตามช่วง 30 นาที ============
+// slots: [นาทีเริ่มช่วง, จำนวนคนในช่วง] เช่น [[600, 12], [630, 14]] (600 = 10:00)
+// คนที่ k ในช่วง = เริ่มช่วง + (k + 1) × ระยะห่าง, ระยะห่าง = min(4, floor(29 ÷ จำนวน))
+// → ทุกคนอยู่ในช่วง 30 นาทีของตัวเองเสมอ
+// ตัวอย่าง: [750, 2] → ระยะห่าง 4 → 12:34, 12:38 | [630, 14] → ระยะห่าง 2 → 10:32 … 10:58
+function slotMinutes(slots: [number, number][]): number[] {
+  return slots.flatMap(([start, count]) => {
+    const step = Math.min(4, Math.floor(29 / count));
+    return Array.from({ length: count }, (_, k) => start + (k + 1) * step);
+  });
+}
+
 // ============ สร้างผู้ลงทะเบียน ============
+// slots (ไม่บังคับ): กำหนดเวลาลงทะเบียนตามช่วง — ไม่ส่ง หรือยอดรวมไม่เท่าจำนวนคน
+// → ใช้กฎเดิม: เริ่ม startMinute แล้วห่างกันคนละ 3 นาที
 function makeRegistrations(
   eventId: string,
   date: string,
   startMinute: number,
   genders: [Gender, number][],
-  ages: [keyof typeof AGE_POOL, number][]
+  ages: [keyof typeof AGE_POOL, number][],
+  slots?: [number, number][]
 ): Registration[] {
   const g = spread(genders);
   const a = spread(ages);
+  const minutes = slots ? slotMinutes(slots) : [];
+  // ⚠️ ยอดรวมใน slots ต้องเท่ากับจำนวนผู้ลงทะเบียน ไม่งั้นจะกลับไปใช้กฎเดิมทั้งชุด
+  const useSlots = minutes.length === g.length;
   return g.map((gender, i) => {
     const pool = AGE_POOL[a[i]];
     return {
       id: `${eventId}-reg-${i + 1}`,
       eventId,
-      createdAt: at(date, startMinute + i * 3), // ลงทะเบียนห่างกันคนละ 3 นาที
+      createdAt: at(date, useSlots ? minutes[i] : startMinute + i * 3),
       answers: {
         name: `${FIRST[i % FIRST.length]} ${LAST[(i * 3) % LAST.length]}`,
         gender,
@@ -201,7 +219,9 @@ const workshop: ReportData = {
   registrations: makeRegistrations(
     "e-workshop", "2026-10-23", 8 * 60,
     [["male", 24], ["female", 19], ["unspecified", 3]],
-    [["u18", 3], ["a19", 31], ["a23", 8], ["a31", 4]]
+    [["u18", 3], ["a19", 31], ["a23", 8], ["a31", 4]],
+    // ช่วง 30 นาทีตาม design Dashboard: 12/14/8/6/4/2 = 46 คน (10:02 – 12:38)
+    [[600, 12], [630, 14], [660, 8], [690, 6], [720, 4], [750, 2]]
   ),
   responses: makeResponses("e-workshop", "2026-10-23", 13 * 60, 31, {
     q1: { kind: "pick", counts: [[5, 14], [4, 11], [3, 4], [2, 2], [1, 0]] },
