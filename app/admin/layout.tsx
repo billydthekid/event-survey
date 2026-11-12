@@ -1,5 +1,5 @@
 // app/admin/layout.tsx
-// กรอบของทุกหน้า Event Admin (login แล้ว role = "event" จะถูกพามาที่ /admin)
+// กรอบของทุกหน้า Event Admin (login แล้ว role = "event" จะถูกพามาที่ /admin → ส่งต่อไป /admin/events)
 "use client";
 import { Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";

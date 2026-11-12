@@ -1,7 +1,7 @@
 // components/layout/EventSidebar.tsx
 // Sidebar ของ Event Admin (แยกจาก Sidebar ของ Super เพื่อไม่ให้แก้ไฟล์ชนกัน)
 // โครงตามต้นแบบ (dashboard.png / myevent.png):
-//   โลโก้ → หน้าแรก, Event ของฉัน → "Event ที่เลือก" + ตัวสลับ → เมนูของ Event → Settings, Logout
+//   โลโก้ (กดแล้วไป Event ของฉัน), Event ของฉัน (เมนูหลักเดียว) →"Event ที่เลือก" + ตัวสลับ → เมนูของ Event → Settings, Logout
 // - Event ที่เลือก: id ใน URL ชนะเสมอ / หน้าที่ไม่มี id ใช้ Event ล่าสุดที่จำไว้ (localStorage) / ไม่มี → เลือกตามกติกา
 // - เมนูที่ยังไม่มีหน้า: สีเทา + ป้าย "เร็วๆ นี้" กดไม่ได้ (กัน 404)
 // - usePathname() ทำงานได้เพราะ admin layout ครอบคอมโพเนนต์นี้ด้วย <Suspense> แล้ว
@@ -10,7 +10,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Home, List, LayoutGrid, CalendarDays, ClipboardList, BarChart3, Smartphone,
+  List, LayoutGrid, CalendarDays, ClipboardList, BarChart3, Smartphone,
   SlidersHorizontal, LogOut, Ticket, ChevronsUpDown, Check, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -23,7 +23,6 @@ import {
 // ภาษามาจาก currentUser.lang (อ่านอย่างเดียว) — ยังไม่มีระบบภาษากลาง
 const TEXT = {
   th: {
-    home: "หน้าแรก",
     myEvents: "Event ของฉัน",
     selectedEvent: "Event ที่เลือก",
     dashboard: "Dashboard",
@@ -39,7 +38,6 @@ const TEXT = {
     switchEvent: "เปลี่ยน Event",
   },
   en: {
-    home: "Home",
     myEvents: "My Events",
     selectedEvent: "Selected event",
     dashboard: "Dashboard",
@@ -189,9 +187,8 @@ export function EventSidebar() {
     router.replace("/login");
   };
 
-  // ----- เมนูหลัก -----
+  // ----- เมนูหลัก (เหลือ "Event ของฉัน" อันเดียว — /admin ถูกเปลี่ยนเส้นทางมาที่นี่แล้ว) -----
   const mainMenu: Menu[] = [
-    { key: "home", label: t.home, icon: Home, href: "/admin", active: pathname === "/admin" },
     // เฉพาะหน้ารายการพอดี — หน้าย่อยของ Event ไปขึ้นที่เมนูของ Event แทน
     { key: "events", label: t.myEvents, icon: List, href: "/admin/events", active: pathname === "/admin/events" },
   ];
@@ -220,15 +217,16 @@ export function EventSidebar() {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-[#F4F2F7] p-4">
-      {/* ===== โลโก้ ===== */}
-      <div className="mb-6 flex items-center gap-2 px-2">
+      {/* ===== โลโก้ (กดแล้วกลับหน้า Event ของฉัน) ===== */}
+      {/* ใช้ class เดิมทุกตัว → หน้าตาไม่เปลี่ยน แค่กดได้ */}
+      <Link href="/admin/events" aria-label={t.myEvents} className="mb-6 flex items-center gap-2 px-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
           <Ticket size={18} />
         </div>
         <span className="font-bold">
           Event<span className="text-blue-600">Survey</span>
         </span>
-      </div>
+      </Link>
 
       {/* ===== เมนูหลัก ===== */}
       <nav className="flex flex-col gap-1">
