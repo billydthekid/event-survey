@@ -21,3 +21,11 @@ export function isEventLocked(date: string, startTime: string) {
   if (!date || !startTime) return false;
   return new Date() >= new Date(`${date}T${startTime}`);
 }
+
+/** 30 ต.ค. 14:00 (รับ yyyy-MM-ddTHH:mm) — ว่าง/ผิดรูปแบบ → "-" */
+export function formatThaiShortDateTime(iso: string) {
+  if (!iso) return "-";
+  const d = parseISO(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return `${format(d, "d MMM", { locale: th })} ${format(d, "HH:mm")}`;
+}
