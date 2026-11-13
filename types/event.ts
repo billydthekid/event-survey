@@ -4,7 +4,11 @@ export type EventType =
   | "conference" | "competition" | "exhibition" | "sports" | "volunteer" | "other";
 /** สถานะที่เก็บจริง (draft → scheduled เมื่อกดเผยแพร่) ส่วน open/active/ended คำนวณจากเวลา ดู lib/utils/event-phase.ts */
 export type EventStatus = "draft" | "scheduled";
-export type FieldKind = "text" | "email" | "number" | "dropdown" | "multiselect";
+// ประเภทช่องในฟอร์มลงทะเบียน 12 แบบ (ชื่อ/ไอคอน/ตัวอย่าง อยู่ที่ lib/form-types.ts)
+export type FieldKind =
+  | "short" | "paragraph" | "email" | "phone" | "number"
+  | "radio" | "checkbox" | "dropdown" | "date" | "time" | "file" | "address";
+/** เลิกใช้แล้ว (เดิมเป็น "ช่องพื้นฐาน") — ข้อมูลเก่าถูกแปลงเป็นประเภทปกติตอนโหลด (migrateField) */
 export type BasicFieldKey = "name" | "email" | "age" | "gender" | "phone" | "idno";
 export type SurveyQType = "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date";
 
@@ -31,7 +35,7 @@ export interface FormField {
   kind: FieldKind;
   hint: string;
   required: boolean;
-  basicKey?: BasicFieldKey;
+  options?: string[]; // ใช้กับ radio / checkbox / dropdown
 }
 
 export interface SurveyQuestion {

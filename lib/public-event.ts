@@ -7,13 +7,16 @@
 // - mock ของหน้า Report      → Survey ของงานตัวอย่าง (store หลักยังไม่เก็บ event.survey)
 // ทุกอย่างถูกแปลงเป็นรูปแบบเดียว (PublicEvent) หน้าจอจึงไม่ต้องรู้ว่ามาจากไหน
 import type { BiText, Event, FieldType, QuestionType } from "@/types";
-import type { BasicFieldKey, EventDraft, FormField as WizardField } from "@/types/event";
+import type { BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
+import { answerKeys } from "@/lib/form-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
 
 // ============ ช่องในฟอร์มลงทะเบียน ============
 export type PublicFieldType =
   | "text" | "email" | "phone" | "age" | "number" | "gender" | "idno"
-  | "dropdown" | "multi" | "longtext" | "date";
+  | "dropdown" | "multi" | "longtext" | "date"
+  // เพิ่มจากฟอร์ม 12 ประเภทของ Wizard (lib/form-types.ts)
+  | "radio" | "time" | "file" | "address";
 
 export interface PublicField {
   id: string;
@@ -87,15 +90,21 @@ const DEFAULT_FIELDS: PublicField[] = (["name", "email"] as const).map((k) => ({
   options: [],
 }));
 
-// ช่องจาก Wizard (ชื่อช่องมีแต่ภาษาไทย / dropdown-multi ยังไม่มีตัวเลือก)
-function fromWizard(f: WizardField): PublicField {
-  if (f.basicKey) {
-    const b = BASIC[f.basicKey];
-    return { id: f.id, key: f.basicKey, label: b.label, type: b.type, required: f.required, options: [] };
-  }
-  const type: PublicFieldType =
-    f.kind === "multiselect" ? "multi" : f.kind === "dropdown" ? "dropdown" : f.kind;
-  return { id: f.id, key: f.id, label: { th: f.label }, type, required: f.required, options: [] };
+// ช่องจาก Wizard: 12 ประเภท → ชนิดของหน้า /r (ชื่อช่องมีแต่ภาษาไทย)
+const KIND_TO_PUBLIC: Record<FieldKind, PublicFieldType> = {
+  short: "text", paragraph: "longtext", email: "email", phone: "phone", number: "number",
+  radio: "radio", checkbox: "multi", dropdown: "dropdown", date: "date", time: "time", file: "file", address: "address",
+};
+function fromWizard(fields: WizardField[]): PublicField[] {
+  const keys = answerKeys(fields); // ช่องอีเมล/เบอร์/ชื่อ ช่องแรกใช้ key มาตรฐาน (Report และ Event ปิด อ่านจาก key นี้)
+  return fields.map((f) => ({
+    id: f.id,
+    key: keys[f.id],
+    label: { th: f.label || "(ไม่มีชื่อช่อง)" },
+    type: KIND_TO_PUBLIC[f.kind] ?? "text",
+    required: f.required,
+    options: (f.options ?? []).filter((o) => o.trim()).map((o) => ({ th: o })),
+  }));
 }
 
 // ช่องจาก store หลัก (Event.registration.fields)
@@ -112,7 +121,7 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
   // ฟอร์ม: Wizard → Event → ฟอร์มตั้งต้น (ชื่อ + อีเมล)
   const fields =
     draft && draft.form.fields.length > 0
-      ? draft.form.fields.map(fromWizard)
+      ? fromWizard(draft.form.fields)
       : event.registration.fields.length > 0
         ? [...event.registration.fields]
             .sort((a, b) => a.order - b.order)

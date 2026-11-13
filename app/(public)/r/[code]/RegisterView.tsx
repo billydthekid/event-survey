@@ -65,6 +65,7 @@ const TEXT = {
       idno: "รหัสนักศึกษา / รหัสพนักงาน",
       text: "พิมพ์คำตอบ",
       select: "เลือกคำตอบ",
+      address: "บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์",
     },
     yrs: "ปี",
     // A4
@@ -110,6 +111,7 @@ const TEXT = {
       idno: "Student / employee ID",
       text: "Your answer",
       select: "Select an answer",
+      address: "House no., street, district, province, postcode",
     },
     yrs: "yrs",
     doneTitle: "You're registered",
@@ -139,7 +141,7 @@ type Values = Record<string, string | string[]>;
 
 // ============ ตรวจค่าแต่ละช่อง ============
 const isChoice = (f: PublicField) =>
-  f.type === "gender" || ((f.type === "dropdown" || f.type === "multi") && f.options.length > 0);
+  f.type === "gender" || ((f.type === "dropdown" || f.type === "multi" || f.type === "radio") && f.options.length > 0);
 
 // เก็บแค่ "ชนิดของ error" แล้วค่อยแปลเป็นข้อความตอนแสดง → สลับ TH/EN แล้วข้อความเปลี่ยนตามทันที
 type ErrorKind = "required" | "badEmail" | "badPhone" | "badAge" | "badNumber" | "notAllowed";
@@ -371,6 +373,28 @@ function FieldInput({
     );
   } else if (f.type === "multi" && options.length > 0) {
     control = <ChoiceList pal={pal} error={error} options={options} multiple value={Array.isArray(value) ? value : []} onChange={onChange} label={label} />;
+  } else if (f.type === "radio" && options.length > 0) {
+    // Multiple Choice (เลือกได้ข้อเดียว) — ช่องจาก Wizard ขั้นที่ 4
+    control = <ChoiceList pal={pal} error={error} options={options} multiple={false} value={str} onChange={onChange} label={label} />;
+  } else if (f.type === "time") {
+    control = <TextInput {...common} type="time" />;
+  } else if (f.type === "address") {
+    control = <TextArea {...common} placeholder={t.ph.address} />;
+  } else if (f.type === "file") {
+    // ยังไม่มี server → เก็บแค่ "ชื่อไฟล์ (ขนาด KB)" เป็นข้อความ
+    control = (
+      <TextInput
+        id={inputId}
+        type="file"
+        pal={pal}
+        error={error}
+        aria-describedby={error ? errId : undefined}
+        onChange={(ev: React.ChangeEvent<HTMLInputElement>) => {
+          const file = ev.target.files?.[0];
+          onChange(file ? `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)` : "");
+        }}
+      />
+    );
   } else if (f.type === "longtext") {
     control = <TextArea {...common} placeholder={t.ph.text} />;
   } else if (f.type === "date") {

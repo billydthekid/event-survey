@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { EventDraft } from "@/types/event";
 import type { Event } from "@/types";
 import { createMockDrafts } from "@/lib/mock/event-draft";
+import { migrateField } from "@/lib/form-types";
 
 type PatchValue<K extends keyof EventDraft> = EventDraft[K] extends object | null
   ? EventDraft[K] extends null ? EventDraft[K] : Partial<NonNullable<EventDraft[K]>> | EventDraft[K]
@@ -76,9 +77,10 @@ function toDraft(ev: Event): EventDraft {
 
 export const DEFAULT_AD_SECONDS = 6;
 
-// ข้อมูลเก่าใน localStorage → รูปแบบปัจจุบัน (v4)
+// ข้อมูลเก่าใน localStorage → รูปแบบปัจจุบัน (v5) · ทุกขั้นเรียกซ้ำได้ (ข้อมูลใหม่ผ่านแล้วไม่เปลี่ยน)
 // - v3: ad (รูปเดียว) → ads.items (หลายรูป) + seconds · เลิกจำกัดจำนวนรับ / เลิกส่งข้อความเตือน
 // - v4: Survey บังคับมีทุก Event → enabled = true เสมอ
+// - v5: ฟอร์มลงทะเบียน 12 ประเภท · ช่องพื้นฐานเดิม (basicKey) → ประเภทปกติ (lib/form-types.ts)
 type DraftV2 = Omit<EventDraft, "ads"> & { ad?: EventDraft["ads"]["items"][number] | null; ads?: EventDraft["ads"] };
 function migrateDraft(d: DraftV2): EventDraft {
   const { ad, ...rest } = d;
@@ -87,6 +89,7 @@ function migrateDraft(d: DraftV2): EventDraft {
     ads: rest.ads ?? { items: ad ? [ad] : [], seconds: DEFAULT_AD_SECONDS },
     schedule: { ...rest.schedule, maxAttendees: "", remindAfterEnd: false },
     survey: { ...rest.survey, enabled: true },
+    form: { fields: rest.form.fields.map((f) => migrateField(f as Parameters<typeof migrateField>[0])) },
   };
 }
 
@@ -124,10 +127,10 @@ export const useWizardStore = create<State>()(
     }),
     {
       name: "event-admin-store-v2",
-      version: 4,
+      version: 5,
       migrate: (persisted, fromVersion) => {
         const s = persisted as { drafts?: Record<string, DraftV2>; draft?: DraftV2 };
-        if (fromVersion < 4) {
+        if (fromVersion < 5) {
           if (s.drafts) {
             s.drafts = Object.fromEntries(Object.entries(s.drafts).map(([k, d]) => [k, migrateDraft(d)]));
           }

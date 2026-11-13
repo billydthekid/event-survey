@@ -42,8 +42,9 @@ export function allowListProblem(d: EventDraft): string | undefined {
   const label = ALLOW_KIND_LABEL[list.kind];
   if (list.values.length === 0) return `Event ปิด: ยังไม่ได้ import รายชื่อ (ขั้นที่ 1)`;
   // ฟอร์มว่าง = หน้า /r ใช้ฟอร์มตั้งต้น (ชื่อ + อีเมล) ดู DEFAULT_FIELDS ใน lib/public-event.ts
-  const keys = d.form.fields.length > 0 ? d.form.fields.map((f) => f.basicKey) : ["name", "email"];
-  if (!keys.includes(list.kind)) return `Event ปิด: ฟอร์มลงทะเบียน (ขั้นที่ 4) ต้องมีช่อง${label}`;
+  // ตรวจจากประเภทช่อง Email / Phone Number (หน้า /r ใช้ช่องประเภทนี้ช่องแรกเป็น key "email" / "phone")
+  const kinds: string[] = d.form.fields.length > 0 ? d.form.fields.map((f) => f.kind) : ["short", "email"];
+  if (!kinds.includes(list.kind)) return `Event ปิด: ฟอร์มลงทะเบียน (ขั้นที่ 4) ต้องมีช่องประเภท${label}`;
   return undefined;
 }
 

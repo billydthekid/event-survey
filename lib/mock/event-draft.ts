@@ -13,11 +13,11 @@ const q = (
 ): SurveyQuestion => ({ id, type, titleTh, titleEn: "", required, options });
 
 const formFields = (): EventDraft["form"]["fields"] => [
-  { id: "f-name", label: "ชื่อ – นามสกุล", kind: "text", hint: "ข้อความสั้น", required: true, basicKey: "name" },
-  { id: "f-sid", label: "รหัสนักศึกษา", kind: "number", hint: "Custom · ตัวเลข 10 หลัก", required: true },
-  { id: "f-year", label: "ชั้นปี", kind: "dropdown", hint: "Dropdown · ปี 1–4 / ศิษย์เก่า", required: true },
-  { id: "f-email", label: "อีเมล", kind: "email", hint: "อีเมล", required: true, basicKey: "email" },
-  { id: "f-track", label: "สายที่สนใจ", kind: "multiselect", hint: "Custom · หลายตัวเลือก", required: false },
+  { id: "f-name", label: "ชื่อ – นามสกุล", kind: "short", hint: "ข้อความสั้น", required: true },
+  { id: "f-sid", label: "รหัสนักศึกษา", kind: "number", hint: "ตัวเลข", required: true },
+  { id: "f-year", label: "ชั้นปี", kind: "dropdown", hint: "Dropdown", required: true, options: ["ปี 1", "ปี 2", "ปี 3", "ปี 4", "ศิษย์เก่า"] },
+  { id: "f-email", label: "อีเมล", kind: "email", hint: "อีเมล", required: true },
+  { id: "f-track", label: "สายที่สนใจ", kind: "checkbox", hint: "หลายตัวเลือก", required: false, options: ["UX/UI", "Data", "Dev"] },
 ];
 
 interface Opts {
@@ -112,11 +112,3 @@ export const createMockDrafts = (): Record<string, EventDraft> => {
   return { [a.id]: a, [b.id]: b, [c.id]: c };
 };
 
-export const BASIC_FIELDS = [
-  { basicKey: "name", label: "ชื่อ – นามสกุล", kind: "text", hint: "ข้อความสั้น" },
-  { basicKey: "email", label: "อีเมล", kind: "email", hint: "อีเมล" },
-  { basicKey: "age", label: "อายุ", kind: "number", hint: "ตัวเลข" },
-  { basicKey: "gender", label: "เพศ", kind: "dropdown", hint: "Dropdown" },
-  { basicKey: "phone", label: "เบอร์โทร", kind: "text", hint: "เบอร์โทรศัพท์" },
-  { basicKey: "idno", label: "เลขประจำตัว", kind: "text", hint: "ข้อความสั้น" },
-] as const;
