@@ -101,8 +101,12 @@ export function KioskPreview({ d }: { d: EventDraft }) {
               style={{ opacity: i === current ? 1 : 0 }}
             />
           ))
+        ) : g.cover?.dataUrl ? (
+          // ไม่มีโฆษณา → แสดงรูปปกแทน (ใน Preview เท่านั้น)
+          // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปปก
+          <img src={g.cover.dataUrl} alt="" className="size-full object-cover" />
         ) : (
-          <div className="flex size-full items-center justify-center text-[10px] opacity-60">ยังไม่มีโฆษณา</div>
+          <div className="flex size-full items-center justify-center text-[10px] opacity-60">ยังไม่มีโฆษณา / รูปปก</div>
         )}
       </div>
       <p className="line-clamp-2 text-sm font-bold">{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>
