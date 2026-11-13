@@ -1,10 +1,16 @@
 "use client";
 
-import { AlertTriangle, Check } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Check, Maximize2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FormPreview } from "@/components/event/form-preview";
+import { SurveyPreview } from "@/components/event/survey-preview";
+import type { EventDraft } from "@/types/event";
 import { useWizardStore } from "@/lib/wizard-store";
 import { formatThaiDate } from "@/lib/utils/date";
 import { eventTypeLabel } from "@/lib/event-types";
+import { missingGeneral } from "@/lib/utils/wizard-rules";
 
 interface Row {
   label: string;
@@ -15,17 +21,10 @@ interface Row {
 export function StepPreview() {
   const d = useWizardStore((s) => s.draft);
   const g = d.general;
+  const [fullOpen, setFullOpen] = useState(false);
 
   // ข้อมูลทั่วไป "ครบ" = ช่องที่มีดอกจัน (*) ในขั้นที่ 1 กรอกแล้วทุกช่อง → ถ้าไม่ครบ บอกว่าขาดช่องไหน
-  const missing = [
-    !g.nameTh && "ชื่อ Event",
-    !g.descTh && "รายละเอียด",
-    g.type === "other" && !g.typeOther?.trim() && "ประเภทงาน",
-    !g.organizer && "ผู้จัด",
-    !g.date && "วันที่จัด",
-    (!g.startTime || !g.endTime) && "เวลา",
-    !g.venue && (g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"),
-  ].filter((x): x is string => !!x);
+  const missing = missingGeneral(d); // ช่องบังคับ (*) ที่ยังไม่กรอก — กันปุ่มเผยแพร่ด้วย (edit/page.tsx)
   const adCount = d.ads.items.length;
   const adNoFile = d.ads.items.filter((a) => !a.dataUrl).length;
   const rows: Row[] = [
@@ -76,36 +75,92 @@ export function StepPreview() {
         </CardContent>
       </Card>
 
-      {/* Preview มือถือ */}
+      {/* Preview มือถือ · กดเพื่อดูเต็มจอ */}
       <div>
-        <p className="mb-2 text-sm font-semibold">Preview มือถือ</p>
-        <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-4 shadow-lg">
-          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span className="rounded border border-dashed px-1">{d.theme.logo ? d.theme.logo.name : "Logo"}</span>
-            <span>TH</span>
-          </div>
-          <div
-            className="flex h-32 items-center justify-center rounded-xl text-xs text-muted-foreground"
-            style={{ backgroundColor: d.theme.secondary }}
-          >
-            {g.cover ? g.cover.name : "รูปปก"}
-          </div>
-          <span className="mt-3 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
-            {eventTypeLabel(g.type, g.typeOther)}
-          </span>
-          <h3 className="mt-1 text-lg font-bold">{g.nameTh}</h3>
-          <p className="mt-1 text-xs">{formatThaiDate(g.date, false)} · {g.startTime} – {g.endTime}</p>
-          <p className="text-xs">{g.venue}{g.spot && ` · ${g.spot}`}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{g.descTh}</p>
-          <button
-            type="button"
-            style={{ backgroundColor: d.theme.primary }}
-            className="mt-4 w-full rounded-lg py-2.5 text-sm font-semibold text-white"
-          >
-            ลงทะเบียนเข้างาน
-          </button>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-semibold">Preview มือถือ</p>
+          <span className="text-xs text-muted-foreground">กดที่หน้าจอเพื่อดูเต็มจอ</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setFullOpen(true)}
+          aria-label="ดู Preview เต็มจอ"
+          className="group relative block w-full rounded-[2rem] text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <PhoneEventPage d={d} />
+          <span className="absolute inset-0 flex items-center justify-center rounded-[2rem] bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+            <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow">
+              <Maximize2 className="size-4" /> ดูเต็มจอ
+            </span>
+          </span>
+        </button>
       </div>
+
+      {/* Preview เต็มจอ: หน้า Event · ฟอร์มลงทะเบียน · แบบประเมิน (หน้าตาแบบที่ผู้เข้าร่วมเห็น) */}
+      <Dialog open={fullOpen} onOpenChange={setFullOpen}>
+        <DialogContent className="flex h-[94vh] w-[96vw] max-w-none flex-col sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>Preview เต็มจอ · {g.nameTh || "(ยังไม่ตั้งชื่อ)"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto rounded-xl bg-muted/40 p-6 lg:grid-cols-3">
+            <PreviewColumn title="หน้า Event">
+              <PhoneEventPage d={d} />
+            </PreviewColumn>
+            <PreviewColumn title="ฟอร์มลงทะเบียน (QR ลงทะเบียน)">
+              <FormPreview fields={d.form.fields} primary={d.theme.primary} eventName={g.nameTh} />
+            </PreviewColumn>
+            <PreviewColumn title="แบบประเมิน (QR Survey)">
+              <SurveyPreview
+                questions={d.survey.questions}
+                lang="th"
+                primary={d.theme.primary}
+                title={`แบบประเมินงาน ${eventTypeLabel(g.type, g.typeOther)}`}
+              />
+            </PreviewColumn>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PreviewColumn({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-center text-sm font-semibold text-muted-foreground">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+// หน้า Event บนมือถือ (ใช้ทั้งตัวย่อในขั้นที่ 7 และใน Preview เต็มจอ)
+function PhoneEventPage({ d }: { d: EventDraft }) {
+  const g = d.general;
+  return (
+    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-4 shadow-lg">
+      <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+        <span className="rounded border border-dashed px-1">{d.theme.logo ? d.theme.logo.name : "Logo"}</span>
+        <span>TH</span>
+      </div>
+      <div
+        className="flex h-32 items-center justify-center rounded-xl text-xs text-muted-foreground"
+        style={{ backgroundColor: d.theme.secondary }}
+      >
+        {g.cover ? g.cover.name : "รูปปก"}
+      </div>
+      <span className="mt-3 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
+        {eventTypeLabel(g.type, g.typeOther)}
+      </span>
+      <h3 className="mt-1 text-lg font-bold">{g.nameTh}</h3>
+      <p className="mt-1 text-xs">{formatThaiDate(g.date, false)} · {g.startTime} – {g.endTime}</p>
+      <p className="text-xs">{g.venue}{g.spot && ` · ${g.spot}`}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{g.descTh}</p>
+      <span
+        style={{ backgroundColor: d.theme.primary }}
+        className="mt-4 block w-full rounded-lg py-2.5 text-center text-sm font-semibold text-white"
+      >
+        ลงทะเบียนเข้างาน
+      </span>
     </div>
   );
 }

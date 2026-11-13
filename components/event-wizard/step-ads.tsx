@@ -95,10 +95,10 @@ export function StepAds() {
           </CardContent>
         </Card>
 
-        {ads.items.some((a) => a.dataUrl) && <AdPreview items={ads.items} seconds={ads.seconds} />}
       </div>
 
-      <Card className="self-start">
+      <div className="space-y-5">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">รูปโฆษณา ({ads.items.length}/{MAX_ADS} รูป)</CardTitle>
           <CardDescription>เรียงตามลำดับที่จะแสดงบนจอ · ลากที่ ⋮⋮ เพื่อเรียง</CardDescription>
@@ -151,6 +151,10 @@ export function StepAds() {
           ))}
         </CardContent>
       </Card>
+
+        {/* ตัวอย่างบนจอ Kiosk อยู่ใต้รายการรูป */}
+        {ads.items.some((a) => a.dataUrl) && <AdPreview items={ads.items} seconds={ads.seconds} />}
+      </div>
 
       <CropDialog
         src={cropping?.src ?? null}
