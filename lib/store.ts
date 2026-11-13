@@ -2,7 +2,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { User, Event, ActionLog, Role, Registration, SurveyResponse } from "@/types";
-import { getApi } from "@/lib/api";
 import { mockUsers } from "@/lib/mock/user";
 import { mockEvents, makeDraftEvent, WORKSHOP_AD } from "@/lib/mock/events";
 import { mockRegistrations, mockResponses } from "@/lib/mock/responses";
@@ -11,7 +10,7 @@ import { KEEP_DAYS } from "@/lib/utils/status";
 
 interface NewUserInput {
   name: string;
-  base: string;      // ชื่อฐาน เช่น "pimchanok" → ระบบเติม .event/.super ให้
+  base: string;      // ชื่อฐาน เช่น "pimchanok" → ระบบเติม .admin/.organizer ให้
   org: string;
   role: Role;
   password: string;
@@ -35,7 +34,11 @@ interface StoreState {
   setHydrated: (v: boolean) => void;
 
   addUser: (input: NewUserInput) => User;
-  createDraftEvent: (eventName: string, adminId: string) => Event;
+  deleteUser: (userId: string) => void;
+  // adminId ปล่อยว่าง (null) = สร้าง event ยังไม่เลือกผู้ดูแล, ไป assign ที่หน้า /super/events ทีหลัง
+  createDraftEvent: (eventName: string, adminId?: string | null) => Event;
+  // เปลี่ยน/เพิ่มผู้ดูแล event (ใช้บนหน้า Event list ของ Admin)
+  setEventAdmin: (eventId: string, adminId: string) => void;
   resetPassword: (userId: string, newPassword: string) => void;
   toggleActive: (userId: string) => void;
   addLog: (action: string, targetType: string, targetId: string, detail?: string) => void;
@@ -56,8 +59,15 @@ export const useStore = create<StoreState>()(
       responses: mockResponses,
 
       // ---------- Session ----------
+      // ตรวจ login จาก mock users ใน store ตรงๆ (ไม่ผ่าน api layer แล้ว)
       login: async (username, password) => {
-        const user = await getApi().auth.login(username, password);
+        const user = get().users.find((u) => u.username === username.trim());
+        if (!user || user.password !== password) {
+          throw new Error("Username หรือรหัสผ่านไม่ถูกต้อง");
+        }
+        if (!user.active) {
+          throw new Error("บัญชีนี้ถูกปิดใช้งาน");
+        }
         set({
           currentUser: user,
           users: get().users.map((u) =>
@@ -71,7 +81,7 @@ export const useStore = create<StoreState>()(
       logout: () => set({ currentUser: null }),
       setHydrated: (v) => set({ hydrated: v }),
 
-      // ---------- ขั้นที่ 1: สร้างบัญชี ----------
+      // ---------- สร้างบัญชี ----------
       addUser: (input) => {
         const user: User = {
           id: "u-" + Date.now(),
@@ -90,22 +100,83 @@ export const useStore = create<StoreState>()(
         return user;
       },
 
-      // ---------- ขั้นที่ 2: สร้าง Draft Event ให้บัญชีนั้น ----------
+      // ---------- ลบบัญชี (hard delete) ----------
+      // กันลบตัวเอง: ให้ UI เช็กก่อนเรียก; ถ้าหลุดเข้ามาก็ไม่ทำอะไร
+      deleteUser: (userId) => {
+        const me = get().currentUser;
+        if (me?.id === userId) return;
+
+        const target = get().users.find((u) => u.id === userId);
+        if (!target) return;
+
+        // ลบบัญชี + ถอด user ออกจาก adminIds ของทุก event
+        set({
+          users: get().users.filter((u) => u.id !== userId),
+          events: get().events.map((e) => ({
+            ...e,
+            adminIds: e.adminIds.filter((id) => id !== userId),
+          })),
+        });
+        get().addLog("delete_user", "user", userId, `ลบบัญชี ${target.username}`);
+      },
+
+      // ---------- สร้าง Draft Event ----------
+      // adminId = null → ยังไม่เลือกผู้ดูแล (Admin จะไป assign ที่หน้า /super/events)
       createDraftEvent: (eventName, adminId) => {
         const me = get().currentUser;
-        const event = makeDraftEvent("e-" + Date.now(), eventName.trim(), adminId, me?.id ?? "");
+        const event = makeDraftEvent(
+          "e-" + Date.now(),
+          eventName.trim(),
+          adminId ?? null,
+          me?.id ?? ""
+        );
         set({
           events: [...get().events, event],
-          users: get().users.map((u) =>
-            u.id === adminId ? { ...u, eventIds: [...u.eventIds, event.id] } : u
-          ),
+          users: adminId
+            ? get().users.map((u) =>
+                u.id === adminId ? { ...u, eventIds: [...u.eventIds, event.id] } : u
+              )
+            : get().users,
         });
         get().addLog("create_event", "event", event.id, `สร้าง Draft "${event.name.th}"`);
         return event;
       },
 
-          // ---------- รีเซ็ต password (Super ตั้งรหัสเองได้) ----------
-        resetPassword: (userId, newPassword) => {
+      // ---------- เปลี่ยน/เพิ่มผู้ดูแล Event ----------
+      // ลบ event id ออกจาก organizer คนเดิม + ใส่ให้คนใหม่ + ตั้ง adminIds = [newAdminId]
+      setEventAdmin: (eventId, newAdminId) => {
+        const event = get().events.find((e) => e.id === eventId);
+        if (!event) return;
+        const oldAdminIds = event.adminIds;
+
+        set({
+          events: get().events.map((e) =>
+            e.id === eventId ? { ...e, adminIds: [newAdminId] } : e
+          ),
+          users: get().users.map((u) => {
+            // ลบ event id ออกจาก organizer เดิม
+            if (oldAdminIds.includes(u.id) && u.id !== newAdminId) {
+              return { ...u, eventIds: u.eventIds.filter((id) => id !== eventId) };
+            }
+            // เพิ่มให้ organizer ใหม่ (ถ้ายังไม่มี)
+            if (u.id === newAdminId && !u.eventIds.includes(eventId)) {
+              return { ...u, eventIds: [...u.eventIds, eventId] };
+            }
+            return u;
+          }),
+        });
+
+        const newUser = get().users.find((u) => u.id === newAdminId);
+        get().addLog(
+          "assign_event_admin",
+          "event",
+          eventId,
+          `มอบหมายให้ ${newUser?.name ?? newAdminId}`
+        );
+      },
+
+      // ---------- รีเซ็ต password (Admin ตั้งรหัสเองได้) ----------
+      resetPassword: (userId, newPassword) => {
         set({
           users: get().users.map((u) => (u.id === userId ? { ...u, password: newPassword } : u)),
         });
@@ -140,9 +211,7 @@ export const useStore = create<StoreState>()(
         set({ logs: [log, ...get().logs] });
       },
 
-      // ========== จุด C (ที่ขาดไป) ==========
-
-      // ---------- ลบ (Soft delete เก็บ 30 วัน) ----------
+      // ---------- ลบ Event (Soft delete เก็บ 30 วัน) ----------
       deleteEvent: (eventId) => {
         const ev = get().events.find((e) => e.id === eventId);
         if (!ev || ev.status === "deleted") return;
@@ -201,16 +270,61 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "esp.session",
-      // v1: ใส่รูปโฆษณา Kiosk ให้ Workshop Figma (e-workshop) ที่เก็บใน localStorage ไว้ก่อนแล้ว
-      //     ไม่ต้องล้าง localStorage — ข้อมูลอื่นคงเดิม
-      version: 1,
+      // v1: ใส่รูปโฆษณา Kiosk ให้ Workshop Figma (e-workshop)
+      // v2: เปลี่ยนชื่อ role: "super" → "admin", "event" → "organizer"
+      // v3: แปลง username suffix เก่า (.super/.event) ให้ตรงชื่อใหม่ (.admin/.organizer)
+      version: 3,
       migrate: (persisted, fromVersion) => {
-        const s = persisted as Partial<StoreState>;
+        const s = persisted as Partial<StoreState> & Record<string, unknown>;
+
+        // v0 → v1: เติม adImage ให้ Workshop Figma
         if (fromVersion < 1 && Array.isArray(s.events)) {
           s.events = s.events.map((e) =>
             e.id === "e-workshop" && !e.adImage ? { ...e, adImage: WORKSHOP_AD } : e
           );
         }
+
+        // v1 → v2: แปลง role เก่า → ใหม่
+        if (fromVersion < 2) {
+          const renameRole = (r: unknown): Role =>
+            r === "super" ? "admin" : r === "event" ? "organizer" : (r as Role);
+
+          if (Array.isArray(s.users)) {
+            s.users = s.users.map((u) => ({ ...u, role: renameRole(u.role) }));
+          }
+          if (s.currentUser) {
+            s.currentUser = {
+              ...s.currentUser,
+              role: renameRole(s.currentUser.role),
+            };
+          }
+        }
+
+        // v2 → v3: แปลง username suffix เก่า → ใหม่
+        //   nattapol.event → nattapol.organizer
+        //   thanapath.super → thanapath.admin
+        if (fromVersion < 3) {
+          const renameUsername = (u: string): string =>
+            u.endsWith(".super")
+              ? u.slice(0, -".super".length) + ".admin"
+              : u.endsWith(".event")
+                ? u.slice(0, -".event".length) + ".organizer"
+                : u;
+
+          if (Array.isArray(s.users)) {
+            s.users = s.users.map((u) => ({
+              ...u,
+              username: renameUsername(u.username),
+            }));
+          }
+          if (s.currentUser) {
+            s.currentUser = {
+              ...s.currentUser,
+              username: renameUsername(s.currentUser.username),
+            };
+          }
+        }
+
         return s as StoreState;
       },
       partialize: (s) => ({
