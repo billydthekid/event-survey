@@ -75,13 +75,16 @@ export interface EventDraft {
     mapUrl: string;
     cover: UploadedAsset | null;
   };
+  // Branding (Wizard ขั้นที่ 2) · ธีมสำเร็จรูป/ค่าตั้งต้น อยู่ที่ lib/theme-presets.ts
   theme: {
-    primary: string;
-    secondary: string;
-    mode: "light" | "dark" | "bold";
+    primary: string; // สีหลัก: ปุ่ม ป้าย กรอบ QR
+    secondary: string; // โทนอ่อน: ป้ายประเภทงาน, พื้นช่องรูปปกตอนยังไม่มีรูป (ตั้งจากธีมสำเร็จรูป)
+    mode: "light" | "dark" | "bold"; // สีตัวหนังสือ/หัวหน้า
     bgType: "color" | "image";
-    bg: UploadedAsset | null;
-    logo: UploadedAsset | null;
+    bgColor?: string; // พื้นหลังแบบสี (ไม่มี = ขาว)
+    bg: UploadedAsset | null; // พื้นหลังแบบรูป (dataUrl ย่อเหลือ 1080×1920)
+    logo: UploadedAsset | null; // dataUrl ย่อเหลือไม่เกิน 256px
+    preset?: string; // ธีมสำเร็จรูปที่เลือก (แก้สีเองแล้ว = ว่าง)
   };
   ads: AdSettings;
   form: { fields: FormField[] };
