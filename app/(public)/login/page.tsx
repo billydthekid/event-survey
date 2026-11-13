@@ -75,7 +75,7 @@ export default function LoginPage() {
       }}
     >
       <div className="absolute top-6 left-6 flex items-center gap-2 font-semibold">
-        <div className="h-8 w-8 rounded-md bg-blue-600" />
+        <img src="/logo.png" alt="Event & Survey" className="h-8 w-8 rounded-md object-contain" />
         Event & Survey
       </div>
 
