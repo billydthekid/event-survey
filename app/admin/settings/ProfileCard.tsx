@@ -58,13 +58,13 @@ export function ProfileCard({
         </Field>
 
         <Field label={t.profile.usernameLabel}>
-          <Input readOnly value={user.username} className={READONLY} />
+          <ReadonlyBox value={user.username} />
         </Field>
 
         {/* หน่วยงาน: กินเต็มแถว (ตามรูป) */}
         <div className="md:col-span-2">
           <Field label={t.profile.orgLabel}>
-            <Input readOnly value={user.org} className={READONLY} />
+            <ReadonlyBox value={user.org} />
           </Field>
         </div>
 
@@ -88,5 +88,19 @@ export function ProfileCard({
 
       <p className="mt-4 text-xs text-slate-500">{t.profile.lockedHint}</p>
     </SettingsSection>
+  );
+}
+
+// ============ กล่องแสดงค่าอ่านอย่างเดียว (Username / หน่วยงาน) ============
+// เดิมใช้ <Input readOnly> → คลิกแล้วโฟกัสได้ มีเคอร์เซอร์พิมพ์กะพริบ ทั้งที่แก้ไม่ได้
+// เปลี่ยนเป็น <div> ธรรมดา: โฟกัสไม่ได้ (ไม่มีเคอร์เซอร์ / Tab ข้ามไป) แต่ยังลากเลือก + copy ข้อความได้
+// หน้าตาเหมือนช่องเดิม: ใช้ READONLY (h-10, พื้นเทา, ไม่มีกรอบ) + ขอบมน/ระยะห่าง/ขนาดตัวอักษรแบบ Input
+// รับ: value = ข้อความที่จะแสดง เช่น "event.admin1"
+function ReadonlyBox({ value }: { value: string }) {
+  return (
+    <div className={`flex w-full items-center rounded-lg border px-2.5 text-base md:text-sm ${READONLY}`}>
+      {/* truncate: ข้อความยาวเกินช่อง → ตัดเป็น ... เหมือน input เดิมที่ไม่ขึ้นบรรทัดใหม่ */}
+      <span className="truncate">{value}</span>
+    </div>
   );
 }
