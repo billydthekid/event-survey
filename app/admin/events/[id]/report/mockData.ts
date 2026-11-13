@@ -2,15 +2,22 @@
 // ⚠️ ข้อมูลจำลองชั่วคราว สำหรับหน้า Report เท่านั้น
 // - store ยังไม่มีรายการ Registration / SurveyResponse และ event.survey ยังว่าง
 // - เมื่อมีข้อมูลจริง (store หรือ API) ให้ลบไฟล์นี้ แล้วเปลี่ยน getReportData() ไปอ่านจากแหล่งจริง
-// - ชื่อทั้งหมดเป็นชื่อสมมติ เบอร์โทรปิดบางส่วน
+// - ชื่อทั้งหมดเป็นชื่อสมมติ เบอร์โทรเป็นเบอร์ปลอมแบบเต็ม (หน้าจอต้องแสดงผ่าน maskPhone ใน people.ts เสมอ)
 // - สร้างแบบคงที่: ไม่ใช้ Math.random ตัวเลขจึงเท่าเดิมทุกครั้งที่เปิด
 import { BiText, Question, Registration, Survey, SurveyResponse } from "@/types";
+
+// ============ คำตอบ Survey ที่รู้ว่าเป็นของผู้ลงทะเบียนคนไหน ============
+// types/ ยังไม่มีช่องโยงกลับ → ต่อขยายเฉพาะในหน้า Report (ไม่แก้ types/)
+// ของจริง: ระบบลงทะเบียน/Survey ควรบันทึก registrationId ตอนผู้ใช้กดส่งคำตอบ
+export interface ReportResponse extends SurveyResponse {
+  registrationId: string; // เช่น "e-workshop-reg-46"
+}
 
 // ============ ข้อมูลที่หน้า Report ใช้ ============
 export interface ReportData {
   survey: Survey;
   registrations: Registration[];
-  responses: SurveyResponse[];
+  responses: ReportResponse[];
   // คำกำกับปลายสเกล Rating ต่อคำถาม (type Question ยังไม่มีช่องนี้) ไม่มี → แสดงแค่ตัวเลข
   // เช่น { q1: { max: "ดีมาก", min: "ควรปรับปรุง" } } → แถว "5 ดีมาก" และ "1 ควรปรับปรุง"
   ratingLabels?: Record<string, RatingLabel>;
@@ -107,7 +114,9 @@ function makeRegistrations(
         name: `${FIRST[i % FIRST.length]} ${LAST[(i * 3) % LAST.length]}`,
         gender,
         age: String(pool[i % pool.length]),
-        phone: `0${[8, 9, 6][i % 3]}X-XXX-${String(1000 + ((i * 7919) % 9000))}`, // ปิดบางส่วน
+        // เบอร์ปลอมเต็ม 10 หลัก = "0" + [8|9|6] + เลขกลาง 4 หลัก + เลขท้าย 4 หลัก
+        // เลขท้ายใช้สูตรเดิม → แสดงแบบ mask แล้วได้ค่าเท่าเดิม เช่น i=0 → "0800001000" → "08X-XXX-1000"
+        phone: `0${[8, 9, 6][i % 3]}${String((i * 4271) % 10000).padStart(4, "0")}${String(1000 + ((i * 7919) % 9000))}`,
         faculty: FACULTIES[(i * 2) % FACULTIES.length],
       },
     };
@@ -162,6 +171,38 @@ function makeResponses(
   });
 }
 
+// ============ จับคู่คำตอบ ↔ ผู้ลงทะเบียน ============
+// รับ: ผู้ลงทะเบียนทั้งหมด (n คน) + คำตอบทั้งหมด (R คำตอบ, R ≤ n)
+// ทำ: 1) เลือกว่าใครตอบ: ลำดับที่ (k × step) % n สำหรับ k = 0 … R-1
+//        step ไม่มีตัวหารร่วมกับ n → ไม่ซ้ำกันแน่นอน
+//        ตัวอย่าง Workshop n=46, step=7 → ลำดับที่ 0, 7, 14, 21, 28, 35, 42, 3, 10, …
+//     2) เรียงคนที่ถูกเลือกตามเวลาลงทะเบียน และเรียงคำตอบตามเวลาตอบ แล้วจับคู่ตามลำดับ
+//        (ลงทะเบียนเร็วสุด ↔ ตอบเร็วสุด) → เวลาตอบอยู่หลังเวลาลงทะเบียนเสมอ
+//        สำคัญกับวันเปิดบ้าน: ลงทะเบียนถึง 13:27 แต่เริ่มตอบตั้งแต่ 12:00
+// คืน: คำตอบชุดเดิม (ลำดับเดิม, answers เดิม) + registrationId → ตัวเลขทุกกราฟเท่าเดิม
+// ตัวอย่าง: e-workshop-res-31 (ตอบ 15:00) → e-workshop-reg-46 (ลงทะเบียน 12:38)
+function linkResponses(registrations: Registration[], responses: SurveyResponse[]): ReportResponse[] {
+  const n = registrations.length;
+  const step = stepFor(n);
+  const byTime = (a: { createdAt: string }, b: { createdAt: string }) => a.createdAt.localeCompare(b.createdAt);
+
+  const regsByTime = [...registrations].sort(byTime);
+  const chosen = responses
+    .map((_, k) => (k * step) % n)
+    .sort((a, b) => a - b)
+    .map((i) => regsByTime[i]);
+
+  // id ของคำตอบ → registrationId (จับคู่ตามลำดับเวลา)
+  const linkOf = new Map<string, string>();
+  [...responses].sort(byTime).forEach((r, k) => linkOf.set(r.id, chosen[k].id));
+
+  return responses.map((r) => ({ ...r, registrationId: linkOf.get(r.id)! }));
+}
+
+// ข้อมูลตั้งต้นของแต่ละงาน: คำตอบยังไม่มี registrationId (withLinks เติมให้ตอนสร้าง MOCK)
+type MockInput = Omit<ReportData, "responses"> & { responses: SurveyResponse[] };
+const withLinks = (d: MockInput): ReportData => ({ ...d, responses: linkResponses(d.registrations, d.responses) });
+
 // ============ ตัวช่วยสร้างคำถาม ============
 const q = (
   id: string,
@@ -190,9 +231,13 @@ const workshopSurvey: Survey = {
       ["Facebook คณะ", "Faculty Facebook"], ["อาจารย์ / เพื่อน", "Teacher / friend"], ["โปสเตอร์", "Poster"], ["อื่นๆ", "Other"],
     ]),
     q("q3", 3, "rating", "ความยากของเนื้อหา", "Content difficulty"),
-    q("q4", 4, "multi", "หัวข้อที่ได้ประโยชน์มากที่สุด", "Most useful topics", [
-      ["Auto layout", "Auto layout"], ["Component", "Component"], ["Prototype", "Prototype"], ["Frame & Grid", "Frame & Grid"],
-    ]),
+    // ข้อนี้บังคับตอบ (ตาม design: ทั้ง 31 คนตอบ) — ตัวช่วย q() ตั้ง required เฉพาะ rating/single จึงต้องทับเอง
+    {
+      ...q("q4", 4, "multi", "หัวข้อที่ได้ประโยชน์มากที่สุด", "Most useful topics", [
+        ["Auto layout", "Auto layout"], ["Component", "Component"], ["Prototype", "Prototype"], ["Frame & Grid", "Frame & Grid"],
+      ]),
+      required: true,
+    },
     // ข้อนี้ไม่บังคับตอบ (ตาม design: 26 จาก 31 คนตอบ) — ทับค่า required ที่ตัวช่วย q() ตั้งให้
     {
       ...q("q5", 5, "single", "ความเหมาะสมของระยะเวลา", "Session length", [
@@ -205,7 +250,7 @@ const workshopSurvey: Survey = {
   ],
 };
 
-const workshop: ReportData = {
+const workshop: MockInput = {
   survey: workshopSurvey,
   // คำกำกับปลายสเกลของข้อ Rating (ตาม design)
   ratingLabels: {
@@ -235,7 +280,7 @@ const workshop: ReportData = {
 };
 
 // ============ งานที่ 2: วันเปิดบ้าน 2569 (ended) ============
-const openhouse: ReportData = {
+const openhouse: MockInput = {
   survey: {
     id: "sv-openhouse",
     title: { th: "แบบสอบถามวันเปิดบ้าน", en: "Open house survey" },
@@ -261,7 +306,7 @@ const openhouse: ReportData = {
 };
 
 // ============ งานที่ 3: การสื่อสารยุคดิจิทัล (ended) ============
-const comm: ReportData = {
+const comm: MockInput = {
   survey: {
     id: "sv-comm",
     title: { th: "แบบประเมินการบรรยาย", en: "Talk feedback" },
@@ -288,9 +333,9 @@ const comm: ReportData = {
 
 // สร้างครั้งเดียวตอนโหลดไฟล์ (คงที่ ไม่เปลี่ยน)
 const MOCK: Record<string, ReportData> = {
-  "e-workshop": workshop,
-  "e-openhouse": openhouse,
-  "e-comm": comm,
+  "e-workshop": withLinks(workshop),
+  "e-openhouse": withLinks(openhouse),
+  "e-comm": withLinks(comm),
 };
 
 // อ่านข้อมูลรายงานของ Event (ไม่มี → null) — จุดเดียวที่ต้องเปลี่ยนเมื่อมีข้อมูลจริง
