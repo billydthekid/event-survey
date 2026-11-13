@@ -67,7 +67,9 @@ export const useStore = create<StoreState>()(
       // ---------- Session ----------
       // ตรวจ login จาก mock users ใน store ตรงๆ (ไม่ผ่าน api layer แล้ว)
       login: async (username, password) => {
-        const user = get().users.find((u) => u.username === username.trim());
+        // ไม่สนตัวพิมพ์เล็ก-ใหญ่ (เช่น "thanatjak.organizer" = "Thanatjak.organizer")
+        const typed = username.trim().toLowerCase();
+        const user = get().users.find((u) => u.username.toLowerCase() === typed);
         if (!user || user.password !== password) {
           throw new Error("Username หรือรหัสผ่านไม่ถูกต้อง");
         }
@@ -304,7 +306,8 @@ export const useStore = create<StoreState>()(
       // v2: เปลี่ยนชื่อ role: "super" → "admin", "event" → "organizer"
       // v3: แปลง username suffix เก่า (.super/.event) ให้ตรงชื่อใหม่ (.admin/.organizer)
       // v4: (Jin) ใช้ข้อมูลตัวอย่างชุดเดียวกับหน้า Report + ใส่คำถาม Survey ตัวอย่างใน event.survey
-      version: 4,
+      // v5: ให้บัญชีตัวอย่างตรงกับ lib/mock/user.ts ชุดปัจจุบัน (id / ชื่อ / username ใหม่)
+      version: 5,
       migrate: (persisted, fromVersion) => {
         const s = persisted as Partial<StoreState> & Record<string, unknown>;
 
@@ -367,6 +370,47 @@ export const useStore = create<StoreState>()(
           }
           if (Array.isArray(s.responses)) {
             s.responses = [...mockResponses, ...s.responses.filter((r) => !r.id.startsWith("res-e-"))];
+          }
+        }
+
+        // v4 → v5: บัญชีตัวอย่างในเครื่องยังเป็นชุดเก่า → login ด้วยชื่อใหม่ไม่ได้
+        //   1) id เก่า → ใหม่ (u-super-1 → u-admin-1, u-event-1 → u-organizer-1 …) ทั้งใน users / events / logs
+        //   2) ชื่อ + username ของบัญชีตัวอย่างใช้ตาม mock ปัจจุบัน (เช่น nattapol.organizer → Thanatjak.organizer)
+        //      ค่าอื่นที่ผู้ใช้แก้ไว้ (รหัสผ่าน / เปิด-ปิดบัญชี / ภาษา / Event ที่ดูแล) คงเดิม
+        //   3) บัญชีตัวอย่างที่หายไป → เติมกลับ / บัญชีที่ Admin สร้างเองยังอยู่ครบ
+        if (fromVersion < 5) {
+          const OLD_ID: Record<string, string> = {
+            "u-super-1": "u-admin-1",
+            "u-super-2": "u-admin-2",
+            "u-event-1": "u-organizer-1",
+            "u-event-2": "u-organizer-2",
+            "u-event-3": "u-organizer-3",
+          };
+          const mapId = (id: string) => OLD_ID[id] ?? id;
+          const mockById = new Map(mockUsers.map((u) => [u.id, u]));
+
+          const users = (Array.isArray(s.users) ? s.users : []).map((u) => {
+            const id = mapId(u.id);
+            const mock = mockById.get(id);
+            return mock ? { ...u, id, name: mock.name, username: mock.username } : { ...u, id };
+          });
+          const have = new Set(users.map((u) => u.id));
+          s.users = [...users, ...mockUsers.filter((m) => !have.has(m.id))];
+
+          if (Array.isArray(s.events)) {
+            s.events = s.events.map((e) => ({
+              ...e,
+              createdBy: mapId(e.createdBy),
+              adminIds: (e.adminIds ?? []).map(mapId),
+            }));
+          }
+          if (Array.isArray(s.logs)) {
+            s.logs = s.logs.map((l) => ({ ...l, actorId: mapId(l.actorId) }));
+          }
+          // คนที่ login ค้างอยู่ → ใช้ข้อมูลบัญชีชุดใหม่ (ไม่พบ = ให้ login ใหม่)
+          if (s.currentUser) {
+            const id = mapId(s.currentUser.id);
+            s.currentUser = s.users.find((u) => u.id === id) ?? null;
           }
         }
 
