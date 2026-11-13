@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useEventAccess } from "./eventAccess";
 import { ReportData } from "./report/mockData";
 import { pct, summarize, tr } from "./report/summary";
+import { respondedRegistrationIds } from "./report/people";
 import { Donut, HBar, VBars, type VBar } from "./report/charts";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
@@ -46,6 +47,8 @@ const TEXT = {
     responded: "ตอบ Survey แล้ว",
     respondedN: (n: number) => `ตอบแล้ว ${n}`,
     notRespondedN: (n: number) => `ยังไม่ตอบ ${n}`,
+    answeredBadge: "ตอบแล้ว",
+    notAnsweredBadge: "ยังไม่ตอบ",
     latestTitle: "ลงทะเบียนล่าสุด",
     latestSub: (time: string, shown: number, total: number) => `ล่าสุด ${time} น. · ${shown} รายการล่าสุด จากทั้งหมด ${total} คน`,
     seeAll: "ดูทั้งหมด",
@@ -96,6 +99,8 @@ const TEXT = {
     responded: "Survey responses",
     respondedN: (n: number) => `Answered ${n}`,
     notRespondedN: (n: number) => `Not yet ${n}`,
+    answeredBadge: "Responded",
+    notAnsweredBadge: "Not yet",
     latestTitle: "Latest registrations",
     latestSub: (time: string, shown: number, total: number) => `Latest at ${time} · ${shown} most recent of ${total} people`,
     seeAll: "See all",
@@ -427,13 +432,16 @@ function RespondedDonut({ data, t }: { data: ReportData; t: Text }) {
 }
 
 // ============ ตาราง "ลงทะเบียนล่าสุด" (5 รายการ) ============
-// ไม่มีป้าย ตอบแล้ว/ยังไม่ตอบ: SurveyResponse ไม่มีช่องโยงกลับไปหาผู้ลงทะเบียน จึงรู้ไม่ได้ว่าใครตอบ
+// ป้าย ตอบแล้ว/ยังไม่ตอบ: ดูจาก registrationId ในคำตอบ (ReportResponse ใน mockData.ts)
+// ไม่แสดงเบอร์โทรในตารางนี้ (ถ้าจะเพิ่ม ต้องแสดงผ่าน maskPhone ใน report/people.ts)
 const LATEST_COUNT = 5;
 
 function LatestRegistrations({ eventId, data, lang, t }: { eventId: string; data: ReportData; lang: Lang; t: Text }) {
   // เรียงจากใหม่ไปเก่า แล้วเอา 5 คนแรก เช่น 12:38, 12:34, 12:16, 12:12, 12:08
   const latest = [...data.registrations].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, LATEST_COUNT);
   const total = data.registrations.length;
+  // คนที่ตอบ Survey แล้ว เช่น Workshop: 12:38 ✓, 12:34 ✓, 12:16 ✗, 12:12 ✓, 12:08 ✓
+  const answered = respondedRegistrationIds(data);
 
   return (
     <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
@@ -456,7 +464,17 @@ function LatestRegistrations({ eventId, data, lang, t }: { eventId: string; data
             <li key={r.id} className="flex gap-6 border-t border-slate-100 px-5 py-3 text-sm">
               <span className="w-12 shrink-0 text-slate-500">{formatTime(r.createdAt, lang)}</span>
               {/* answers.name เป็นชื่อสมมติจาก mock (string) */}
-              <span>{String(r.answers.name ?? "—")}</span>
+              <span className="min-w-0 flex-1 truncate">{String(r.answers.name ?? "—")}</span>
+              {/* ป้ายสีตามรูป reportjoin.png: เขียว = ตอบแล้ว, ส้ม = ยังไม่ตอบ */}
+              {answered.has(r.id) ? (
+                <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                  {t.answeredBadge}
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                  {t.notAnsweredBadge}
+                </span>
+              )}
             </li>
           ))}
         </ul>
