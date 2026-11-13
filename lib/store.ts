@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 import { User, Event, ActionLog, Role, Registration, SurveyResponse } from "@/types";
 import { getApi } from "@/lib/api";
 import { mockUsers } from "@/lib/mock/user";
-import { mockEvents, makeDraftEvent } from "@/lib/mock/events";
+import { mockEvents, makeDraftEvent, WORKSHOP_AD } from "@/lib/mock/events";
 import { mockRegistrations, mockResponses } from "@/lib/mock/responses";
 import { makeUsername } from "@/lib/utils/username";
 import { KEEP_DAYS } from "@/lib/utils/status";
@@ -201,6 +201,18 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: "esp.session",
+      // v1: ใส่รูปโฆษณา Kiosk ให้ Workshop Figma (e-workshop) ที่เก็บใน localStorage ไว้ก่อนแล้ว
+      //     ไม่ต้องล้าง localStorage — ข้อมูลอื่นคงเดิม
+      version: 1,
+      migrate: (persisted, fromVersion) => {
+        const s = persisted as Partial<StoreState>;
+        if (fromVersion < 1 && Array.isArray(s.events)) {
+          s.events = s.events.map((e) =>
+            e.id === "e-workshop" && !e.adImage ? { ...e, adImage: WORKSHOP_AD } : e
+          );
+        }
+        return s as StoreState;
+      },
       partialize: (s) => ({
         currentUser: s.currentUser,
         users: s.users,
