@@ -5,12 +5,14 @@
 // - เก็บรูปที่ crop แล้วเป็น data URL ใน wizard store (localStorage) — ดู lib/image-crop.ts
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Crop, ImageOff, Trash2 } from "lucide-react";
+import { Crop, GripVertical, ImageOff, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWizardStore } from "@/lib/wizard-store";
+import { useDragSort } from "@/lib/use-drag-sort";
+import { cn } from "@/lib/utils";
 import { AD_HEIGHT, AD_WIDTH, dataUrlKB, readFileAsDataUrl } from "@/lib/image-crop";
 import type { UploadedAsset } from "@/types/event";
 import { FileDrop } from "./file-drop";
@@ -53,13 +55,7 @@ export function StepAds() {
     setCropping(null);
   };
 
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= ads.items.length) return;
-    const next = [...ads.items];
-    [next[i], next[j]] = [next[j], next[i]];
-    setItems(next);
-  };
+  const sort = useDragSort(ads.items, setItems); // ลากที่ ⋮⋮ เพื่อเรียงลำดับ
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -105,12 +101,23 @@ export function StepAds() {
       <Card className="self-start">
         <CardHeader>
           <CardTitle className="text-base">รูปโฆษณา ({ads.items.length}/{MAX_ADS} รูป)</CardTitle>
-          <CardDescription>เรียงตามลำดับที่จะแสดงบนจอ</CardDescription>
+          <CardDescription>เรียงตามลำดับที่จะแสดงบนจอ · ลากที่ ⋮⋮ เพื่อเรียง</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {ads.items.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีโฆษณา · ข้ามขั้นนี้ได้</p>}
           {ads.items.map((a, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-2">
+            <div
+              key={i}
+              {...sort.itemProps(i)}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border bg-background p-2 transition",
+                sort.stateOf(i).dragging && "opacity-40",
+                sort.stateOf(i).over && "border-primary ring-2 ring-primary/40"
+              )}
+            >
+              <span {...sort.handleProps(i)} className={cn(sort.handleProps(i).className, "text-muted-foreground")}>
+                <GripVertical className="size-4" />
+              </span>
               <span className="w-4 text-center text-xs text-muted-foreground">{i + 1}</span>
               {a.dataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปที่ crop แล้ว
@@ -125,14 +132,6 @@ export function StepAds() {
                 <p className={a.dataUrl ? "text-xs text-emerald-700" : "text-xs text-amber-700"}>
                   {a.dataUrl ? `Crop 16:9 แล้ว · ${AD_WIDTH}×${AD_HEIGHT} · ${a.sizeKB} KB` : "ข้อมูลตัวอย่าง (ไม่มีไฟล์รูป) · อัปโหลดใหม่"}
                 </p>
-              </div>
-              <div className="flex flex-col">
-                <Button variant="ghost" size="icon" className="size-6" disabled={i === 0} onClick={() => move(i, -1)} aria-label="เลื่อนขึ้น">
-                  <ArrowUp className="size-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="size-6" disabled={i === ads.items.length - 1} onClick={() => move(i, 1)} aria-label="เลื่อนลง">
-                  <ArrowDown className="size-3.5" />
-                </Button>
               </div>
               {a.dataUrl && (
                 <Button variant="secondary" size="sm" onClick={() => setCropping({ src: a.dataUrl!, name: a.name, index: i })}>
