@@ -5,12 +5,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useReport } from "./ReportShell";
 import {
-  buildParticipants, filterParticipants, maskPhone, pageNumbers, type ParticipantFilter,
+  buildParticipants, filterParticipants, formatTime, maskPhone, pageNumbers, type ParticipantFilter,
 } from "./people";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
@@ -60,11 +59,6 @@ const TEXT = {
 
 const PAGE_SIZE = 10; // 10 รายการต่อหน้า (ตามรูป)
 const FILTERS: ParticipantFilter[] = ["all", "answered", "notAnswered"];
-
-// เวลา "12:38" จาก ISO (แบบเดียวกับ Dashboard)
-function formatTime(iso: string, lang: Lang): string {
-  return new Date(iso).toLocaleTimeString(lang === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
-}
 
 export function ParticipantsView() {
   const { data, lang } = useReport();
