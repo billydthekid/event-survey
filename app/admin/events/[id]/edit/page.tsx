@@ -82,8 +82,6 @@ export default function EditEventPage() {
       onStep={setStep}
       title={META[step].title}
       subtitle={META[step].subtitle}
-      lockDate={current.general.date}
-      lockTime={current.general.startTime}
       locked={locked}
       publishBlock={publishBlock}
       onPublish={() => {

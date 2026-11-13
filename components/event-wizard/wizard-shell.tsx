@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Check, ChevronRight, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatThaiDate } from "@/lib/utils/date";
+import { LockedArea, PublishConfirm } from "./lock-dialogs";
 
 export const STEPS = [
   { n: 1, label: "ข้อมูลทั่วไป" },
@@ -24,8 +25,6 @@ interface Props {
   onStep: (n: number) => void;
   title: string;
   subtitle: string;
-  lockDate: string;
-  lockTime: string;
   locked: boolean;
   /** มีค่า = ยังเผยแพร่ไม่ได้ (แสดงเหตุผลข้างปุ่ม) */
   publishBlock?: string;
@@ -37,6 +36,7 @@ export function WizardShell(p: Props) {
   const isFirst = p.step === 1;
   const isLast = p.step === 7;
   const next = STEPS[p.step]; // step ถัดไป (index = step)
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-[#E9E8F6] to-[#F6F6FB]">
@@ -110,20 +110,18 @@ export function WizardShell(p: Props) {
             <p className="text-sm text-muted-foreground">{p.subtitle}</p>
           </div>
 
-          {/* Lock banner */}
-          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-            <Lock className="size-4 shrink-0" />
-            <span>
-              {p.locked
-                ? "Event เผยแพร่แล้ว (Active / Ended) · ทุกขั้นตอนถูกล็อก · การเปลี่ยนผู้ดูแลหรือลบ Event ต้องผ่าน Admin"
-                : `แก้ไขได้จนกว่าจะกดเผยแพร่${p.lockDate ? ` · วันงาน ${formatThaiDate(p.lockDate, false)} ${p.lockTime}` : ""} · เมื่อเผยแพร่แล้ว Event จะเป็น Active และทุกขั้นตอนจะถูกล็อก`}
-            </span>
-          </div>
+          {/* แบนเนอร์ล็อก: แสดงเฉพาะเมื่อ Event ถูกล็อกแล้ว (Draft ไม่แสดง) */}
+          {p.locked && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              <Lock className="size-4 shrink-0" />
+              <span>Event เผยแพร่แล้ว (Active / Ended) · ทุกขั้นตอนถูกล็อก · การเปลี่ยนผู้ดูแลหรือลบ Event ต้องผ่าน Admin</span>
+            </div>
+          )}
 
-          {/* ล็อกด้วย fieldset: input/button ข้างในจะ disabled ทั้งหมด */}
-          <fieldset disabled={p.locked} className="min-w-0 space-y-5 disabled:opacity-70">
-            {p.children}
-          </fieldset>
+          {/* ล็อกแล้ว: ทุกช่อง disabled + คลิกตรงไหนก็เด้งหน้าต่างแจ้งว่าแก้ไม่ได้ */}
+          <LockedArea locked={p.locked}>
+            <div className="min-w-0 space-y-5">{p.children}</div>
+          </LockedArea>
         </div>
       </main>
 
@@ -141,7 +139,7 @@ export function WizardShell(p: Props) {
         {isLast ? (
           <div className="flex items-center gap-3">
             {p.publishBlock && !p.locked && <span className="text-sm text-destructive">{p.publishBlock}</span>}
-            <Button onClick={p.onPublish} disabled={p.locked || !!p.publishBlock}>
+            <Button onClick={() => setConfirmOpen(true)} disabled={p.locked || !!p.publishBlock}>
               เผยแพร่ Event
             </Button>
           </div>
@@ -149,6 +147,16 @@ export function WizardShell(p: Props) {
           <Button onClick={() => p.onStep(p.step + 1)}>ถัดไป: {next?.label}</Button>
         )}
       </footer>
+
+      <PublishConfirm
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        eventName={p.eventName}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          p.onPublish();
+        }}
+      />
     </div>
   );
 }

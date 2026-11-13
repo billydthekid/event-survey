@@ -4,6 +4,7 @@ import { AlertTriangle, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWizardStore } from "@/lib/wizard-store";
 import { formatThaiDate } from "@/lib/utils/date";
+import { eventTypeLabel } from "@/lib/event-types";
 
 interface Row {
   label: string;
@@ -15,13 +16,28 @@ export function StepPreview() {
   const d = useWizardStore((s) => s.draft);
   const g = d.general;
 
-  const generalOk = !!(g.nameTh && g.descTh && g.organizer && g.date && g.venue);
+  // ข้อมูลทั่วไป "ครบ" = ช่องที่มีดอกจัน (*) ในขั้นที่ 1 กรอกแล้วทุกช่อง → ถ้าไม่ครบ บอกว่าขาดช่องไหน
+  const missing = [
+    !g.nameTh && "ชื่อ Event",
+    !g.descTh && "รายละเอียด",
+    g.type === "other" && !g.typeOther?.trim() && "ประเภทงาน",
+    !g.organizer && "ผู้จัด",
+    !g.date && "วันที่จัด",
+    (!g.startTime || !g.endTime) && "เวลา",
+    !g.venue && (g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"),
+  ].filter((x): x is string => !!x);
+  const adCount = d.ads.items.length;
+  const adNoFile = d.ads.items.filter((a) => !a.dataUrl).length;
   const rows: Row[] = [
-    { label: "ข้อมูลทั่วไป", value: generalOk ? "ครบ" : "ยังไม่ครบ", ok: generalOk },
-    { label: "Theme", value: `${{ light: "Light", dark: "Dark", bold: "Bold" }[d.theme.mode]} · ${d.theme.primary}`, ok: true },
-    d.ad
-      ? { label: "โฆษณา", value: d.ad.cropped ? "1 รูป" : "1 รูปยังไม่ได้ Crop", ok: !!d.ad.cropped }
-      : { label: "โฆษณา", value: "ไม่มี (ข้ามได้)", ok: true },
+    { label: "ข้อมูลทั่วไป", value: missing.length ? `ยังไม่ครบ: ${missing.join(", ")}` : "ครบ", ok: missing.length === 0 },
+    { label: "Theme", value: `${{ light: "Light", dark: "Dark", bold: "Bold" }[d.theme.mode]} · ${d.theme.primary} / ${d.theme.secondary}`, ok: true },
+    adCount === 0
+      ? { label: "โฆษณา", value: "ไม่มี (ข้ามได้)", ok: true }
+      : {
+          label: "โฆษณา",
+          value: adNoFile ? `${adCount} รูป · ${adNoFile} รูปยังไม่มีไฟล์` : `${adCount} รูป · เปลี่ยนทุก ${d.ads.seconds} วิ`,
+          ok: adNoFile === 0,
+        },
     { label: "ฟอร์มลงทะเบียน", value: `${d.form.fields.length} ช่อง`, ok: d.form.fields.length > 0 },
     {
       label: "ช่วงเวลา",
@@ -72,7 +88,7 @@ export function StepPreview() {
             {g.cover ? g.cover.name : "รูปปก"}
           </div>
           <span className="mt-3 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
-            {{ seminar: "สัมมนา", workshop: "Workshop", training: "อบรม", jobfair: "Job Fair", openhouse: "Open House" }[g.type]}
+            {eventTypeLabel(g.type, g.typeOther)}
           </span>
           <h3 className="mt-1 text-lg font-bold">{g.nameTh}</h3>
           <p className="mt-1 text-xs">{formatThaiDate(g.date, false)} · {g.startTime} – {g.endTime}</p>

@@ -301,6 +301,8 @@ function QuestionInput({
           minLabel={q.ratingLabels ? pick(q.ratingLabels.min, lang) : t.rating.min}
           maxLabel={q.ratingLabels ? pick(q.ratingLabels.max, lang) : t.rating.max}
           label={title}
+          max={q.ratingMax}
+          variant={q.ratingStyle}
         />
       );
       break;

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SurveyPreview } from "@/components/event/survey-preview";
+import { RatingSample, SurveyPreview, ratingOf } from "@/components/event/survey-preview";
 import { useWizardStore } from "@/lib/wizard-store";
 import { SurveyDenied, lockBannerText, useSurveyDraft } from "../surveyAccess";
 import { QTYPES, qtype } from "@/lib/survey-types";
@@ -17,15 +17,10 @@ import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { newId } from "@/lib/utils/id";
 import { cn } from "@/lib/utils";
-import type { EventType, SurveyQType, SurveyQuestion } from "@/types/event";
+import type { RatingMax, RatingStyle, SurveyQType, SurveyQuestion } from "@/types/event";
+import { eventTypeLabel } from "@/lib/event-types";
+import { LockedArea } from "@/components/event-wizard/lock-dialogs";
 
-const TYPE_NAME: Record<EventType, string> = {
-  seminar: "สัมมนา",
-  workshop: "Workshop",
-  training: "อบรม",
-  jobfair: "Job Fair",
-  openhouse: "Open House",
-};
 
 const defaultOptions = (type: SurveyQType) => (qtype(type).hasOptions ? ["ตัวเลือก 1", "ตัวเลือก 2"] : []);
 
@@ -82,7 +77,7 @@ export default function SurveyBuilderPage() {
     update(q.id, { type, options: qtype(type).hasOptions && q.options.length < 2 ? defaultOptions(type) : q.options });
 
   const minutes = Math.max(1, Math.round(qs.length * 0.7));
-  const surveyTitle = `แบบประเมินงาน ${TYPE_NAME[d.general.type]}`;
+  const surveyTitle = `แบบประเมินงาน ${eventTypeLabel(d.general.type, d.general.typeOther)}`;
   const field = editLang === "th" ? "titleTh" : "titleEn";
 
   return (
@@ -118,17 +113,22 @@ export default function SurveyBuilderPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* คอลัมน์หลัก */}
         <div className="min-w-0 space-y-5">
-            <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-900">
-              <Lock className="size-4 shrink-0" />
-              {lockBannerText(d, locked)}
-            </div>
+            {/* แบนเนอร์ล็อก: แสดงเฉพาะเมื่อล็อกแล้ว (Draft ไม่แสดง) */}
+            {locked && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                <Lock className="size-4 shrink-0" />
+                {lockBannerText(d, locked)}
+              </div>
+            )}
 
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{surveyTitle}</h1>
               <p className="mt-1 text-sm text-muted-foreground">ใช้เวลาประมาณ {minutes} นาที · 1 Event มีได้ 1 Survey</p>
             </div>
 
-            <fieldset disabled={locked} className="min-w-0 space-y-4">
+            {/* ล็อกแล้ว: คลิกตรงไหนก็เด้งหน้าต่าง "Event เผยแพร่แล้ว แก้ไขไม่ได้" */}
+            <LockedArea locked={locked}>
+            <div className="min-w-0 space-y-4">
               {qs.length === 0 && (
                 <p className="rounded-2xl border border-dashed bg-background py-12 text-center text-sm text-muted-foreground">
                   ยังไม่มีคำถาม เลือกประเภทด้านล่างเพื่อเริ่มสร้าง
@@ -147,7 +147,12 @@ export default function SurveyBuilderPage() {
                     className={cn("space-y-4 rounded-2xl border bg-background p-5 transition", isSel && "border-2 border-primary")}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-primary">{i + 1} · {meta.th}</p>
+                      <p className="flex items-center gap-2 text-xs font-medium text-primary">
+                        <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
+                          <meta.icon className="size-3.5" />
+                        </span>
+                        {i + 1} · {meta.th}
+                      </p>
                       <div className="flex gap-2">
                         <Button variant="outline" size="icon" aria-label="ทำสำเนา" onClick={() => duplicate(q.id)}>
                           <Copy className="size-4" />
@@ -171,13 +176,8 @@ export default function SurveyBuilderPage() {
                     </div>
 
                     {/* ตัวอย่างช่องตอบ */}
-                    {q.type === "rating" && (
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <span key={n} className="flex size-10 items-center justify-center rounded-lg border text-sm font-semibold">{n}</span>
-                        ))}
-                      </div>
-                    )}
+                    {/* rating: หน้าตาเดียวกับ Preview และหน้า /s (คะแนนเต็ม/รูปแบบ ตั้งที่แผงขวา) */}
+                    {q.type === "rating" && <RatingSample q={q} primary={d.theme.primary} />}
                     {q.type === "short" && (
                       <div className="max-w-md rounded-lg border px-4 py-2.5 text-sm text-muted-foreground">ผู้ตอบพิมพ์คำตอบสั้น ๆ ที่นี่…</div>
                     )}
@@ -239,19 +239,21 @@ export default function SurveyBuilderPage() {
                     key={qt.value}
                     type="button"
                     onClick={() => add(qt.value)}
-                    className="rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
+                    className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
                   >
-                    {qt.th}
+                    <qt.icon className="size-4" /> {qt.th}
                   </button>
                 ))}
               </div>
-            </fieldset>
+            </div>
+            </LockedArea>
         </div>
 
         {/* แผงตั้งค่าคำถามที่เลือก */}
         <aside className="rounded-2xl bg-background p-6 shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
           {selected ? (
-            <fieldset disabled={locked} className="space-y-6">
+            <LockedArea locked={locked}>
+            <div className="space-y-6">
               <div>
                 <p className="text-xs text-primary">คำถามที่ {selectedIndex + 1}</p>
                 <h2 className="text-xl font-bold">ตั้งค่า</h2>
@@ -266,18 +268,55 @@ export default function SurveyBuilderPage() {
               </div>
 
               <div className="space-y-2 border-b pb-5">
-                <label htmlFor="qtype" className="text-sm font-semibold">ประเภทคำตอบ</label>
-                <select
-                  id="qtype"
-                  value={selected.type}
-                  onChange={(e) => changeType(selected, e.target.value as SurveyQType)}
-                  className="h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
+                <p className="text-sm font-semibold">ประเภทคำตอบ</p>
+                {/* ปุ่มพร้อมไอคอนแทน <select> (select ของเบราว์เซอร์ใส่ไอคอนไม่ได้) */}
+                <div className="grid grid-cols-2 gap-2">
                   {QTYPES.map((qt) => (
-                    <option key={qt.value} value={qt.value}>{qt.th}</option>
+                    <button
+                      key={qt.value}
+                      type="button"
+                      aria-pressed={selected.type === qt.value}
+                      onClick={() => changeType(selected, qt.value)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm",
+                        selected.type === qt.value && "border-primary bg-primary/5 font-semibold text-primary"
+                      )}
+                    >
+                      <qt.icon className="size-4 shrink-0" /> {qt.th}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
+
+              {selected.type === "rating" && (
+                <div className="space-y-3 border-b pb-5">
+                  <p className="text-sm font-semibold">รูปแบบการให้คะแนน</p>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">คะแนนเต็ม</span>
+                    <ToggleGroup
+                      value={[String(ratingOf(selected).max)]}
+                      onValueChange={(v) => v[0] && update(selected.id, { ratingMax: Number(v[0]) as RatingMax })}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <ToggleGroupItem value="5">1–5</ToggleGroupItem>
+                      <ToggleGroupItem value="10">1–10</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">แสดงเป็น</span>
+                    <ToggleGroup
+                      value={[ratingOf(selected).style]}
+                      onValueChange={(v) => v[0] && update(selected.id, { ratingStyle: v[0] as RatingStyle })}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <ToggleGroupItem value="number">ตัวเลข</ToggleGroupItem>
+                      <ToggleGroupItem value="star">ดาว</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 border-b pb-5">
                 <p className="text-sm font-semibold">ภาษา</p>
@@ -306,7 +345,8 @@ export default function SurveyBuilderPage() {
                   </Button>
                 </div>
               </div>
-            </fieldset>
+            </div>
+            </LockedArea>
           ) : (
             <p className="text-sm text-muted-foreground">เลือกคำถามเพื่อตั้งค่า</p>
           )}
