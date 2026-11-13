@@ -78,11 +78,13 @@ export default function SurveySummaryPage() {
         </div>
       </div>
 
-      {/* แบนเนอร์ล็อก */}
-      <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-        <Lock className="size-4 shrink-0" />
-        {lockBannerText(d, locked)}
-      </div>
+      {/* แบนเนอร์ล็อก: แสดงเฉพาะเมื่อล็อกแล้ว */}
+      {locked && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <Lock className="size-4 shrink-0" />
+          {lockBannerText(d, locked)}
+        </div>
+      )}
 
       {/* การ์ดสรุป 4 ใบ */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -115,7 +117,12 @@ export default function SurveySummaryPage() {
                       {q.titleTh || <span className="font-normal text-slate-400">(ยังไม่ตั้งชื่อคำถาม)</span>}
                       {q.required && <span className="ml-1 text-red-600">*</span>}
                     </p>
-                    <p className="text-xs text-slate-500">{q.type === "rating" ? "Rating 1–5" : qtype(q.type).th}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <TypeIcon type={q.type} />
+                      {q.type === "rating"
+                        ? `Rating 1–${q.ratingMax ?? 5} · ${q.ratingStyle === "star" ? "ดาว" : "ตัวเลข"}`
+                        : qtype(q.type).th}
+                    </p>
                   </div>
                   <span className="shrink-0 text-sm text-slate-500">{answered > 0 ? `${answered} คำตอบ` : "ยังไม่มีคำตอบ"}</span>
                 </li>
@@ -136,4 +143,10 @@ export default function SurveySummaryPage() {
       </Dialog>
     </div>
   );
+}
+
+// ไอคอนประเภทคำถาม (ชุดเดียวกับ Survey Builder)
+function TypeIcon({ type }: { type: Parameters<typeof qtype>[0] }) {
+  const Icon = qtype(type).icon;
+  return <Icon className="size-3.5" />;
 }

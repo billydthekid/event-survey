@@ -24,11 +24,18 @@ export interface KioskModel {
   theme: { primary: string; secondary: string; mode: KioskThemeMode; background: string };
   logo?: string; // URL รูปโลโก้ (ไม่มี = ใช้ตัวอักษรย่อ)
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
+  adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้นที่ 3)
   screen: Event["kiosk"]["screen"];
   status: Event["status"];
   regClose: string; // yyyy-MM-ddTHH:mm ("" = ไม่กำหนด)
   surveyEnabled: boolean;
   surveyClose: string;
+}
+
+// รูปจาก Wizard ที่มีไฟล์จริง · ไม่มีเลย = undefined (ใช้รูปของ store หลักแทน)
+function draftAds(draft?: EventDraft): string[] | undefined {
+  const srcs = draft?.ads?.items.map((a) => a.dataUrl).filter((s): s is string => !!s) ?? [];
+  return srcs.length > 0 ? srcs : undefined;
 }
 
 export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
@@ -51,7 +58,9 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
       background: event.theme.background.type === "color" ? event.theme.background.value : "#FFFFFF",
     },
     logo: event.theme.logo,
-    ads: event.adImage ? [event.adImage] : [],
+    // รูปโฆษณา: Wizard (รูปที่ crop 16:9 แล้ว) → รูปเดิมใน store หลัก
+    ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : []),
+    adSeconds: draft?.ads?.seconds || 6,
     screen: event.kiosk.screen,
     status: event.status,
     regClose: draft?.schedule.regClose || event.registration.closesAt,

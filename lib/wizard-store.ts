@@ -59,17 +59,34 @@ function toDraft(ev: Event): EventDraft {
       bg: null,
       logo: null,
     },
-    ad: null,
+    // รูปโฆษณาเดิมใน store หลัก (URL) → รายการแรก
+    ads: { items: ev.adImage ? [{ name: "โฆษณา", sizeKB: 0, cropped: true, dataUrl: ev.adImage }] : [], seconds: DEFAULT_AD_SECONDS },
     form: { fields: [] },
     schedule: {
       regOpen: ev.registration?.opensAt ?? "",
       regClose: ev.registration?.closesAt ?? "",
-      maxAttendees: ev.registration?.maxAttendees?.toString() ?? "",
+      maxAttendees: "", // ไม่จำกัดจำนวนแล้ว
       surveyOpen: ev.surveyWindow?.opensAt ?? "",
       surveyClose: ev.surveyWindow?.closesAt ?? "",
       remindAfterEnd: false,
     },
-    survey: { enabled: !!ev.survey?.enabled, questions: [] },
+    // Event ใหม่เปิดใช้ Survey เป็นค่าเริ่มต้น
+    survey: { enabled: ev.survey ? ev.survey.enabled : true, questions: [] },
+  };
+}
+
+export const DEFAULT_AD_SECONDS = 6;
+
+// ข้อมูลเก่าใน localStorage (v2) → รูปแบบปัจจุบัน (v3)
+// - ad (รูปเดียว) → ads.items (หลายรูป) + seconds
+// - เลิกจำกัดจำนวนรับ / เลิกส่งข้อความเตือน
+type DraftV2 = Omit<EventDraft, "ads"> & { ad?: EventDraft["ads"]["items"][number] | null; ads?: EventDraft["ads"] };
+function migrateDraft(d: DraftV2): EventDraft {
+  const { ad, ...rest } = d;
+  return {
+    ...rest,
+    ads: rest.ads ?? { items: ad ? [ad] : [], seconds: DEFAULT_AD_SECONDS },
+    schedule: { ...rest.schedule, maxAttendees: "", remindAfterEnd: false },
   };
 }
 
@@ -105,6 +122,19 @@ export const useWizardStore = create<State>()(
       patch: (key, value) => get().patchEvent(get().draft.id, key, value),
       publish: () => get().patchEvent(get().draft.id, "status", "scheduled"),
     }),
-    { name: "event-admin-store-v2", version: 2 }
+    {
+      name: "event-admin-store-v2",
+      version: 3,
+      migrate: (persisted, fromVersion) => {
+        const s = persisted as { drafts?: Record<string, DraftV2>; draft?: DraftV2 };
+        if (fromVersion < 3) {
+          if (s.drafts) {
+            s.drafts = Object.fromEntries(Object.entries(s.drafts).map(([k, d]) => [k, migrateDraft(d)]));
+          }
+          if (s.draft) s.draft = migrateDraft(s.draft);
+        }
+        return s as unknown as State;
+      },
+    }
   )
 );
