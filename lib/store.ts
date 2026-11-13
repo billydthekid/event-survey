@@ -6,6 +6,7 @@ import { mockUsers } from "@/lib/mock/user";
 import { mockEvents, makeDraftEvent, WORKSHOP_AD } from "@/lib/mock/events";
 import { mockRegistrations, mockResponses } from "@/lib/mock/responses";
 import { makeUsername } from "@/lib/utils/username";
+import { newId } from "@/lib/utils/id";
 import { KEEP_DAYS } from "@/lib/utils/status";
 
 interface NewUserInput {
@@ -45,6 +46,11 @@ interface StoreState {
   deleteEvent: (eventId: string) => void;
   restoreEvent: (eventId: string) => void;
   purgeExpired: () => void;
+
+  // ===== ผู้เข้าร่วม (สแกน QR ไม่ต้อง login) =====
+  // กรอกซ้ำได้ ไม่ดักข้อมูลซ้ำ (ตาม scope) — คืน Registration / SurveyResponse ที่บันทึก
+  submitRegistration: (eventId: string, answers: Registration["answers"]) => Registration;
+  submitSurveyResponse: (eventId: string, answers: SurveyResponse["answers"]) => SurveyResponse;
 }
 
 export const useStore = create<StoreState>()(
@@ -266,6 +272,30 @@ export const useStore = create<StoreState>()(
             eventIds: u.eventIds.filter((id) => !ids.includes(id)),
           })),
         });
+      },
+
+      // ---------- ผู้เข้าร่วมลงทะเบียน (หน้า /r/<code>) ----------
+      submitRegistration: (eventId, answers) => {
+        const reg: Registration = {
+          id: newId("reg"),
+          eventId,
+          createdAt: new Date().toISOString(),
+          answers,
+        };
+        set({ registrations: [...get().registrations, reg] });
+        return reg;
+      },
+
+      // ---------- ผู้เข้าร่วมส่งแบบประเมิน (หน้า /s/<code>) ----------
+      submitSurveyResponse: (eventId, answers) => {
+        const res: SurveyResponse = {
+          id: newId("res"),
+          eventId,
+          createdAt: new Date().toISOString(),
+          answers,
+        };
+        set({ responses: [...get().responses, res] });
+        return res;
       },
     }),
     {
