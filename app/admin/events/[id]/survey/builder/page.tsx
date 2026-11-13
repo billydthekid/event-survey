@@ -96,10 +96,7 @@ export default function SurveyBuilderPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            เปิดใช้ Survey
-            <Switch checked={d.survey.enabled} disabled={locked} onCheckedChange={(v) => patchEvent(id, "survey", { enabled: v })} />
-          </label>
+          {/* ไม่มีสวิตช์ "เปิดใช้ Survey" แล้ว — Survey บังคับมีทุก Event */}
           <ToggleGroup value={[editLang]} onValueChange={(v) => v[0] && setEditLang(v[0] as "th" | "en")} variant="outline" size="sm">
             <ToggleGroupItem value="th">TH</ToggleGroupItem>
             <ToggleGroupItem value="en">EN</ToggleGroupItem>

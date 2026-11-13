@@ -33,7 +33,7 @@ export function isSurveyOpen(d: EventDraft, now = new Date()) {
 /** สถานะของ Survey (ใช้ในการ์ด "สถานะ" ของหน้า Survey) */
 export function getSurveyState(d: EventDraft, now = new Date()) {
   if (d.status === "draft") return { key: "draft" as const, label: "ฉบับร่าง", cls: "text-amber-700" };
-  if (!d.survey.enabled) return { key: "off" as const, label: "ปิดอยู่", cls: "text-slate-600" };
+  // (ไม่มีสถานะ "ปิดอยู่" แล้ว — Survey บังคับมีทุก Event)
   if (isSurveyOpen(d, now)) return { key: "open" as const, label: "เปิดรับคำตอบ", cls: "text-emerald-700" };
   if (d.schedule.surveyClose && now > new Date(d.schedule.surveyClose)) {
     return { key: "closed" as const, label: "ปิดรับแล้ว", cls: "text-zinc-600" };
