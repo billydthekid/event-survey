@@ -515,7 +515,10 @@ function QrWideCard({ scan, title, sub, url, colors }: { scan: string; title: st
       className="flex items-center gap-12 rounded-[36px] border p-10"
       style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
     >
-      <QrBox url={url} size={300} />
+      <div className="flex shrink-0 flex-col items-center">
+        <QrBox url={url} size={300} />
+        <QrLink url={url} color={colors.sub} />
+      </div>
       <div className="min-w-0">
         <p className="inline-flex items-center gap-3 text-[26px] font-medium" style={{ color: colors.sub }}>
           <ScanLine size={30} /> {scan}
@@ -540,10 +543,21 @@ function QrPairCard({ title, caption, url, colors }: { title: string; caption: s
       <div className="mt-7">
         <QrBox url={url} size={320} />
       </div>
-      <p className="mt-6 inline-flex items-center gap-2 text-[22px]" style={{ color: colors.sub }}>
+      <QrLink url={url} color={colors.sub} />
+      <p className="mt-3 inline-flex items-center gap-2 text-[22px]" style={{ color: colors.sub }}>
         <ScanLine size={24} /> {caption}
       </p>
     </div>
+  );
+}
+
+// ลิงก์ใต้ QR (ไว้พิมพ์เองเมื่อสแกนไม่ได้) — ตัด http:// ออกให้สั้นลง เช่น "localhost:3000/r/FIG-1017"
+function QrLink({ url, color }: { url: string; color: string }) {
+  if (!url) return null;
+  return (
+    <p className="mt-4 max-w-[360px] text-center text-[22px] font-medium break-all" style={{ color }}>
+      {url.replace(/^https?:\/\//, "")}
+    </p>
   );
 }
 
