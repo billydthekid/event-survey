@@ -12,6 +12,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
 import { FileDrop } from "./file-drop";
 import { formatThaiDate } from "@/lib/utils/date";
+import { useNow } from "@/lib/hooks/useNow";
+import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
+import { FieldError } from "./field-error";
 import type { EventType } from "@/types/event";
 
 const TYPES: { value: EventType; label: string }[] = [
@@ -24,7 +27,11 @@ const TYPES: { value: EventType; label: string }[] = [
 
 export function StepGeneral() {
   const g = useWizardStore((s) => s.draft.general);
+  const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
+  const now = useNow();
+  const { today } = nowParts(now);
+  const err = validateDates(draft, now);
   const [lang, setLang] = useState<"th" | "en">("th");
   const set = (v: Partial<typeof g>) => patch("general", v);
 
@@ -111,16 +118,35 @@ export function StepGeneral() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label>วันที่จัด</Label>
-                <Input type="date" value={g.date} onChange={(e) => set({ date: e.target.value })} />
-                <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>
+                <Input
+                  type="date"
+                  min={today}
+                  value={g.date}
+                  aria-invalid={!!err.date}
+                  onChange={(e) => set({ date: e.target.value })}
+                />
+                {err.date ? <FieldError text={err.date} /> : <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>เวลาเริ่ม</Label>
-                <Input type="time" value={g.startTime} onChange={(e) => set({ startTime: e.target.value })} />
+                <Input
+                  type="time"
+                  value={g.startTime}
+                  aria-invalid={!!err.startTime}
+                  onChange={(e) => set({ startTime: e.target.value })}
+                />
+                <FieldError text={err.startTime} />
               </div>
               <div className="space-y-1.5">
                 <Label>เวลาสิ้นสุด</Label>
-                <Input type="time" value={g.endTime} onChange={(e) => set({ endTime: e.target.value })} />
+                <Input
+                  type="time"
+                  min={g.startTime || undefined}
+                  value={g.endTime}
+                  aria-invalid={!!err.endTime}
+                  onChange={(e) => set({ endTime: e.target.value })}
+                />
+                <FieldError text={err.endTime} />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">

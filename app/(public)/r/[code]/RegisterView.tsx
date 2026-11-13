@@ -10,6 +10,7 @@ import type { Lang } from "@/types";
 import { useStore } from "@/lib/store";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useNow } from "@/lib/hooks/useNow";
+import { isActive, isAllowed } from "@/lib/allow-list";
 import {
   GENDER_OPTIONS,
   PublicEvent,
@@ -55,6 +56,7 @@ const TEXT = {
     badPhone: "เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก",
     badAge: "อายุต้องเป็นตัวเลข 1–120",
     badNumber: "กรอกเป็นตัวเลขเท่านั้น",
+    notAllowed: "ไม่พบข้อมูลนี้ในรายชื่อผู้มีสิทธิ์ลงทะเบียน (Event ปิด)",
     ph: {
       name: "เช่น สมชาย ใจดี",
       email: "name@email.com",
@@ -99,6 +101,7 @@ const TEXT = {
     badPhone: "Phone number must be 9–10 digits",
     badAge: "Age must be a number from 1 to 120",
     badNumber: "Numbers only",
+    notAllowed: "Not on the list of invited attendees (closed event)",
     ph: {
       name: "e.g. John Smith",
       email: "name@email.com",
@@ -139,7 +142,7 @@ const isChoice = (f: PublicField) =>
   f.type === "gender" || ((f.type === "dropdown" || f.type === "multi") && f.options.length > 0);
 
 // เก็บแค่ "ชนิดของ error" แล้วค่อยแปลเป็นข้อความตอนแสดง → สลับ TH/EN แล้วข้อความเปลี่ยนตามทันที
-type ErrorKind = "required" | "badEmail" | "badPhone" | "badAge" | "badNumber";
+type ErrorKind = "required" | "badEmail" | "badPhone" | "badAge" | "badNumber" | "notAllowed";
 
 function validate(f: PublicField, raw: string | string[] | undefined): ErrorKind | undefined {
   const v = Array.isArray(raw) ? raw : (raw ?? "").trim();
@@ -249,6 +252,12 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
     for (const f of e.fields) {
       const err = validate(f, vals[f.key]);
       if (err) next[f.key] = err;
+    }
+    // Event ปิด: อีเมล/เบอร์ต้องอยู่ในรายชื่อที่ Organizer import ไว้ (lib/allow-list.ts)
+    const allow = draft?.allowList;
+    if (e.maxAttendees > 0 && isActive(allow) && !next[allow.kind]) {
+      const v = vals[allow.kind];
+      if (typeof v === "string" && !isAllowed(allow, v)) next[allow.kind] = "notAllowed";
     }
     return next;
   };

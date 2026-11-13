@@ -27,6 +27,8 @@ interface Props {
   lockDate: string;
   lockTime: string;
   locked: boolean;
+  /** มีค่า = ยังเผยแพร่ไม่ได้ (แสดงเหตุผลข้างปุ่ม) */
+  publishBlock?: string;
   onPublish: () => void;
   children: React.ReactNode;
 }
@@ -113,8 +115,8 @@ export function WizardShell(p: Props) {
             <Lock className="size-4 shrink-0" />
             <span>
               {p.locked
-                ? "Event เริ่มแล้ว · ทุกขั้นตอนถูกล็อก · การเปลี่ยนผู้ดูแลหรือลบ Event ต้องผ่าน Super Admin"
-                : `แก้ไขได้ถึง ${formatThaiDate(p.lockDate, false)} ${p.lockTime} · เมื่อ Event เริ่ม ทุกขั้นตอนจะถูกล็อก · การเปลี่ยนผู้ดูแลหรือลบ Event ต้องผ่าน Super Admin`}
+                ? "Event เผยแพร่แล้ว (Active / Ended) · ทุกขั้นตอนถูกล็อก · การเปลี่ยนผู้ดูแลหรือลบ Event ต้องผ่าน Admin"
+                : `แก้ไขได้จนกว่าจะกดเผยแพร่${p.lockDate ? ` · วันงาน ${formatThaiDate(p.lockDate, false)} ${p.lockTime}` : ""} · เมื่อเผยแพร่แล้ว Event จะเป็น Active และทุกขั้นตอนจะถูกล็อก`}
             </span>
           </div>
 
@@ -137,9 +139,12 @@ export function WizardShell(p: Props) {
           </Button>
         )}
         {isLast ? (
-          <Button onClick={p.onPublish} disabled={p.locked}>
-            เผยแพร่ Event
-          </Button>
+          <div className="flex items-center gap-3">
+            {p.publishBlock && !p.locked && <span className="text-sm text-destructive">{p.publishBlock}</span>}
+            <Button onClick={p.onPublish} disabled={p.locked || !!p.publishBlock}>
+              เผยแพร่ Event
+            </Button>
+          </div>
         ) : (
           <Button onClick={() => p.onStep(p.step + 1)}>ถัดไป: {next?.label}</Button>
         )}
