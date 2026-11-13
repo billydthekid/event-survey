@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { FileDrop } from "./file-drop";
 import { formatThaiDate } from "@/lib/utils/date";
 import { useNow } from "@/lib/hooks/useNow";
 import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
@@ -174,33 +171,7 @@ export function StepGeneral() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">รูปปก Event</CardTitle>
-            <CardDescription>แสดงด้านบนหน้า Event บนมือถือ</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {g.cover ? (
-              <div className="flex items-center gap-3 rounded-lg border p-3">
-                <div className="flex h-10 w-16 items-center justify-center rounded bg-primary/10 text-[10px] text-primary">16:9</div>
-                <div className="flex-1 text-sm">
-                  <p className="font-semibold">{g.cover.name}</p>
-                  <p className="text-xs text-muted-foreground">{g.cover.sizeKB} KB</p>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => set({ cover: null })}>เปลี่ยนรูป</Button>
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => set({ cover: null })}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ) : (
-              <FileDrop title="ลากรูปมาวาง หรือเลือกไฟล์" onPick={(a) => set({ cover: a })} />
-            )}
-            <p className="text-xs text-muted-foreground">
-              แนะนำสัดส่วน 16:9 · JPG / PNG ไม่เกิน 5 MB · ไม่ใส่ก็ได้ หน้า Event จะใช้สีหลักของ Theme แทน
-            </p>
-          </CardContent>
-        </Card>
+        {/* รูปปก Event ย้ายไปขั้นที่ 2 Branding (แท็บ "รูปปก") */}
       </div>
     </div>
   );
