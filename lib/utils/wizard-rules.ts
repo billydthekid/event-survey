@@ -84,7 +84,7 @@ export function toEventPatch(d: EventDraft): EventPatch {
 }
 
 // ============ ช่องบังคับ (*) ของขั้นที่ 1 ============
-/** ชื่อช่องบังคับที่ยังไม่กรอก (ว่าง = ครบ) — ใช้ทั้งหน้าตรวจขั้นที่ 7 และกันปุ่มเผยแพร่ */
+/** ชื่อช่องบังคับที่ยังไม่กรอก (ว่าง = ครบ) — ใช้ทั้งหน้าตรวจขั้นที่ 6 และกันปุ่มเผยแพร่ */
 export function missingGeneral(d: EventDraft): string[] {
   const g = d.general;
   return [

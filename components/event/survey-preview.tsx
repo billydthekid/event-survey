@@ -1,7 +1,7 @@
 "use client";
 // ตัวอย่างคำถาม Survey 12 ประเภท แบบที่ผู้เข้าร่วมเห็นบนหน้า /s
 // - AnswerSample: ช่องตอบตัวอย่างของคำถาม 1 ข้อ (ใช้ทั้งในการ์ดของ Survey Builder และใน Preview)
-// - SurveyPreview: ทั้งแบบประเมิน (Dialog "Preview มือถือ" และ Preview เต็มจอขั้นที่ 7)
+// - SurveyPreview: ทั้งแบบประเมิน (Dialog "Preview มือถือ" และ Preview เต็มจอขั้นที่ 6)
 
 import { Calendar, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";

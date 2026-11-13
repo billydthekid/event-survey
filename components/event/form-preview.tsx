@@ -1,7 +1,7 @@
 "use client";
 // ตัวอย่างฟอร์มลงทะเบียนแบบที่ผู้เข้าร่วมเห็นบนมือถือ (แบบ Preview ของ Google Form)
 // - FieldSample: ช่องกรอกตัวอย่างของแต่ละประเภท (ใช้ทั้งในการ์ดของ Wizard ขั้นที่ 4 และใน Preview)
-// - FormPreview: ทั้งฟอร์ม ใช้ใน Dialog "Preview ฟอร์ม" และ Preview เต็มจอขั้นที่ 7
+// - FormPreview: ทั้งฟอร์ม ใช้ใน Dialog "Preview ฟอร์ม" และ Preview เต็มจอขั้นที่ 6
 
 import { Calendar, ChevronDown, Clock, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
