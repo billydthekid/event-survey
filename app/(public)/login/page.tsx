@@ -4,25 +4,24 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ApiError } from "@/lib/api";
 
 const TEXT = {
   th: {
     title: "เข้าสู่ระบบ",
-    subtitle: "สำหรับ Super Admin และ Event Admin",
+    subtitle: "สำหรับ Admin และ Organizer",
     username: "Username",
     password: "รหัสผ่าน",
     login: "เข้าสู่ระบบ",
-    forgot: "ลืมรหัสผ่าน? ติดต่อ Super Admin เพื่อรีเซ็ต",
+    forgot: "ลืมรหัสผ่าน? ติดต่อ Admin เพื่อรีเซ็ต",
     required: "กรุณากรอก Username และรหัสผ่าน",
   },
   en: {
     title: "Sign in",
-    subtitle: "For Super Admin and Event Admin",
+    subtitle: "For Admin and Organizer",
     username: "Username",
     password: "Password",
     login: "Sign in",
-    forgot: "Forgot password? Contact Super Admin to reset",
+    forgot: "Forgot password? Contact Admin to reset",
     required: "Please enter username and password",
   },
 };
@@ -57,9 +56,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(username, password);
-      router.replace(user.role === "super" ? "/super" : "/admin");
+      // admin → หน้า /super (ระบบจัดการรวม), organizer → /admin (หน้าของ event ตัวเอง)
+      // หมายเหตุ: path folder ยังไม่ rename ใน commit นี้ จะทำใน commit ถัดไป
+      router.replace(user.role === "admin" ? "/super" : "/admin");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "เข้าสู่ระบบไม่สำเร็จ");
+      setError(err instanceof Error ? err.message : "เข้าสู่ระบบไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
@@ -67,12 +68,12 @@ export default function LoginPage() {
 
   return (
     <div
-  className="min-h-screen relative"
-  style={{
-    background:
-      "linear-gradient(180deg, #E6E3F6 0%, #E3ECFB 13%, rgba(244,242,247,0) 31%), #FFFFFF",
-  }}
->
+      className="min-h-screen relative"
+      style={{
+        background:
+          "linear-gradient(180deg, #E6E3F6 0%, #E3ECFB 13%, rgba(244,242,247,0) 31%), #FFFFFF",
+      }}
+    >
       <div className="absolute top-6 left-6 flex items-center gap-2 font-semibold">
         <div className="h-8 w-8 rounded-md bg-blue-600" />
         Event & Survey

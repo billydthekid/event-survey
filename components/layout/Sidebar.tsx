@@ -1,6 +1,6 @@
 // components/layout/Sidebar.tsx
 "use client";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import {
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { EventSwitcher } from "@/components/layout/EventPicker";
+import CreateEventModal from "@/components/events/CreateEventModal";
 
 type Menu = { href: string; label: string; icon: LucideIcon };
 
@@ -20,7 +21,7 @@ const MAIN_MENU: Menu[] = [
   { href: "/super/report", label: "Report", icon: BarChart3 },
 ];
 
-// เมนูหลักตอนเลือก Event เจาะจง (Jin) — ลิงก์ไปหน้าของ Event นั้น /super/events/[id]/...
+// เมนูหลักตอนเลือก Event เจาะจง — ลิงก์ไปหน้าของ Event นั้น /super/events/[id]/...
 function eventMenu(id: string): Menu[] {
   return [
     { href: `/super/events/${id}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
@@ -36,7 +37,6 @@ const ADMIN_MENU: Menu[] = [
   { href: "/super/deleted", label: "รายการที่ถูกลบ", icon: Trash2 },
 ];
 
-//  อยู่นอก Sidebar แล้ว — รับ pathname เป็น prop
 function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   const Icon = menu.icon;
   const active = pathname === menu.href;
@@ -53,9 +53,7 @@ function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   );
 }
 
-// ครอบ <Suspense> (Jin): มีหน้า /super/events/[id]/... แล้ว + โปรเจกต์เปิด cacheComponents
-// → usePathname / useParams ต้องรอ URL ตอนเปิดหน้าจริง ถ้าไม่ครอบ Next build ไม่ผ่าน
-// fallback = แถบว่างกว้างเท่าเดิม (layout ซ่อนหน้าไว้จนโหลด localStorage เสร็จอยู่แล้ว)
+// ครอบ <Suspense>: โปรเจกต์เปิด cacheComponents → usePathname / useParams ต้องรอ URL
 export function Sidebar() {
   return (
     <Suspense fallback={<aside className="h-screen w-60 border-r border-slate-200 bg-[#F4F2F7]" />}>
@@ -68,8 +66,9 @@ function SidebarContent() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useStore((s) => s.logout);
+  const [showCreate, setShowCreate] = useState(false);
 
-  // อยู่ใต้ /super/events/[id]/... → มี id = กำลังดู Event นั้น · หน้าอื่นได้ {} = ดูทุก Event
+  // อยู่ใต้ /super/events/[id]/... → มี id = กำลังดู Event นั้น
   const { id: eventId } = useParams<{ id?: string }>();
   const mainMenu = eventId ? eventMenu(eventId) : MAIN_MENU;
 
@@ -93,13 +92,13 @@ function SidebarContent() {
       {/* ช่องเลือก Event (กดแล้วเปิด popup) */}
       <EventSwitcher eventId={eventId} />
 
-      {/* ปุ่มสร้าง Event */}
-      <Link
-        href="/super/users"
+      {/* ปุ่มสร้าง Event — เปิด modal ตรงนี้ ไม่ลิงก์ไปหน้าอื่น */}
+      <button
+        onClick={() => setShowCreate(true)}
         className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700"
       >
         <Plus size={16} /> สร้าง Event
-      </Link>
+      </button>
 
       {/* เมนูหลัก */}
       <nav className="flex flex-col gap-1">
@@ -125,6 +124,9 @@ function SidebarContent() {
           <LogOut size={18} /> Logout
         </button>
       </div>
+
+      {/* Modal สร้าง Event */}
+      {showCreate && <CreateEventModal onClose={() => setShowCreate(false)} />}
     </aside>
   );
-}
+}

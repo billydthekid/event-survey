@@ -1,5 +1,5 @@
 // app/admin/layout.tsx
-// กรอบของทุกหน้า Event Admin (login แล้ว role = "event" จะถูกพามาที่ /admin → ส่งต่อไป /admin/events)
+// กรอบของทุกหน้า Organizer (login แล้ว role = "organizer" จะถูกพามาที่ /admin → ส่งต่อไป /admin/events)
 "use client";
 import { Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,12 +13,12 @@ export default function EventAdminLayout({ children }: { children: React.ReactNo
   const user = useStore((s) => s.currentUser);
   const hydrated = useStore((s) => s.hydrated);
 
-  // พร้อมแสดง = โหลด localStorage เสร็จ + เป็น event admin
-  const ready = hydrated && user?.role === "event";
+  // พร้อมแสดง = โหลด localStorage เสร็จ + เป็น organizer
+  const ready = hydrated && user?.role === "organizer";
 
-  // guard: ไม่ใช่ event admin → เด้งกลับ /login
+  // guard: ไม่ใช่ organizer → เด้งกลับ /login
   useEffect(() => {
-    if (hydrated && user?.role !== "event") {
+    if (hydrated && user?.role !== "organizer") {
       router.replace("/login");
     }
   }, [hydrated, user, router]);
