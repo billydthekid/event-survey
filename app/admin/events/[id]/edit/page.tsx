@@ -70,8 +70,13 @@ export default function EditEventPage() {
   if (!drafts[id] || !current || !mainEvent) return null;
 
   const dateErrors = validateDates(current, now);
+  // เหตุผลที่ยังเผยแพร่ไม่ได้ (เรียงตามความสำคัญ · ไม่มี = เผยแพร่ได้)
   const publishBlock =
-    Object.keys(dateErrors).length > 0 ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 5)" : allowListProblem(current);
+    Object.keys(dateErrors).length > 0
+      ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 5)"
+      : current.survey.questions.length === 0
+        ? "ต้องมีคำถาม Survey อย่างน้อย 1 ข้อ (ขั้นที่ 6)" // Survey บังคับมีทุก Event
+        : allowListProblem(current);
 
   return (
     <WizardShell
