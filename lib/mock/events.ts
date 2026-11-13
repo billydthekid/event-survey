@@ -30,6 +30,9 @@ export function makeDraftEvent(id: string, name: string, adminId: string, create
   };
 }
 
+// รูปโฆษณาตัวอย่างของ Workshop Figma (แสดงบนจอ Kiosk) — ไฟล์อยู่ใน public/kiosk/ads
+export const WORKSHOP_AD = "/kiosk/ads/workshop-figma.png";
+
 // Event ตัวอย่างเริ่มต้น
 export const mockEvents: Event[] = [
   {
@@ -41,6 +44,7 @@ export const mockEvents: Event[] = [
     endTime: "15:00",
     venue: "ห้อง Lab 4 อาคาร 11",
     organizerName: "คณะ IT",
+    adImage: WORKSHOP_AD,
   },
   {
     ...makeDraftEvent("e-openhouse", "วันเปิดบ้าน 2569", "u-event-2", "u-super-1"),
