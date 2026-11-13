@@ -2,21 +2,22 @@
 // ขั้นที่ 4: ฟอร์มลงทะเบียน — หน้าตาแบบเดียวกับ Survey Builder
 // - ซ้าย: การ์ดทีละช่อง (ลากเรียงได้ · คลิกเพื่อเลือก · พิมพ์ชื่อช่อง Custom ในการ์ดได้เลย · ลบได้)
 // - ล่าง: แถบ "เพิ่มช่อง" = ช่องพื้นฐาน (แตะเพื่อเพิ่ม/เอาออก) + Custom field ทุกประเภทพร้อมไอคอน
-// - ขวา: แผงตั้งค่าของช่องที่เลือก (Required, ประเภท, ลำดับ, ลบ)
+// - ขวา: แผงตั้งค่าของช่องที่เลือก (Required, ประเภท) · ลบที่ถังขยะบนการ์ด
 //
-// การลากเรียงใช้ HTML5 drag & drop ของเบราว์เซอร์ (ไม่มีไลบรารี):
+// การลากเรียง (กดที่ ⋮⋮) ใช้ lib/use-drag-sort.ts — HTML5 drag & drop ของเบราว์เซอร์ (ไม่มีไลบรารี):
 //   ระหว่างลาก เปลี่ยนแค่ "สไตล์" (จาง / กรอบสี) ไม่ได้ย้ายข้อมูล → ไม่กระตุก
 //   ย้ายลำดับใน store ครั้งเดียวตอนปล่อย (onDrop)
 
 import { useState } from "react";
 import {
-  ArrowDown, ArrowUp, ChevronDown, Fingerprint, GripVertical, Hash, ListChecks, Mail, Phone, Plus, Trash2, Type, User, Users,
+  ChevronDown, Fingerprint, GripVertical, Hash, ListChecks, Mail, Phone, Plus, Trash2, Type, User, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useWizardStore } from "@/lib/wizard-store";
 import { BASIC_FIELDS } from "@/lib/mock/event-draft";
+import { useDragSort } from "@/lib/use-drag-sort";
 import { cn } from "@/lib/utils";
 import { newId } from "@/lib/utils/id";
 import type { BasicFieldKey, FieldKind, FormField } from "@/types/event";
@@ -67,28 +68,8 @@ export function StepForm() {
     setSelectedId(id);
   };
 
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= fields.length) return;
-    const next = [...fields];
-    [next[i], next[j]] = [next[j], next[i]];
-    setFields(next);
-  };
-
-  // ---- ลากเรียง ----
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-  const drop = (to: number) => {
-    if (dragIdx === null || dragIdx === to) return;
-    const next = [...fields];
-    const [item] = next.splice(dragIdx, 1);
-    next.splice(to, 0, item);
-    setFields(next);
-  };
-  const endDrag = () => {
-    setDragIdx(null);
-    setOverIdx(null);
-  };
+  // ---- ลากเรียง (กดที่ ⋮⋮ แล้วลาก) ----
+  const sort = useDragSort(fields, setFields);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
@@ -106,32 +87,21 @@ export function StepForm() {
           return (
             <section
               key={f.id}
-              draggable
-              onDragStart={(e) => {
-                setDragIdx(i);
-                e.dataTransfer.effectAllowed = "move";
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (overIdx !== i) setOverIdx(i);
-              }}
-              onDrop={() => {
-                drop(i);
-                endDrag();
-              }}
-              onDragEnd={endDrag}
+              {...sort.itemProps(i)}
               onClick={() => setSelectedId(f.id)}
               onFocusCapture={() => setSelectedId(f.id)}
               className={cn(
                 "space-y-3 rounded-2xl border bg-background p-5 transition",
                 isSel && "border-2 border-primary",
-                dragIdx === i && "opacity-40",
-                overIdx === i && dragIdx !== null && dragIdx !== i && "ring-2 ring-primary/50"
+                sort.stateOf(i).dragging && "opacity-40",
+                sort.stateOf(i).over && "ring-2 ring-primary/50"
               )}
             >
               <div className="flex items-center justify-between">
                 <p className="flex items-center gap-2 text-xs font-medium text-primary">
-                  <GripVertical className="size-4 cursor-grab text-muted-foreground" aria-hidden />
+                  <span {...sort.handleProps(i)} className={cn(sort.handleProps(i).className, "text-muted-foreground")}>
+                    <GripVertical className="size-4" />
+                  </span>
                   <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
                     <Icon className="size-3.5" />
                   </span>
@@ -251,22 +221,8 @@ export function StepForm() {
               )}
             </div>
 
-            <div className="space-y-2 border-b pb-5">
-              <p className="text-sm font-semibold">ลำดับ</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={selectedIndex === 0} onClick={() => move(selectedIndex, -1)}>
-                  <ArrowUp className="size-4" /> ย้ายขึ้น
-                </Button>
-                <Button variant="outline" size="sm" disabled={selectedIndex === fields.length - 1} onClick={() => move(selectedIndex, 1)}>
-                  <ArrowDown className="size-4" /> ย้ายลง
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">หรือลากการ์ดด้วย ⋮⋮ เพื่อเรียง</p>
-            </div>
-
-            <Button variant="ghost" className="w-full bg-red-50 text-red-600 hover:bg-red-100" onClick={() => remove(selected.id)}>
-              <Trash2 className="size-4" /> ลบช่องนี้
-            </Button>
+            {/* เรียงลำดับ = ลากที่ ⋮⋮ บนการ์ด · ลบ = ปุ่มถังขยะบนการ์ด (ไม่มีปุ่มซ้ำในแผงนี้) */}
+            <p className="text-xs text-muted-foreground">ลากที่ ⋮⋮ บนการ์ดเพื่อเรียงลำดับ · กดถังขยะบนการ์ดเพื่อลบ</p>
           </>
         ) : (
           <p className="text-sm text-muted-foreground">เลือกช่องเพื่อตั้งค่า</p>
