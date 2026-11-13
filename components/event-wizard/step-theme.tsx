@@ -31,6 +31,7 @@ export function StepTheme() {
         <CardContent className="space-y-6 pt-6">
           <section className="space-y-2">
             <p className="text-sm font-semibold">สีหลัก</p>
+            <p className="text-xs text-muted-foreground">ใช้ที่: ปุ่ม &quot;ลงทะเบียน&quot; / &quot;ส่งแบบประเมิน&quot; และแถบความคืบหน้าบนมือถือ · กรอบ QR และป้ายสถานะบนจอ Kiosk</p>
             <ColorField value={t.primary} presets={PRIMARY} onChange={(c) => set({ primary: c })} label="สีหลัก" />
             <p className={cn("text-xs", contrastOk ? "text-emerald-700" : "text-amber-700")}>
               {contrastOk ? "✓ ตัวหนังสือสีขาวบนสีนี้อ่านง่าย (ผ่านมาตรฐาน contrast)" : "! ตัวหนังสือสีขาวบนสีนี้อ่านยาก ลองเลือกสีเข้มขึ้น"}
@@ -39,11 +40,13 @@ export function StepTheme() {
 
           <section className="space-y-2">
             <p className="text-sm font-semibold">สีรอง</p>
+            <p className="text-xs text-muted-foreground">ใช้ที่: พื้นช่องรูปปกตอนยังไม่มีรูป (Preview ขั้นที่ 7) · ตอนนี้หน้า Kiosk และมือถือยังไม่ได้ใช้สีรอง</p>
             <ColorField value={t.secondary} presets={SECONDARY} onChange={(c) => set({ secondary: c })} label="สีรอง" />
           </section>
 
           <section className="space-y-2">
             <p className="text-sm font-semibold">ประเภท Theme</p>
+            <p className="text-xs text-muted-foreground">ใช้ที่: โทนทั้งหน้าจอ Kiosk และหน้ามือถือ · Light = พื้นขาว · Dark = พื้นเข้ม ตัวหนังสือขาว · Bold = หัวหน้า/พื้นเป็นสีหลักเต็ม</p>
             <div className="grid grid-cols-3 gap-3">
               {MODES.map((m) => (
                 <button
@@ -64,7 +67,10 @@ export function StepTheme() {
       <div className="space-y-5">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Background</CardTitle>
+            <div className="space-y-1">
+              <CardTitle className="text-base">Background</CardTitle>
+              <p className="text-xs text-muted-foreground">ใช้ที่: พื้นหลังจอ Kiosk (แนวตั้ง 1080 × 1920 px) · ตอนนี้รูปเก็บแค่ชื่อไฟล์ ยังไม่แสดงบนจอจริง</p>
+            </div>
             <ToggleGroup value={[t.bgType]} onValueChange={(v) => v[0] && set({ bgType: v[0] as "color" | "image" })} variant="outline" size="sm">
               <ToggleGroupItem value="color">สี</ToggleGroupItem>
               <ToggleGroupItem value="image">รูปภาพ</ToggleGroupItem>
@@ -85,7 +91,7 @@ export function StepTheme() {
                 <FileDrop title="อัปโหลดรูป Background" hint="แนะนำ 1080×1920" onPick={(a) => set({ bg: a })} />
               )
             ) : (
-              <p className="text-sm text-muted-foreground">ใช้สีรองเป็นพื้นหลัง</p>
+              <p className="text-sm text-muted-foreground">ใช้สีพื้นตาม &quot;ประเภท Theme&quot; (Light / Dark / Bold)</p>
             )}
           </CardContent>
         </Card>
@@ -93,6 +99,7 @@ export function StepTheme() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Logo</CardTitle>
+            <p className="text-xs text-muted-foreground">ใช้ที่: มุมซ้ายบนของจอ Kiosk และหัวหน้ามือถือ (/r, /s) · ไม่มีโลโก้ = ใช้ตัวย่อรหัสงานบนพื้นสีหลัก · ตอนนี้เก็บแค่ชื่อไฟล์ ยังไม่แสดงรูปจริง</p>
           </CardHeader>
           <CardContent>
             {t.logo ? (

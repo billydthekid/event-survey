@@ -122,7 +122,7 @@ export function StepGeneral() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label>วันที่จัด</Label>
+                <Label>วันที่จัด <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   min={today}
@@ -133,7 +133,7 @@ export function StepGeneral() {
                 {err.date ? <FieldError text={err.date} /> : <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>เวลาเริ่ม</Label>
+                <Label>เวลาเริ่ม <span className="text-destructive">*</span></Label>
                 <Input
                   type="time"
                   value={g.startTime}
@@ -143,7 +143,7 @@ export function StepGeneral() {
                 <FieldError text={err.startTime} />
               </div>
               <div className="space-y-1.5">
-                <Label>เวลาสิ้นสุด</Label>
+                <Label>เวลาสิ้นสุด <span className="text-destructive">*</span></Label>
                 <Input
                   type="time"
                   min={g.startTime || undefined}
@@ -156,7 +156,7 @@ export function StepGeneral() {
             </div>
             <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
               <div className="space-y-1.5">
-                <Label>{g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"}</Label>
+                <Label>{g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"} <span className="text-destructive">*</span></Label>
                 <Input value={g.venue} onChange={(e) => set({ venue: e.target.value })} />
               </div>
               {g.mode === "onsite" && (

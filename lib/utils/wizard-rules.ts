@@ -82,3 +82,18 @@ export function toEventPatch(d: EventDraft): EventPatch {
     surveyWindow: { opensAt: s.surveyOpen, closesAt: s.surveyClose },
   };
 }
+
+// ============ ช่องบังคับ (*) ของขั้นที่ 1 ============
+/** ชื่อช่องบังคับที่ยังไม่กรอก (ว่าง = ครบ) — ใช้ทั้งหน้าตรวจขั้นที่ 7 และกันปุ่มเผยแพร่ */
+export function missingGeneral(d: EventDraft): string[] {
+  const g = d.general;
+  return [
+    !g.nameTh.trim() && "ชื่อ Event",
+    !g.descTh.trim() && "รายละเอียด",
+    g.type === "other" && !g.typeOther?.trim() && "ประเภทงาน",
+    !g.organizer.trim() && "ผู้จัด",
+    !g.date && "วันที่จัด",
+    (!g.startTime || !g.endTime) && "เวลา",
+    !g.venue.trim() && (g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"),
+  ].filter((x): x is string => !!x);
+}
