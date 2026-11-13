@@ -11,7 +11,7 @@ import { th as thLocale } from "date-fns/locale";
 import { CalendarDays, Check, Clock, Lock, LogOut, MapPin, Maximize, Minimize, ScanLine } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { Lang } from "@/types";
-import { KioskModel, KioskScene, initials } from "./kioskModel";
+import { KioskModel, KioskScene } from "./kioskModel";
 
 // ============ ข้อความ 2 ภาษา ============
 export const KIOSK_TEXT = {
@@ -361,8 +361,6 @@ function Header({
   setLang: (l: Lang) => void;
   admin: KioskAdminControls;
 }) {
-  const boxBg = m.theme.mode === "bold" ? "#FFFFFF" : m.theme.primary;
-  const boxFg = m.theme.mode === "bold" ? m.theme.primary : "#FFFFFF";
   return (
     <header className="flex items-center justify-between px-12 pt-12 pb-8">
       <div className="flex items-center gap-5">
@@ -370,11 +368,14 @@ function Header({
           // eslint-disable-next-line @next/next/no-img-element -- โลโก้อาจเป็น URL ภายนอกจาก API
           <img src={m.logo} alt="" className="size-[76px] rounded-[20px] object-contain" />
         ) : (
+          // ไม่มีโลโก้ของงาน → ใช้โลโก้ระบบ (public/logo.png ตัวเดียวกับหน้า Login / Sidebar)
+          // กล่องขาวรองไว้ → เห็นชัดทุก Theme (Light / Dark / Bold)
           <div
-            className="flex size-[76px] items-center justify-center rounded-[20px] text-[28px] font-bold"
-            style={{ background: boxBg, color: boxFg }}
+            className="flex size-[76px] items-center justify-center rounded-[20px] bg-white p-2"
+            style={{ boxShadow: "0 0 0 1px rgba(15,23,42,0.08)" }}
           >
-            {initials(m)}
+            {/* eslint-disable-next-line @next/next/no-img-element -- รูปเล็กคงที่ ใช้แบบเดียวกับ Sidebar */}
+            <img src="/logo.png" alt="EventSurvey" className="size-full object-contain" />
           </div>
         )}
         <div className="max-w-[560px] min-w-0 leading-tight">

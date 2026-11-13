@@ -9,7 +9,7 @@ import { th as thLocale } from "date-fns/locale";
 import { CalendarDays, MapPin } from "lucide-react";
 import type { Lang } from "@/types";
 import { useNow } from "@/lib/hooks/useNow";
-import { PublicEvent, initials, pick } from "@/lib/public-event";
+import { PublicEvent, pick } from "@/lib/public-event";
 
 // ============ ภาษา: จำไว้ในเครื่องผู้ใช้ (ลงทะเบียนเป็น EN → หน้าแบบประเมินก็ EN) ============
 const LANG_KEY = "esp.public.lang";
@@ -130,9 +130,6 @@ export function PublicShell({
     };
   }, [pal.page]);
 
-  const boxBg = pal.mode === "bold" ? "#FFFFFF" : event ? pal.primary : "#0F172A";
-  const boxFg = pal.mode === "bold" ? pal.primary : "#FFFFFF";
-
   return (
     <div className="min-h-dvh" style={{ background: pal.page, color: pal.text }}>
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
@@ -143,11 +140,14 @@ export function PublicShell({
                 // eslint-disable-next-line @next/next/no-img-element -- โลโก้อาจเป็น URL ภายนอกจาก API
                 <img src={event.logo} alt="" className="size-8 shrink-0 rounded-lg object-contain" />
               ) : (
+                // ไม่มีโลโก้ของงาน (หรือไม่พบ Event) → โลโก้ระบบ public/logo.png เหมือนจอ Kiosk
+                // กล่องขาวรองไว้ → เห็นชัดทุก Theme (Light / Dark / Bold)
                 <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-                  style={{ background: boxBg, color: boxFg }}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white p-1"
+                  style={{ boxShadow: "0 0 0 1px rgba(15,23,42,0.08)" }}
                 >
-                  {event ? initials(event) : "ES"}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- รูปเล็กคงที่ ใช้แบบเดียวกับ Sidebar / Kiosk */}
+                  <img src="/logo.png" alt="EventSurvey" className="size-full object-contain" />
                 </span>
               )}
               <span className="truncate text-sm font-semibold">{event?.organizer || "EventSurvey"}</span>
