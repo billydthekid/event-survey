@@ -14,6 +14,7 @@ import { useWizardStore } from "@/lib/wizard-store";
 import { SurveyDenied, lockBannerText, useSurveyDraft } from "../surveyAccess";
 import { QTYPES, qtype } from "@/lib/survey-types";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
+import { STATUS_LABEL } from "@/lib/utils/status";
 import { newId } from "@/lib/utils/id";
 import { cn } from "@/lib/utils";
 import type { EventType, SurveyQType, SurveyQuestion } from "@/types/event";
@@ -39,7 +40,9 @@ export default function SurveyBuilderPage() {
 
   if (state.state === "loading") return null;
   if (state.state === "denied") return <SurveyDenied />;
-  const { draft: d, locked } = state;
+  const { draft: d, locked, access } = state;
+  // ล็อกแล้ว → ใช้สถานะจริงใน store หลัก (Active / Ended) แทนสถานะที่คำนวณจากเวลาใน wizard
+  const statusLabel = locked ? STATUS_LABEL[access.event.status].text : PHASE_META[getPhase(d)].th;
 
   const qs = d.survey.questions;
   const selected = qs.find((q) => q.id === (selectedId ?? qs[0]?.id)) ?? null;
@@ -91,7 +94,7 @@ export default function SurveyBuilderPage() {
             <ArrowLeft className="size-4" />
           </Button>
           <div className="leading-tight">
-            <p className="text-xs text-muted-foreground">Survey · {PHASE_META[getPhase(d)].th}</p>
+            <p className="text-xs text-muted-foreground">Survey · {statusLabel}</p>
             <p className="font-semibold">{d.general.nameTh}</p>
           </div>
           <span className="ml-2 text-xs text-emerald-700">✓ บันทึกแล้ว</span>
@@ -310,7 +313,7 @@ export default function SurveyBuilderPage() {
 
           <div className="mt-6 space-y-1 rounded-xl bg-muted/60 p-4 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">สิทธิ์ของคุณ</p>
-            <p>แก้ไขคำถามได้จนกว่า Event จะเริ่ม · หลังจากนั้นดูผลและ Export ได้อย่างเดียว · การลบ Survey ทำได้โดย Super Admin เท่านั้น</p>
+            <p>แก้ไขคำถามได้จนกว่าจะเผยแพร่ Event · หลังจากนั้นดูผลและ Export ได้อย่างเดียว · การลบ Survey ทำได้โดย Admin เท่านั้น</p>
           </div>
         </aside>
       </div>

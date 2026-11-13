@@ -2,7 +2,9 @@
 // รวม type ทั้งหมดของแอป — ไฟล์อื่น import จากที่นี่
 
 // ============ Role & Language ============
-export type Role = "super" | "event";
+// admin     = ผู้ดูแลระบบ (เดิมชื่อ "super") เห็นและจัดการได้ทุก Event
+// organizer = ผู้จัดงาน    (เดิมชื่อ "event") จัดการได้เฉพาะ Event ที่ได้รับมอบหมาย
+export type Role = "admin" | "organizer";
 export type Lang = "th" | "en";
 
 export interface BiText {
@@ -14,13 +16,13 @@ export interface BiText {
 export interface User {
   id: string;
   name: string;
-  username: string;          // เติม suffix อัตโนมัติ เช่น "thanapath.super"
+  username: string;          // เติม suffix อัตโนมัติ เช่น "thanapath.admin"
   password: string;          // mock เท่านั้น plain text
   role: Role;
   org: string;
   active: boolean;           // false = บัญชีถูกปิด
   lang: Lang;
-  eventIds: string[];        // Event ที่ดูแล (role event)
+  eventIds: string[];        // Event ที่ดูแล (role organizer)
   createdAt: string;
   lastLoginAt?: string;
 }

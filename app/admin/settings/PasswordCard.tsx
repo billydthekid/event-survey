@@ -3,6 +3,7 @@
 // ไม่แสดง "เปลี่ยนล่าสุด" เพราะไม่มีข้อมูลรองรับ
 "use client";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
@@ -19,6 +20,9 @@ export function PasswordCard({ t }: { t: SettingsText }) {
   const [values, setValues] = useState<Record<FieldKey, string>>({ current: "", next: "", confirm: "" });
   // error แสดงทีละช่อง เช่น { field: "next", message: "password ใหม่ยังไม่ผ่าน: ตัวเลข (0-9)" }
   const [error, setError] = useState<{ field: FieldKey; message: string } | null>(null);
+  // ช่องไหนกดปุ่มตาให้ "แสดง" รหัสอยู่ (แยกกันทีละช่อง) เช่น { current: false, next: true, confirm: false }
+  const [visible, setVisible] = useState<Record<FieldKey, boolean>>({ current: false, next: false, confirm: false });
+  const toggleVisible = (field: FieldKey) => setVisible((old) => ({ ...old, [field]: !old[field] }));
 
   const change = (field: FieldKey, v: string) => {
     setValues((old) => ({ ...old, [field]: v }));
@@ -43,18 +47,32 @@ export function PasswordCard({ t }: { t: SettingsText }) {
     }
   };
 
-  // ช่องกรอก 1 ช่อง (type="password" ซ่อนตัวอักษร)
+  // ช่องกรอก 1 ช่อง + ปุ่มตาด้านขวา (สไตล์เดียวกับหน้า login)
+  // visible[field] = false → type="password" (เห็นเป็นจุด), true → type="text" (เห็นตัวอักษรจริง)
   const input = (field: FieldKey, placeholder: string) => (
     <>
-      <Input
-        type="password"
-        autoComplete={field === "current" ? "current-password" : "new-password"}
-        value={values[field]}
-        onChange={(e) => change(field, e.target.value)}
-        placeholder={placeholder}
-        aria-invalid={error?.field === field || undefined}
-        className="h-10 bg-white"
-      />
+      <div className="relative">
+        <Input
+          type={visible[field] ? "text" : "password"}
+          autoComplete={field === "current" ? "current-password" : "new-password"}
+          value={values[field]}
+          onChange={(e) => change(field, e.target.value)}
+          placeholder={placeholder}
+          aria-invalid={error?.field === field || undefined}
+          className="h-10 bg-white pr-10" // pr-10 = เว้นที่ขวาให้ปุ่มตา ข้อความจะได้ไม่ทับไอคอน
+        />
+        {/* type="button" สำคัญ: ไม่งั้นถ้าอยู่ใน <form> จะกลายเป็นปุ่ม submit */}
+        <button
+          type="button"
+          onClick={() => toggleVisible(field)}
+          aria-label={visible[field] ? p.hidePassword : p.showPassword}
+          aria-pressed={visible[field]}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        >
+          {/* กำลังแสดงอยู่ → ไอคอนตาขีดฆ่า (กดเพื่อซ่อน) / กำลังซ่อน → ไอคอนตา (กดเพื่อแสดง) */}
+          {visible[field] ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
       {error?.field === field && <p className="mt-1 text-xs text-red-500">{error.message}</p>}
     </>
   );

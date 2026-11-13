@@ -11,12 +11,12 @@ export default function SuperLayout({ children }: { children: React.ReactNode })
   const user = useStore((s) => s.currentUser);
   const hydrated = useStore((s) => s.hydrated);
 
-  // พร้อมแสดง = โหลด localStorage เสร็จ + เป็น super
-  const ready = hydrated && user?.role === "super";
+  // พร้อมแสดง = โหลด localStorage เสร็จ + เป็น admin
+  const ready = hydrated && user?.role === "admin";
 
-  // guard: ไม่ใช่ super → เด้งกลับ /login
+  // guard: ไม่ใช่ admin → เด้งกลับ /login
   useEffect(() => {
-    if (hydrated && user?.role !== "super") {
+    if (hydrated && user?.role !== "admin") {
       router.replace("/login");
     }
   }, [hydrated, user, router]);

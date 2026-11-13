@@ -7,12 +7,21 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWizardStore } from "@/lib/wizard-store";
 import { formatThaiDate } from "@/lib/utils/date";
+import { useNow } from "@/lib/hooks/useNow";
+import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
+import { FieldError } from "./field-error";
+import { AllowListCard } from "./allow-list-card";
 
 export function StepSchedule() {
   const sc = useWizardStore((s) => s.draft.schedule);
   const eventDate = useWizardStore((s) => s.draft.general.date);
   const patch = useWizardStore((s) => s.patch);
+  const draft = useWizardStore((s) => s.draft);
   const set = (v: Partial<typeof sc>) => patch("schedule", v);
+  const now = useNow();
+  const { nowLocal } = nowParts(now);
+  const err = validateDates(draft, now);
+  const hasMax = (Number(sc.maxAttendees) || 0) > 0;
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -25,11 +34,18 @@ export function StepSchedule() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>เปิดรับ</Label>
-              <Input type="datetime-local" value={sc.regOpen} onChange={(e) => set({ regOpen: e.target.value })} />
+              <Input type="datetime-local" min={nowLocal} value={sc.regOpen} onChange={(e) => set({ regOpen: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>ปิดรับ</Label>
-              <Input type="datetime-local" value={sc.regClose} onChange={(e) => set({ regClose: e.target.value })} />
+              <Input
+                type="datetime-local"
+                min={sc.regOpen || nowLocal}
+                value={sc.regClose}
+                aria-invalid={!!err.regClose}
+                onChange={(e) => set({ regClose: e.target.value })}
+              />
+              <FieldError text={err.regClose} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -53,11 +69,18 @@ export function StepSchedule() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>เปิดให้ตอบ</Label>
-              <Input type="datetime-local" value={sc.surveyOpen} onChange={(e) => set({ surveyOpen: e.target.value })} />
+              <Input type="datetime-local" min={nowLocal} value={sc.surveyOpen} onChange={(e) => set({ surveyOpen: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>ปิดรับคำตอบ</Label>
-              <Input type="datetime-local" value={sc.surveyClose} onChange={(e) => set({ surveyClose: e.target.value })} />
+              <Input
+                type="datetime-local"
+                min={sc.surveyOpen || nowLocal}
+                value={sc.surveyClose}
+                aria-invalid={!!err.surveyClose}
+                onChange={(e) => set({ surveyClose: e.target.value })}
+              />
+              <FieldError text={err.surveyClose} />
             </div>
           </div>
 
@@ -81,6 +104,9 @@ export function StepSchedule() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Event ปิด: แสดงเมื่อกำหนดจำนวนรับสูงสุด */}
+      {hasMax && <AllowListCard />}
     </div>
   );
 }
