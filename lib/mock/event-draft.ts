@@ -53,15 +53,15 @@ function make(o: Opts): EventDraft {
       venue: o.venue, spot: o.spot, mapUrl: "", cover: { name: `cover-${o.code}.jpg`, sizeKB: 512 },
     },
     theme: { primary: o.primary, secondary: o.secondary, mode: "light", bgType: "color", bg: null, logo: null },
-    ad: { name: `poster-${o.code}.jpg`, sizeKB: 820, cropped: o.status !== "draft" },
+    ads: { items: [{ name: `poster-${o.code}.jpg`, sizeKB: 820, cropped: o.status !== "draft" }], seconds: 6 },
     form: { fields: formFields() },
     schedule: {
       regOpen: dt(o.regOpenOffset, "09:00"),
       regClose: `${date}T${o.start}`,
-      maxAttendees: o.max,
+      maxAttendees: "", // ไม่จำกัดจำนวนแล้ว (เดิม o.max)
       surveyOpen: `${date}T${o.end}`,
       surveyClose: dt(o.dayOffset + 3, "23:59"),
-      remindAfterEnd: true,
+      remindAfterEnd: false,
     },
     survey: { enabled: true, questions: o.questions },
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Pipette } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,49 +25,13 @@ export function StepTheme() {
   const set = (v: Partial<typeof t>) => patch("theme", v);
   const contrastOk = whiteTextContrast(t.primary) >= 4.5;
 
-  // ช่อง HEX: พิมพ์เองได้ ใช้ค่าเมื่อเป็น #RRGGBB ที่ถูกต้อง
-  // hexDraft = ข้อความที่กำลังพิมพ์ (null = แสดงสีหลักปัจจุบัน) ไม่ต้องใช้ useEffect sync
-  const [hexDraft, setHexDraft] = useState<string | null>(null);
-  const hex = hexDraft ?? t.primary;
-  const pickColor = (c: string) => {
-    setHexDraft(null);
-    set({ primary: c });
-  };
-  const onHex = (v: string) => {
-    const val = (v.startsWith("#") ? v : `#${v}`).toUpperCase();
-    setHexDraft(val);
-    if (/^#[0-9A-F]{6}$/.test(val)) set({ primary: val });
-  };
-
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <Card>
         <CardContent className="space-y-6 pt-6">
           <section className="space-y-2">
             <p className="text-sm font-semibold">สีหลัก</p>
-            <div className="flex items-center gap-2">
-              {PRIMARY.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-label={c}
-                  onClick={() => pickColor(c)}
-                  style={{ backgroundColor: c }}
-                  className={cn("flex size-8 items-center justify-center rounded-lg ring-offset-2", t.primary === c && "ring-2 ring-foreground")}
-                >
-                  {t.primary === c && <Check className="size-4 text-white" />}
-                </button>
-              ))}
-              <Input
-                value={hex}
-                onChange={(e) => onHex(e.target.value)}
-                onBlur={() => setHexDraft(null)}
-                maxLength={7}
-                aria-label="HEX"
-                aria-invalid={!/^#[0-9A-F]{6}$/i.test(hex)}
-                className="ml-2 h-8 w-28 font-mono"
-              />
-            </div>
+            <ColorField value={t.primary} presets={PRIMARY} onChange={(c) => set({ primary: c })} label="สีหลัก" />
             <p className={cn("text-xs", contrastOk ? "text-emerald-700" : "text-amber-700")}>
               {contrastOk ? "✓ ตัวหนังสือสีขาวบนสีนี้อ่านง่าย (ผ่านมาตรฐาน contrast)" : "! ตัวหนังสือสีขาวบนสีนี้อ่านยาก ลองเลือกสีเข้มขึ้น"}
             </p>
@@ -75,18 +39,7 @@ export function StepTheme() {
 
           <section className="space-y-2">
             <p className="text-sm font-semibold">สีรอง</p>
-            <div className="flex gap-2">
-              {SECONDARY.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-label={c}
-                  onClick={() => set({ secondary: c })}
-                  style={{ backgroundColor: c }}
-                  className={cn("size-8 rounded-full border ring-offset-2", t.secondary === c && "ring-2 ring-foreground")}
-                />
-              ))}
-            </div>
+            <ColorField value={t.secondary} presets={SECONDARY} onChange={(c) => set({ secondary: c })} label="สีรอง" />
           </section>
 
           <section className="space-y-2">
@@ -153,6 +106,82 @@ export function StepTheme() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ============ เลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX ============
+// เก็บเป็นข้อความ HEX "#RRGGBB" ใน theme.primary / theme.secondary
+function ColorField({
+  value,
+  presets,
+  onChange,
+  label,
+}: {
+  value: string;
+  presets: readonly string[];
+  onChange: (hex: string) => void;
+  label: string;
+}) {
+  // hexDraft = ข้อความที่กำลังพิมพ์ (null = แสดงค่าปัจจุบัน) · ใช้ค่าเมื่อเป็น #RRGGBB ที่ถูกต้องเท่านั้น
+  const [hexDraft, setHexDraft] = useState<string | null>(null);
+  const hex = hexDraft ?? value;
+  const pick = (c: string) => {
+    setHexDraft(null);
+    onChange(c.toUpperCase());
+  };
+  const onHex = (v: string) => {
+    const val = (v.startsWith("#") ? v : `#${v}`).toUpperCase();
+    setHexDraft(val);
+    if (/^#[0-9A-F]{6}$/.test(val)) onChange(val);
+  };
+  const custom = !presets.some((c) => c.toUpperCase() === value.toUpperCase());
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {presets.map((c) => {
+        const on = c.toUpperCase() === value.toUpperCase();
+        return (
+          <button
+            key={c}
+            type="button"
+            aria-label={`${label} ${c}`}
+            aria-pressed={on}
+            onClick={() => pick(c)}
+            style={{ backgroundColor: c }}
+            className={cn("flex size-8 items-center justify-center rounded-lg border ring-offset-2", on && "ring-2 ring-foreground")}
+          >
+            {on && <Check className={cn("size-4", whiteTextContrast(c) >= 3 ? "text-white" : "text-slate-900")} />}
+          </button>
+        );
+      })}
+      {/* ตัวเลือกสีของเบราว์เซอร์ — กดแล้วเปิดถาดสีเต็ม */}
+      <label
+        title="เลือกสีเอง"
+        className={cn(
+          "relative flex size-8 cursor-pointer items-center justify-center rounded-lg border ring-offset-2",
+          custom && "ring-2 ring-foreground"
+        )}
+        style={{ background: custom ? value : "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }}
+      >
+        <Pipette className={cn("size-4", custom ? (whiteTextContrast(value) >= 3 ? "text-white" : "text-slate-900") : "text-white")} />
+        <input
+          type="color"
+          value={/^#[0-9A-F]{6}$/i.test(value) ? value : "#000000"}
+          onChange={(e) => pick(e.target.value)}
+          aria-label={`${label} เลือกสีเอง`}
+          className="absolute inset-0 cursor-pointer opacity-0"
+        />
+      </label>
+      <Input
+        value={hex}
+        onChange={(e) => onHex(e.target.value)}
+        onBlur={() => setHexDraft(null)}
+        maxLength={7}
+        aria-label={`${label} HEX`}
+        aria-invalid={!/^#[0-9A-F]{6}$/i.test(hex)}
+        className="ml-1 h-8 w-28 font-mono"
+      />
     </div>
   );
 }

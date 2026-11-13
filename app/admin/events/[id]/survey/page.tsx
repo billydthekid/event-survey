@@ -17,15 +17,9 @@ import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { formatThaiDate, isEventLocked } from "@/lib/utils/date";
 import { newId } from "@/lib/utils/id";
 import { cn } from "@/lib/utils";
-import type { EventType, SurveyQType, SurveyQuestion } from "@/types/event";
+import type { SurveyQType, SurveyQuestion } from "@/types/event";
+import { eventTypeLabel } from "@/lib/event-types";
 
-const TYPE_NAME: Record<EventType, string> = {
-  seminar: "สัมมนา",
-  workshop: "Workshop",
-  training: "อบรม",
-  jobfair: "Job Fair",
-  openhouse: "Open House",
-};
 
 const defaultOptions = (type: SurveyQType) => (qtype(type).hasOptions ? ["ตัวเลือก 1", "ตัวเลือก 2"] : []);
 
@@ -81,7 +75,7 @@ export default function SurveyBuilderPage() {
     update(q.id, { type, options: qtype(type).hasOptions && q.options.length < 2 ? defaultOptions(type) : q.options });
 
   const minutes = Math.max(1, Math.round(qs.length * 0.7));
-  const surveyTitle = `แบบประเมินงาน ${TYPE_NAME[d.general.type]}`;
+  const surveyTitle = `แบบประเมินงาน ${eventTypeLabel(d.general.type, d.general.typeOther)}`;
   const field = editLang === "th" ? "titleTh" : "titleEn";
 
   return (

@@ -1,5 +1,5 @@
 "use client";
-// การ์ด "Event ปิด" ในขั้นที่ 5 (แสดงเมื่อกำหนดจำนวนรับสูงสุด)
+// การ์ด "ผู้ที่ลงทะเบียนได้" ในขั้นที่ 1: Event เปิด (ทุกคน ไม่จำกัดจำนวน) / Event ปิด (เฉพาะรายชื่อที่ import)
 // เปิดสวิตช์ → เลือกตรวจด้วยอีเมลหรือเบอร์มือถือ → import ไฟล์ CSV / Excel → หน้า /r/<code> รับเฉพาะคนในรายชื่อ
 
 import { useRef, useState } from "react";
@@ -7,7 +7,6 @@ import { Download, FileSpreadsheet, Trash2, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
 import { ALLOW_KIND_LABEL, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
@@ -25,7 +24,6 @@ export function AllowListCard() {
   const [busy, setBusy] = useState(false);
 
   const list: AllowList = draft.allowList ?? { closed: false, kind: "email", values: [], fileName: "", importedAt: "" };
-  const max = Number(draft.schedule.maxAttendees) || 0;
   const label = ALLOW_KIND_LABEL[list.kind];
   const problem = allowListProblem(draft);
   const set = (v: Partial<AllowList>) => patch("allowList", { ...list, ...v });
@@ -72,14 +70,26 @@ export function AllowListCard() {
   };
 
   return (
-    <Card className="lg:col-span-2">
+    <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-base">Event ปิด (เฉพาะรายชื่อ)</CardTitle>
-            <CardDescription>รับลงทะเบียนเฉพาะคนที่มี{label}อยู่ในไฟล์ที่ import · จำนวนรับสูงสุด {max} คน</CardDescription>
+            <CardTitle className="text-base">ผู้ที่ลงทะเบียนได้</CardTitle>
+            <CardDescription>
+              {list.closed
+                ? `Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`
+                : "Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน"}
+            </CardDescription>
           </div>
-          <Switch checked={list.closed} onCheckedChange={(v) => set({ closed: v })} aria-label="เปิดโหมด Event ปิด" />
+          <ToggleGroup
+            value={[list.closed ? "closed" : "open"]}
+            onValueChange={(v) => v[0] && set({ closed: v[0] === "closed" })}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="open">เปิด (ทุกคน)</ToggleGroupItem>
+            <ToggleGroupItem value="closed">ปิด (เฉพาะรายชื่อ)</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </CardHeader>
 

@@ -3,6 +3,36 @@
 import { ChevronDown, Star } from "lucide-react";
 import type { SurveyQuestion } from "@/types/event";
 
+/** คะแนนเต็ม / รูปแบบของคำถาม rating (ไม่ได้ตั้ง = 1–5 แบบตัวเลข เหมือนหน้า /s จริง) */
+export const ratingOf = (q: SurveyQuestion) => ({ max: q.ratingMax ?? 5, style: q.ratingStyle ?? "number" });
+
+/** ตัวอย่างช่องให้คะแนน — ใช้ทั้งใน Preview มือถือ และการ์ดคำถามใน Survey Builder (หน้าตาเดียวกับหน้า /s) */
+export function RatingSample({ q, primary, size = "md" }: { q: SurveyQuestion; primary: string; size?: "sm" | "md" }) {
+  const { max, style } = ratingOf(q);
+  const nums = Array.from({ length: max }, (_, i) => i + 1);
+  if (style === "star") {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {nums.map((n) => (
+          <Star key={n} className={size === "sm" ? "size-5" : "size-7"} style={{ color: primary }} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid max-w-md grid-cols-5 gap-1.5">
+      {nums.map((n) => (
+        <span
+          key={n}
+          className={`flex items-center justify-center rounded-lg border font-semibold ${size === "sm" ? "h-8 text-xs" : "h-10 text-sm"}`}
+        >
+          {n}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** แสดงตัวอย่างฟอร์ม Survey แบบที่ผู้เข้าร่วมเห็นบนมือถือ */
 export function SurveyPreview({
   questions,
@@ -45,13 +75,7 @@ export function SurveyPreview({
                 ))}
               </ul>
             )}
-            {q.type === "rating" && (
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star key={n} className="size-6" style={{ color: primary }} />
-                ))}
-              </div>
-            )}
+            {q.type === "rating" && <RatingSample q={q} primary={primary} size="sm" />}
           </div>
         ))}
       </div>

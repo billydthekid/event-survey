@@ -38,12 +38,9 @@ export function isAllowed(list: AllowList | undefined, raw: string): boolean {
 /** ปัญหาของ Event ปิดที่ต้องแก้ก่อนเผยแพร่ (ไม่มีปัญหา = undefined) */
 export function allowListProblem(d: EventDraft): string | undefined {
   const list = d.allowList;
-  const max = Number(d.schedule.maxAttendees) || 0;
-  // โหมด Event ปิดใช้ได้เมื่อกำหนดจำนวนรับเท่านั้น (ไม่กำหนด = การ์ดถูกซ่อน และหน้า /r ไม่ตรวจรายชื่อ)
-  if (!list?.closed || max === 0) return undefined;
+  if (!list?.closed) return undefined;
   const label = ALLOW_KIND_LABEL[list.kind];
-  if (list.values.length === 0) return `Event ปิด: ยังไม่ได้ import รายชื่อ`;
-  if (list.values.length > max) return `Event ปิด: รายชื่อ (${list.values.length}) เกินจำนวนรับ (${max})`;
+  if (list.values.length === 0) return `Event ปิด: ยังไม่ได้ import รายชื่อ (ขั้นที่ 1)`;
   // ฟอร์มว่าง = หน้า /r ใช้ฟอร์มตั้งต้น (ชื่อ + อีเมล) ดู DEFAULT_FIELDS ใน lib/public-event.ts
   const keys = d.form.fields.length > 0 ? d.form.fields.map((f) => f.basicKey) : ["name", "email"];
   if (!keys.includes(list.kind)) return `Event ปิด: ฟอร์มลงทะเบียน (ขั้นที่ 4) ต้องมีช่อง${label}`;

@@ -2,7 +2,7 @@
 // ช่องกรอกของหน้าผู้เข้าร่วม (ลงทะเบียน + แบบประเมิน) — สไตล์ตาม Figma A5/A2/B1
 // ทุกช่องรับ pal (สีตาม Theme) และ error (ข้อความผิดพลาด → กรอบแดง + ข้อความใต้ช่อง)
 "use client";
-import { Check, ChevronDown, CircleAlert } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Star } from "lucide-react";
 import type { Palette } from "./public-ui";
 
 const ERROR = "#EF4444";
@@ -236,7 +236,7 @@ export function ChoiceList({
   );
 }
 
-// ============ ให้คะแนน 1–5 — ตาม Figma B1 ============
+// ============ ให้คะแนน 1–5 หรือ 1–10 แบบตัวเลข หรือ ดาว (ตั้งใน Survey Builder) — ตาม Figma B1 ============
 export function RatingScale({
   pal,
   error,
@@ -245,6 +245,8 @@ export function RatingScale({
   minLabel,
   maxLabel,
   label,
+  max = 5,
+  variant = "number",
 }: {
   pal: Palette;
   error?: string;
@@ -253,11 +255,45 @@ export function RatingScale({
   minLabel: string;
   maxLabel: string;
   label: string;
+  max?: 5 | 10;
+  variant?: "number" | "star";
 }) {
+  const nums = Array.from({ length: max }, (_, i) => i + 1);
+
+  if (variant === "star") {
+    return (
+      <div>
+        <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1">
+          {nums.map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={value === n}
+              aria-label={String(n)}
+              onClick={() => onChange(n)}
+              className="rounded-lg p-1"
+            >
+              <Star
+                className={max === 10 ? "size-7" : "size-9"}
+                style={{ color: error ? ERROR : pal.primary }}
+                fill={value !== undefined && n <= value ? pal.primary : "none"}
+              />
+            </button>
+          ))}
+        </div>
+        <div className="mt-1.5 flex justify-between text-xs" style={{ color: pal.muted }}>
+          <span>{minLabel}</span>
+          <span>{value ? `${value} / ${max}` : maxLabel}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div role="radiogroup" aria-label={label} className="grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((n) => {
+        {nums.map((n) => {
           const on = value === n;
           return (
             <button

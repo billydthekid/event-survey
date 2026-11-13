@@ -22,12 +22,19 @@ export function StepSurvey() {
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">
-        {qs.map((q, i) => (
-          <div key={q.id} className="rounded-lg border px-4 py-3 text-sm">
-            <span className="font-semibold text-primary">{i + 1}</span> · {q.titleTh} ·{" "}
-            <span className="text-muted-foreground">{qtype(q.type).th}</span>
-          </div>
-        ))}
+        {qs.map((q, i) => {
+          const Icon = qtype(q.type).icon;
+          return (
+            <div key={q.id} className="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm">
+              <span className="font-semibold text-primary">{i + 1}</span>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Icon className="size-4" />
+              </span>
+              <span className="flex-1">{q.titleTh || "(ยังไม่ตั้งชื่อคำถาม)"}</span>
+              <span className="text-muted-foreground">{qtype(q.type).th}</span>
+            </div>
+          );
+        })}
         {/* TODO: สร้างหน้า Survey builder ที่ /admin/events/[id]/survey */}
         <Button
           variant="secondary"
