@@ -11,7 +11,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  List, LayoutGrid, CalendarDays, ClipboardList, BarChart3, Smartphone,
+  List, LayoutGrid, CalendarDays, ClipboardList, BarChart3,
   SlidersHorizontal, LogOut, Ticket, ChevronsUpDown, Check, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -30,7 +30,6 @@ const TEXT = {
     info: "ข้อมูล Event",
     survey: "Survey",
     report: "Report",
-    kiosk: "หน้า Kiosk",
     settings: "Settings",
     logout: "Logout",
     locked: "ล็อกแล้ว",
@@ -45,7 +44,6 @@ const TEXT = {
     info: "Event info",
     survey: "Survey",
     report: "Report",
-    kiosk: "Kiosk",
     settings: "Settings",
     logout: "Logout",
     locked: "Locked",
@@ -200,7 +198,7 @@ export function EventSidebar() {
   // ----- เมนูของ Event ที่เลือก -----
   // section = ส่วนหลัง id ใน URL ("" = หน้า Dashboard ของ Event)
   // active ต้องเป็น Event เดียวกับใน URL ด้วย เช่น /report/* ทุกแท็บ → Report
-  // (หน้า /qr ไม่มีเมนูในต้นแบบ → ไม่มีเมนูไหน active)
+  // (หน้า /qr และ /kiosk ไม่มีเมนูใน Sidebar → ไม่มีเมนูไหน active; เข้า Kiosk ผ่านการ์ดบน Dashboard)
   const base = selected ? `/admin/events/${selected.id}` : null;
   const inSelected = urlEvent !== null; // อยู่ในหน้าของ Event ที่เลือก
   // ล็อกเมนู Wizard เมื่อ Event ที่เลือกเริ่มแล้ว
@@ -221,9 +219,7 @@ export function EventSidebar() {
     eventItem("dashboard", t.dashboard, LayoutGrid, "", ""),
     eventItem("edit", t.info, CalendarDays, "/edit", "edit"),
     eventItem("survey", t.survey, ClipboardList, "/survey", "survey"),
-    eventItem("report", t.report, BarChart3, "/report", "report"),
-    eventItem("kiosk", t.kiosk, Smartphone, "/kiosk", "kiosk"),
-  ];
+    eventItem("report", t.report, BarChart3, "/report", "report"),  ];
 
   return (
     // sticky top-0: หน้ายาวแล้วเลื่อน → Sidebar ติดจอไว้ (ตัวที่เลื่อนยังเป็นทั้งหน้าเหมือนเดิม)
