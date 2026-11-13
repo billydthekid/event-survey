@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useEventAccess } from "@/app/admin/events/[id]/eventAccess";
-import { isWizardLocked, toEventPatch, validateDates } from "@/lib/utils/wizard-rules";
+import { isWizardLocked, missingGeneral, toEventPatch, validateDates } from "@/lib/utils/wizard-rules";
+import { QrDialog } from "@/components/event/qr-dialog";
 import { allowListProblem } from "@/lib/allow-list";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
@@ -64,21 +65,26 @@ export default function EditEventPage() {
   }, [current, locked, id, updateEvent]);
 
   const now = useNow();
+  const [qrOpen, setQrOpen] = useState(false); // popup QR หลังกดเผยแพร่
 
   if (access.status === "loading") return null;
   if (access.status === "denied") return <NoAccess />;
   if (!drafts[id] || !current || !mainEvent) return null;
 
   const dateErrors = validateDates(current, now);
+  const missing = missingGeneral(current);
   // เหตุผลที่ยังเผยแพร่ไม่ได้ (เรียงตามความสำคัญ · ไม่มี = เผยแพร่ได้)
   const publishBlock =
-    Object.keys(dateErrors).length > 0
-      ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 5)"
-      : current.survey.questions.length === 0
-        ? "ต้องมีคำถาม Survey อย่างน้อย 1 ข้อ (ขั้นที่ 6)" // Survey บังคับมีทุก Event
-        : allowListProblem(current);
+    missing.length > 0
+      ? `กรอกช่องบังคับ (*) ให้ครบก่อน: ${missing.join(", ")} (ขั้นที่ 1)`
+      : Object.keys(dateErrors).length > 0
+        ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 5)"
+        : current.survey.questions.length === 0
+          ? "ต้องมีคำถาม Survey อย่างน้อย 1 ข้อ (ขั้นที่ 6)" // Survey บังคับมีทุก Event
+          : allowListProblem(current);
 
   return (
+    <>
     <WizardShell
       eventName={current.general.nameTh}
       assignedBy={current.assignedBy}
@@ -95,7 +101,7 @@ export default function EditEventPage() {
         // เผยแพร่ = Active ทันที (Draft → เผยแพร่ → Active → Ended) และล็อก Wizard ต่อจากนี้
         updateEvent(id, { ...toEventPatch(current), status: "active" });
         addLog("publish_event", "event", id, `เผยแพร่ "${current.general.nameTh}"`);
-        router.push("/admin/events");
+        setQrOpen(true); // popup QR ลงทะเบียน + Survey · ปิดแล้วไปหน้า Event ของฉัน
       }}
     >
       {step === 1 && <StepGeneral />}
@@ -106,6 +112,21 @@ export default function EditEventPage() {
       {step === 6 && <StepSurvey />}
       {step === 7 && <StepPreview />}
     </WizardShell>
+
+    {/* อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
+    <QrDialog
+      open={qrOpen}
+      onOpenChange={(v) => {
+        setQrOpen(v);
+        if (!v) router.push("/admin/events");
+      }}
+      justPublished
+      eventName={current.general.nameTh}
+      code={current.code}
+      reg={{ opensAt: current.schedule.regOpen, closesAt: current.schedule.regClose }}
+      survey={{ opensAt: current.schedule.surveyOpen, closesAt: current.schedule.surveyClose }}
+    />
+    </>
   );
 }
 
