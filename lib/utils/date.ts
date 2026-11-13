@@ -97,3 +97,22 @@ export function countdown(
   }
   return { label: "เหลือเวลา", value: "จบงานแล้ว" };
 }
+
+// ---------- หน้า Event (ข้อมูล + QR) ----------
+
+// วันเวลาที่ไม่มี timezone (เช่น "2026-10-10T09:00" จาก Wizard) → ถือเป็นเวลาไทย
+function toDateTime(value: string): Date {
+  return new Date(value.length === 16 ? `${value}:00+07:00` : value);
+}
+
+// "2026-10-10T09:00" → "10 ต.ค. 09:00"
+export function formatShortDateTime(value: string): string {
+  const d = toDateTime(value);
+  return `${dayFmt.format(d)} ${monthFmt.format(d)} ${timeFmt.format(d)}`;
+}
+
+// ช่วงเปิด-ปิด → "10 ต.ค. 09:00 – 17 ต.ค. 15:00" · ค่าว่าง → "ยังไม่กำหนด"
+export function formatWindow(opensAt: string, closesAt: string): string {
+  if (!opensAt || !closesAt) return "ยังไม่กำหนด";
+  return `${formatShortDateTime(opensAt)} – ${formatShortDateTime(closesAt)}`;
+}
