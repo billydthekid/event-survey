@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useHydrated } from "@/lib/use-hydrated";
-import { formatThaiDate, isEventLocked } from "@/lib/utils/date";
+import { formatThaiDate } from "@/lib/utils/date";
+import { isWizardLocked } from "@/lib/utils/wizard-rules";
 import type { EventDraft } from "@/types/event";
 import { useEventAccess } from "../eventAccess";
 
@@ -26,18 +27,16 @@ export function useSurveyDraft(id: string) {
   if (access.status === "denied") return { state: "denied" as const };
   if (!draft) return { state: "loading" as const }; // รอ ensureFromMainStore ทำงานรอบถัดไป
 
-  // ล็อกเมื่อ Event เริ่มแล้ว (เฉพาะที่เผยแพร่แล้ว)
-  const locked = draft.status !== "draft" && isEventLocked(draft.general.date, draft.general.startTime);
+  // ล็อกตามสถานะใน store หลัก (Active / Ended) — กติกาเดียวกับ Wizard และ EventSidebar
+  const locked = isWizardLocked(access.event.status);
   return { state: "ready" as const, draft, locked, access };
 }
 
 /** ข้อความในแบนเนอร์สีเหลืองบนหน้า Survey */
 export function lockBannerText(d: EventDraft, locked: boolean) {
-  if (locked) return "Event เริ่มแล้ว · Survey ถูกล็อก ดูผลและ Export ได้อย่างเดียว";
-  if (d.general.date && d.general.startTime) {
-    return `แก้ไขได้ถึง ${formatThaiDate(d.general.date, false)} ${d.general.startTime} · เมื่อ Event เริ่ม Survey จะถูกล็อกพร้อม Event`;
-  }
-  return "แก้ไขได้จนกว่า Event จะเริ่ม · เมื่อ Event เริ่ม Survey จะถูกล็อกพร้อม Event";
+  if (locked) return "Event เผยแพร่แล้ว (Active / Ended) · Survey ถูกล็อก ดูผลและ Export ได้อย่างเดียว";
+  const day = d.general.date ? ` · วันงาน ${formatThaiDate(d.general.date, false)} ${d.general.startTime}` : "";
+  return `แก้ไขได้จนกว่าจะกดเผยแพร่ Event${day} · เมื่อเผยแพร่แล้ว Survey จะถูกล็อกพร้อม Event`;
 }
 
 export function SurveyDenied() {

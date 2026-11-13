@@ -1,13 +1,16 @@
 // components/layout/Sidebar.tsx
 "use client";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, BarChart3,
-  History, Users, Trash2, Settings, LogOut, Plus, Ticket,
+  History, Users, Trash2, Settings, LogOut, Plus,
   type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { EventSwitcher } from "@/components/layout/EventPicker";
+import CreateEventModal from "@/components/events/CreateEventModal";
 
 type Menu = { href: string; label: string; icon: LucideIcon };
 
@@ -18,13 +21,22 @@ const MAIN_MENU: Menu[] = [
   { href: "/super/report", label: "Report", icon: BarChart3 },
 ];
 
+// เมนูหลักตอนเลือก Event เจาะจง — ลิงก์ไปหน้าของ Event นั้น /super/events/[id]/...
+function eventMenu(id: string): Menu[] {
+  return [
+    { href: `/super/events/${id}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
+    { href: `/super/events/${id}/event`, label: "Event", icon: CalendarDays },
+    { href: `/super/events/${id}/survey`, label: "Survey", icon: ClipboardList },
+    { href: `/super/events/${id}/report`, label: "Report", icon: BarChart3 },
+  ];
+}
+
 const ADMIN_MENU: Menu[] = [
   { href: "/super/action-log", label: "Action log", icon: History },
   { href: "/super/users", label: "จัดการผู้ใช้", icon: Users },
   { href: "/super/deleted", label: "รายการที่ถูกลบ", icon: Trash2 },
 ];
 
-//  อยู่นอก Sidebar แล้ว — รับ pathname เป็น prop
 function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   const Icon = menu.icon;
   const active = pathname === menu.href;
@@ -41,10 +53,24 @@ function MenuItem({ menu, pathname }: { menu: Menu; pathname: string }) {
   );
 }
 
+// ครอบ <Suspense>: โปรเจกต์เปิด cacheComponents → usePathname / useParams ต้องรอ URL
 export function Sidebar() {
+  return (
+    <Suspense fallback={<aside className="h-screen w-60 border-r border-slate-200 bg-[#F4F2F7]" />}>
+      <SidebarContent />
+    </Suspense>
+  );
+}
+
+function SidebarContent() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useStore((s) => s.logout);
+  const [showCreate, setShowCreate] = useState(false);
+
+  // อยู่ใต้ /super/events/[id]/... → มี id = กำลังดู Event นั้น
+  const { id: eventId } = useParams<{ id?: string }>();
+  const mainMenu = eventId ? eventMenu(eventId) : MAIN_MENU;
 
   const handleLogout = () => {
     logout();
@@ -55,25 +81,26 @@ export function Sidebar() {
     <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-[#F4F2F7] p-4">
       {/* โลโก้ */}
       <div className="mb-4 flex items-center gap-2 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <Ticket size={18} />
-        </div>
+        <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
         <span className="font-bold">
           Event<span className="text-blue-600">Survey</span>
         </span>
       </div>
 
-      {/* ปุ่มสร้าง Event */}
-      <Link
-        href="/super/users"
+      {/* ช่องเลือก Event (กดแล้วเปิด popup) */}
+      <EventSwitcher eventId={eventId} />
+
+      {/* ปุ่มสร้าง Event — เปิด modal ตรงนี้ ไม่ลิงก์ไปหน้าอื่น */}
+      <button
+        onClick={() => setShowCreate(true)}
         className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700"
       >
         <Plus size={16} /> สร้าง Event
-      </Link>
+      </button>
 
       {/* เมนูหลัก */}
       <nav className="flex flex-col gap-1">
-        {MAIN_MENU.map((m) => <MenuItem key={m.href} menu={m} pathname={pathname} />)}
+        {mainMenu.map((m) => <MenuItem key={m.href} menu={m} pathname={pathname} />)}
       </nav>
 
       {/* เมนู Admin */}
@@ -95,6 +122,9 @@ export function Sidebar() {
           <LogOut size={18} /> Logout
         </button>
       </div>
+
+      {/* Modal สร้าง Event */}
+      {showCreate && <CreateEventModal onClose={() => setShowCreate(false)} />}
     </aside>
   );
 }

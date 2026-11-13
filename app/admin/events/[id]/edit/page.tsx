@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { useNow } from "@/lib/hooks/useNow";
 import { useWizardStore } from "@/lib/wizard-store";
-import { isEventLocked } from "@/lib/utils/date";
+import { useEventAccess } from "@/app/admin/events/[id]/eventAccess";
+import { isWizardLocked, toEventPatch, validateDates } from "@/lib/utils/wizard-rules";
+import { allowListProblem } from "@/lib/allow-list";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
+import { STATUS_LABEL } from "@/lib/utils/status";
 import { WizardShell } from "@/components/event-wizard/wizard-shell";
 import { StepGeneral } from "@/components/event-wizard/step-general";
 import { StepTheme } from "@/components/event-wizard/step-theme";
@@ -29,43 +34,64 @@ export default function EditEventPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
 
-  // ---- ด่าน 1: รอ store หลัก hydrate แล้วหา event ที่ Super สร้างให้ ----
-  const mainHydrated = useStore((s) => s.hydrated);
-  const mainEvent = useStore((s) => s.events.find((e) => e.id === id));
+  // ---- ด่านสิทธิ์: กฎเดียวกับ Dashboard / Report / QR / Kiosk (ไม่พบ / ถูกลบ / ไม่ได้รับมอบหมาย → denied) ----
+  const access = useEventAccess(id);
+  const mainEvent = access.status === "nodata" || access.status === "ok" ? access.event : null;
+  const updateEvent = useStore((s) => s.updateEvent);
+  const addLog = useStore((s) => s.addLog);
 
-  // ---- ด่าน 2: wizard store ----
+  // ---- wizard store ----
   const { draft, drafts, step, setStep, publish, load, ensureFromMainStore } = useWizardStore();
 
-  // รอ localStorage hydrate ก่อน กัน hydration mismatch
-  const [ready, setReady] = useState(false);
+  // ดึง Event จาก store หลักเข้า wizard store (ครั้งแรกที่เปิด) แล้วเลือกเป็น draft ที่กำลังแก้
+  // deps ใช้แค่ id + "มีสิทธิ์แล้วหรือยัง" — ไม่ใช้ object ของ Event เพราะ sync ด้านล่างทำให้ object เปลี่ยนทุกครั้งที่พิมพ์
+  const allowed = mainEvent !== null;
+  // (พร้อมแสดง = draft ที่เลือกเป็น id นี้แล้ว — ดูด้านล่าง ไม่ต้องมี state แยก)
   useEffect(() => {
-    // ถ้า store หลักมี event นี้ (เช่น Super สร้าง Draft ให้) → ย้ายเข้า wizard store ก่อน
-    if (mainEvent) ensureFromMainStore(mainEvent);
+    if (!allowed) return;
+    const ev = useStore.getState().events.find((e) => e.id === id);
+    if (ev) ensureFromMainStore(ev);
     load(id);
-    setReady(true);
-  }, [id, mainEvent, load, ensureFromMainStore]);
+  }, [id, allowed, load, ensureFromMainStore]);
 
-  if (!ready || !mainHydrated) return null;
-  if (!drafts[id]) return <p className="p-8">ไม่พบ Event นี้ (หรือไม่ได้รับมอบหมาย)</p>;
-  if (draft.id !== id) return null;
+  const locked = mainEvent ? isWizardLocked(mainEvent.status) : true;
+  const current = draft.id === id ? draft : null;
 
-  // ล็อกเมื่อ Event เริ่มแล้ว (เฉพาะที่เผยแพร่แล้ว)
-  const locked = draft.status !== "draft" && isEventLocked(draft.general.date, draft.general.startTime);
+  // ---- sync การแก้ใน Wizard → store หลัก (My Events / Sidebar / Dashboard เห็นค่าล่าสุด) ----
+  useEffect(() => {
+    if (!current || locked) return;
+    updateEvent(id, toEventPatch(current));
+  }, [current, locked, id, updateEvent]);
+
+  const now = useNow();
+
+  if (access.status === "loading") return null;
+  if (access.status === "denied") return <NoAccess />;
+  if (!drafts[id] || !current || !mainEvent) return null;
+
+  const dateErrors = validateDates(current, now);
+  const publishBlock =
+    Object.keys(dateErrors).length > 0 ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 5)" : allowListProblem(current);
 
   return (
     <WizardShell
-      eventName={draft.general.nameTh}
-      assignedBy={draft.assignedBy}
-      status={PHASE_META[getPhase(draft)].th}
+      eventName={current.general.nameTh}
+      assignedBy={current.assignedBy}
+      status={locked ? STATUS_LABEL[mainEvent.status].text : PHASE_META[getPhase(current)].th}
       step={step}
       onStep={setStep}
       title={META[step].title}
       subtitle={META[step].subtitle}
-      lockDate={draft.general.date}
-      lockTime={draft.general.startTime}
+      lockDate={current.general.date}
+      lockTime={current.general.startTime}
       locked={locked}
+      publishBlock={publishBlock}
       onPublish={() => {
+        if (publishBlock) return;
         publish();
+        // เผยแพร่ = Active ทันที (Draft → เผยแพร่ → Active → Ended) และล็อก Wizard ต่อจากนี้
+        updateEvent(id, { ...toEventPatch(current), status: "active" });
+        addLog("publish_event", "event", id, `เผยแพร่ "${current.general.nameTh}"`);
         router.push("/admin/events");
       }}
     >
@@ -77,5 +103,16 @@ export default function EditEventPage() {
       {step === 6 && <StepSurvey />}
       {step === 7 && <StepPreview />}
     </WizardShell>
+  );
+}
+
+function NoAccess() {
+  return (
+    <div className="p-8">
+      <p className="font-semibold">ไม่พบ Event นี้ หรือคุณไม่ได้รับมอบหมายให้ดูแล</p>
+      <Link href="/admin/events" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
+        กลับไป Event ของฉัน
+      </Link>
+    </div>
   );
 }
