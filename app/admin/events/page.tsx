@@ -211,9 +211,8 @@ function Stat({ value, label }: { value: number | undefined; label: string }) {
 
 // ============ ปุ่มเดียวต่อการ์ด ============
 // Active / Ended → "เปิด Dashboard" ไปหน้า Dashboard ของ Event
-// Draft (รวม scheduled) → "ตั้งค่าต่อ" กดไม่ได้ + ป้าย "เร็วๆ นี้"
-//   (หน้าแก้ไข /edit ยังไม่มีและเป็นของเพื่อน — ไม่ทำเป็นลิงก์ จึงไม่มีทางไป 404
-//    เมื่อหน้า edit เสร็จ ให้เปลี่ยนส่วนนี้เป็นลิงก์ไป `${base}/edit`)
+// Draft (รวม scheduled) → "ตั้งค่าต่อ" ลิงก์ไปหน้า Wizard /admin/events/<id>/edit (ของเพื่อน)
+//   (แสดงเฉพาะก่อน Active ตามกติกา: Event Admin แก้ได้เฉพาะก่อน Active — ตรงกับเมนูใน EventSidebar)
 function EventAction({ event, view, t }: { event: Event; view: ViewStatus; t: Text }) {
   if (view === "draft") {
     // ไปหน้า Wizard 7 ขั้นของเพื่อน (feature/create-event)

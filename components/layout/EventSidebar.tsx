@@ -3,7 +3,8 @@
 // โครงตามต้นแบบ (dashboard.png / myevent.png):
 //   โลโก้ (กดแล้วไป Event ของฉัน), Event ของฉัน (เมนูหลักเดียว) →"Event ที่เลือก" + ตัวสลับ → เมนูของ Event → Settings, Logout
 // - Event ที่เลือก: id ใน URL ชนะเสมอ / หน้าที่ไม่มี id ใช้ Event ล่าสุดที่จำไว้ (localStorage) / ไม่มี → เลือกตามกติกา
-// - เมนูที่ยังไม่มีหน้า: สีเทา + ป้าย "เร็วๆ นี้" กดไม่ได้ (กัน 404)
+// - เมนู "ข้อมูล Event" / "Survey" ไปหน้า Wizard ของเพื่อน (/edit, /survey) เฉพาะ Event ที่ยังแก้ได้ (Draft / Scheduled)
+//   Event ที่ Active / Ended → สีเทา + ป้าย "ล็อกแล้ว" กดไม่ได้ (กติกา: Event Admin แก้ได้เฉพาะก่อน Active)
 // - usePathname() ทำงานได้เพราะ admin layout ครอบคอมโพเนนต์นี้ด้วย <Suspense> แล้ว
 "use client";
 import { useEffect, useSyncExternalStore } from "react";
@@ -32,7 +33,7 @@ const TEXT = {
     kiosk: "หน้า Kiosk",
     settings: "Settings",
     logout: "Logout",
-    soon: "เร็วๆ นี้",
+    locked: "ล็อกแล้ว",
     notFound: "ไม่พบ Event",
     noEvents: "ยังไม่มี Event ที่ได้รับมอบหมาย",
     switchEvent: "เปลี่ยน Event",
@@ -47,7 +48,7 @@ const TEXT = {
     kiosk: "Kiosk",
     settings: "Settings",
     logout: "Logout",
-    soon: "Soon",
+    locked: "Locked",
     notFound: "Event not found",
     noEvents: "No assigned events yet",
     switchEvent: "Switch event",
@@ -120,13 +121,16 @@ type Menu = {
   key: string;
   label: string;
   icon: LucideIcon;
-  href: string | null; // null = ยังไม่มีหน้า หรือยังไม่มี Event ที่เลือก → กดไม่ได้
+  href: string | null; // null = ยังไม่มี Event ที่เลือก หรือ Event ล็อกแล้ว → กดไม่ได้
   active: boolean;
-  soon?: boolean;      // แสดงป้าย "เร็วๆ นี้"
+  locked?: boolean;    // แสดงป้าย "ล็อกแล้ว"
 };
 
-// เมนูของ Event ที่ยังไม่มีหน้า (เมื่อทำหน้าเสร็จ ลบ key ออกจากรายการนี้)
-const NOT_BUILT = new Set(["edit", "survey"]);
+// เมนูที่ไปหน้า Wizard (แก้ข้อมูล Event) — เปิดได้เฉพาะ Event ที่ยังแก้ได้
+const WIZARD_KEYS = new Set(["edit", "survey"]);
+// สถานะที่ Event Admin ยังแก้ได้ (ก่อน Active) — ตัดสินจากสถานะใน store หลักอย่างเดียว
+// (Wizard ล็อกตามวันเวลาเริ่มงานอีกชั้นหนึ่ง เช่น Scheduled ที่วันผ่านไปแล้ว → เข้าได้แต่ Wizard ล็อกเอง)
+const EDITABLE: Event["status"][] = ["draft", "scheduled"];
 
 export function EventSidebar() {
   const pathname = usePathname(); // เช่น "/admin/events/e-workshop/report/survey"
@@ -199,14 +203,20 @@ export function EventSidebar() {
   // (หน้า /qr ไม่มีเมนูในต้นแบบ → ไม่มีเมนูไหน active)
   const base = selected ? `/admin/events/${selected.id}` : null;
   const inSelected = urlEvent !== null; // อยู่ในหน้าของ Event ที่เลือก
-  const eventItem = (key: string, label: string, icon: LucideIcon, path: string, sectionName: string): Menu => ({
-    key,
-    label,
-    icon,
-    href: base && !NOT_BUILT.has(key) ? base + path : null,
-    active: inSelected && section === sectionName,
-    soon: NOT_BUILT.has(key),
-  });
+  // ล็อกเมนู Wizard เมื่อ Event ที่เลือกเริ่มแล้ว
+  // ตัวอย่าง: e-workshop (active) → ล็อก | e-career (scheduled) → เปิดได้ | ยังไม่มี Event ที่เลือก → ไม่ล็อก (แค่กดไม่ได้)
+  const wizardLocked = selected !== null && !EDITABLE.includes(selected.status);
+  const eventItem = (key: string, label: string, icon: LucideIcon, path: string, sectionName: string): Menu => {
+    const locked = WIZARD_KEYS.has(key) && wizardLocked;
+    return {
+      key,
+      label,
+      icon,
+      href: base && !locked ? base + path : null,
+      active: inSelected && section === sectionName,
+      locked,
+    };
+  };
   const eventMenu: Menu[] = [
     eventItem("dashboard", t.dashboard, LayoutGrid, "", ""),
     eventItem("edit", t.info, CalendarDays, "/edit", "edit"),
@@ -280,7 +290,7 @@ export function EventSidebar() {
 }
 
 // ============ เมนู 1 รายการ ============
-// href = null → แสดงเป็นข้อความสีเทา กดไม่ได้ (ไม่ใช่ลิงก์ จึงไม่มีทางไป 404)
+// href = null → แสดงเป็นข้อความสีเทา กดไม่ได้ (ไม่ใช่ลิงก์) + ป้าย "ล็อกแล้ว" ถ้า Event เริ่มแล้ว
 function MenuItem({ menu, t }: { menu: Menu; t: Text }) {
   const Icon = menu.icon;
   const base = "flex items-center gap-3 rounded-lg px-3 py-2 text-sm";
@@ -290,8 +300,8 @@ function MenuItem({ menu, t }: { menu: Menu; t: Text }) {
       <span aria-disabled="true" className={`${base} cursor-not-allowed text-slate-400`}>
         <Icon size={18} />
         {menu.label}
-        {menu.soon && (
-          <span className="ml-auto rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-500">{t.soon}</span>
+        {menu.locked && (
+          <span className="ml-auto rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-500">{t.locked}</span>
         )}
       </span>
     );
