@@ -10,7 +10,10 @@ export type FieldKind =
   | "radio" | "checkbox" | "dropdown" | "date" | "time" | "file" | "address";
 /** เลิกใช้แล้ว (เดิมเป็น "ช่องพื้นฐาน") — ข้อมูลเก่าถูกแปลงเป็นประเภทปกติตอนโหลด (migrateField) */
 export type BasicFieldKey = "name" | "email" | "age" | "gender" | "phone" | "idno";
-export type SurveyQType = "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date";
+// ประเภทคำถาม Survey 12 แบบ (ชื่อ/ไอคอน/การเก็บข้อมูล อยู่ที่ lib/survey-types.ts)
+export type SurveyQType =
+  | "short" | "long" | "single" | "multi" | "dropdown"
+  | "linear" | "rating" | "opinion" | "mcgrid" | "cbgrid" | "yesno" | "date";
 
 export interface UploadedAsset {
   name: string;
@@ -44,9 +47,11 @@ export interface SurveyQuestion {
   titleTh: string;
   titleEn: string;
   required: boolean;
-  options: string[]; // ใช้กับ single / multi / dropdown
-  // ใช้กับ rating เท่านั้น · ไม่มีค่า = 1–5 แบบตัวเลข (ค่าเดิมก่อนมีตัวเลือกนี้)
-  ratingMax?: RatingMax;
+  options: string[]; // ตัวเลือก (single / multi / dropdown / opinion / yesno) หรือ คอลัมน์ของตาราง (mcgrid / cbgrid)
+  rows?: string[]; // แถวของตาราง (mcgrid / cbgrid)
+  ratingMax?: RatingMax; // linear / rating: คะแนนเต็ม (ไม่มี = 5)
+  scaleLabels?: { min: string; max: string }; // linear: คำกำกับปลายซ้าย / ขวา
+  /** rating ดาวเก็บ "star" ไว้เป็นเครื่องหมายเสมอ · rating เก่าที่ไม่มีค่านี้ = สเกลตัวเลข → แปลงเป็น linear (normalizeQuestion) */
   ratingStyle?: RatingStyle;
 }
 

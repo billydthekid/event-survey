@@ -9,7 +9,7 @@ import { Lock, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SurveyPreview } from "@/components/event/survey-preview";
-import { qtype } from "@/lib/survey-types";
+import { normalizeQuestion, qtype } from "@/lib/survey-types";
 import { getSurveyState } from "@/lib/utils/event-phase";
 import { formatThaiShortDateTime } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
@@ -118,10 +118,9 @@ export default function SurveySummaryPage() {
                       {q.required && <span className="ml-1 text-red-600">*</span>}
                     </p>
                     <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <TypeIcon type={q.type} />
-                      {q.type === "rating"
-                        ? `Rating 1–${q.ratingMax ?? 5} · ${q.ratingStyle === "star" ? "ดาว" : "ตัวเลข"}`
-                        : qtype(q.type).th}
+                      <TypeIcon type={normalizeQuestion(q).type} />
+                      {qtype(normalizeQuestion(q).type).en} · {qtype(normalizeQuestion(q).type).th}
+                      {(normalizeQuestion(q).type === "linear" || q.type === "rating") && ` 1–${q.ratingMax ?? 5}`}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm text-slate-500">{answered > 0 ? `${answered} คำตอบ` : "ยังไม่มีคำตอบ"}</span>
