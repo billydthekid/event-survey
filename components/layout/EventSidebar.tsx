@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   List, LayoutGrid, CalendarDays, ClipboardList, BarChart3, Smartphone,
-  SlidersHorizontal, LogOut, Ticket, ChevronsUpDown, Check, type LucideIcon,
+  SlidersHorizontal, LogOut, ChevronsUpDown, Check, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Event, Lang } from "@/types";
@@ -231,9 +231,7 @@ export function EventSidebar() {
       {/* ===== โลโก้ (กดแล้วกลับหน้า Event ของฉัน) ===== */}
       {/* ใช้ class เดิมทุกตัว → หน้าตาไม่เปลี่ยน แค่กดได้ */}
       <Link href="/admin/events" aria-label={t.myEvents} className="mb-6 flex items-center gap-2 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <Ticket size={18} />
-        </div>
+        <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
         <span className="font-bold">
           Event<span className="text-blue-600">Survey</span>
         </span>
