@@ -24,7 +24,7 @@ export interface KioskModel {
   theme: { primary: string; secondary: string; mode: KioskThemeMode; background: string };
   logo?: string; // URL รูปโลโก้ (ไม่มี = ใช้ตัวอักษรย่อ)
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
-  adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้นที่ 3)
+  adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้น Branding)
   screen: Event["kiosk"]["screen"];
   status: Event["status"];
   regClose: string; // yyyy-MM-ddTHH:mm ("" = ไม่กำหนด)

@@ -423,7 +423,7 @@ function StatusChip({ scene, text, mode }: { scene: Exclude<KioskScene, "closed"
   );
 }
 
-// ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้นที่ 3) ============
+// ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้น Branding) ============
 function AdSlideshow({ ads, seconds }: { ads: string[]; seconds: number }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {

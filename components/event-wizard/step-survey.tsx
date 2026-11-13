@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/lib/wizard-store";
 import { qtype } from "@/lib/survey-types";
 
-// ขั้นที่ 6: แสดงสรุป Survey แบบอ่านอย่างเดียว — แก้ไขคำถามได้ที่ Survey Builder เท่านั้น (กดปุ่มด้านล่าง)
+// ขั้นที่ 5: แสดงสรุป Survey แบบอ่านอย่างเดียว — แก้ไขคำถามได้ที่ Survey Builder เท่านั้น (กดปุ่มด้านล่าง)
 export function StepSurvey() {
   const draft = useWizardStore((s) => s.draft);
   const qs = draft.survey.questions;
