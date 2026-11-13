@@ -1,7 +1,15 @@
 // app/admin/events/[id]/report/people.ts
 // ตัวช่วยเรื่อง "ผู้ลงทะเบียนรายคน" (ไม่มี React / ไม่มี UI)
 // ใช้ร่วมกันระหว่าง Dashboard และแท็บ Report (ผู้เข้าร่วม / คำตอบรายคน)
+import { Lang, Question } from "@/types";
 import { ReportData } from "./mockData";
+import { tr } from "./summary";
+
+// ============ เวลา "12:38" จาก ISO (รูปแบบเดียวกับ Dashboard) ============
+// ตัวอย่าง: formatTime("2026-10-23T12:38:00+07:00", "th") → "12:38"
+export function formatTime(iso: string, lang: Lang): string {
+  return new Date(iso).toLocaleTimeString(lang === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
 
 // ============ ปิดบังเบอร์โทร ============
 // ทุกที่ที่แสดงเบอร์โทรบนจอต้องผ่านฟังก์ชันนี้ (เบอร์เต็มเก็บอยู่ใน answers.phone)
@@ -100,4 +108,72 @@ export function pageNumbers(current: number, totalPages: number): (number | "…
     else if (result.at(-1) !== "…") result.push("…"); // ใส่ "…" ครั้งเดียวต่อช่วงที่ขาด
   }
   return result;
+}
+
+// ============ คำตอบ 1 ชุด (1 รายการในแท็บ "คำตอบรายคน") ============
+export interface AnswerEntry {
+  id: string;            // response id เช่น "e-workshop-res-31"
+  name: string;          // ชื่อผู้ตอบ (จากการลงทะเบียน)
+  faculty: string;
+  registeredAt: string;  // ISO เวลาลงทะเบียน
+  answeredAt: string;    // ISO เวลาตอบ
+  answers: Record<string, string | string[] | number>;
+  stars: number | null;  // คะแนนข้อ rating ข้อแรก (ข้าม / ไม่มีข้อ rating → null = ไม่แสดงดาว)
+}
+
+// รับ: ข้อมูลรายงาน
+// คืน: คำตอบทุกชุด + ข้อมูลผู้ตอบ เรียงตอบใหม่สุดก่อน
+// ตัวอย่าง (Workshop): ตัวแรก = { id: "e-workshop-res-31", name: "นภัสวรรณ ฟ้าใสสะอาด",
+//                      registeredAt: …12:38, answeredAt: …15:00, stars: 5 หรือค่าที่ข้อ 1 ได้ } ยาว 31
+export function buildAnswerEntries(data: ReportData): AnswerEntry[] {
+  const regById = new Map(data.registrations.map((r) => [r.id, r]));
+
+  // ข้อ rating ข้อแรกตามลำดับ order (Workshop = ข้อ 1 "ความพึงพอใจต่อ Workshop")
+  const firstRating = [...data.survey.questions].sort((a, b) => a.order - b.order).find((q) => q.type === "rating");
+
+  return [...data.responses]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((r) => {
+      const reg = regById.get(r.registrationId);
+      const score = firstRating ? r.answers[firstRating.id] : undefined;
+      return {
+        id: r.id,
+        name: text(reg?.answers.name) || "—",
+        faculty: text(reg?.answers.faculty),
+        registeredAt: reg?.createdAt ?? "",
+        answeredAt: r.createdAt,
+        answers: r.answers,
+        stars: typeof score === "number" ? score : null,
+      };
+    });
+}
+
+// ============ แปลงคำตอบ 1 ข้อเป็นข้อความบนจอ ============
+// รับ: คำถาม, ค่าคำตอบ (ข้ามข้อ = undefined), ภาษา
+// คืน: ข้อความ หรือ null = "ไม่ได้ตอบ" (หน้าจอแสดงคำนี้เอง)
+// คำตอบตัวเลือกเก็บเป็น "ชื่อไทย" → หาชื่อตามภาษาจาก question.options (ไม่เจอ → แสดงค่าเดิม)
+// ตัวอย่าง:
+//   rating 4                                → "4 / 5"
+//   single "พอดี" (EN)                      → "Just right"
+//   multi ["Auto layout", "Prototype"]      → "Auto layout, Prototype" (ทุกตัวที่เลือก คั่นด้วยจุลภาค)
+//   long "อธิบายเข้าใจง่าย …"                → ข้อความเดิม
+//   undefined หรือ []                       → null
+export function formatAnswer(question: Question, value: string | string[] | number | undefined, lang: Lang): string | null {
+  if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return null;
+
+  const optionLabel = (th: string) => {
+    const opt = question.options?.find((o) => o.th === th);
+    return opt ? tr(opt, lang) : th;
+  };
+
+  switch (question.type) {
+    case "rating":
+      return `${value} / 5`;
+    case "single":
+    case "dropdown":
+    case "multi":
+      return (Array.isArray(value) ? value : [String(value)]).map(optionLabel).join(", ");
+    default:
+      return String(value);
+  }
 }
