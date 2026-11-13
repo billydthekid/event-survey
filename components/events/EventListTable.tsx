@@ -21,9 +21,10 @@ interface EventListTableProps {
   events: Event[];            // รายการที่กรอง + เรียงแล้ว
   columns: EventColumn[];
   onSelect: (eventId: string) => void;
+  highlightId?: string | null; // แถวที่เพิ่งสร้าง (?new=<id>) → พื้นฟ้า + ป้าย "เพิ่งสร้าง"
 }
 
-export function EventListTable({ title, total, toolbar, events, columns, onSelect }: EventListTableProps) {
+export function EventListTable({ title, total, toolbar, events, columns, onSelect, highlightId }: EventListTableProps) {
   return (
     <div className="rounded-xl bg-white shadow-sm">
       {/* หัวการ์ด */}
@@ -48,10 +49,15 @@ export function EventListTable({ title, total, toolbar, events, columns, onSelec
             <tr
               key={e.id}
               onClick={() => onSelect(e.id)}
-              className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+              className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${e.id === highlightId ? "bg-blue-50/50" : ""}`}
             >
               <td className="px-5 py-4">
-                <p className="font-semibold">{e.name.th}</p>
+                <p className="font-semibold">
+                  {e.name.th}
+                  {e.id === highlightId && (
+                    <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">เพิ่งสร้าง</span>
+                  )}
+                </p>
                 <p className="text-xs text-slate-400">{e.code}</p>
               </td>
               {columns.map((c) => (
