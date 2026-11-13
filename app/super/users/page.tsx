@@ -142,7 +142,7 @@ export default function UsersPage() {
           <p className="text-sm text-slate-400">ผู้ดูแลระบบ / จัดการผู้ใช้</p>
           <h1 className="mt-1 text-3xl font-bold">จัดการผู้ใช้</h1>
           <p className="mt-1 text-slate-500">
-            จัดการบัญชี Admin และ Organizer · การสร้าง Event ใช้ปุ่ม &quot;+ สร้าง Event&quot; ที่แถบด้านซ้าย
+            จัดการบัญชี Admin และ Organizer
           </p>
         </div>
         <button
