@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormPreview } from "@/components/event/form-preview";
 import { SurveyPreview } from "@/components/event/survey-preview";
-import type { EventDraft } from "@/types/event";
+import { KioskPreview, PhonePreview } from "@/components/event/brand-preview";
+import { THEME_PRESETS } from "@/lib/theme-presets";
 import { useWizardStore } from "@/lib/wizard-store";
 import { formatThaiDate } from "@/lib/utils/date";
 import { eventTypeLabel } from "@/lib/event-types";
@@ -29,7 +30,7 @@ export function StepPreview() {
   const adNoFile = d.ads.items.filter((a) => !a.dataUrl).length;
   const rows: Row[] = [
     { label: "ข้อมูลทั่วไป", value: missing.length ? `ยังไม่ครบ: ${missing.join(", ")}` : "ครบ", ok: missing.length === 0 },
-    { label: "Theme", value: `${{ light: "Light", dark: "Dark", bold: "Bold" }[d.theme.mode]} · ${d.theme.primary} / ${d.theme.secondary}`, ok: true },
+    { label: "Branding", value: `${THEME_PRESETS.find((p) => p.id === d.theme.preset)?.name ?? "ปรับแต่งเอง"} · ${{ light: "Light", dark: "Dark", bold: "Bold" }[d.theme.mode]} · ${d.theme.primary}${d.general.cover?.dataUrl ? " · มีรูปปก" : ""}`, ok: true },
     adCount === 0
       ? { label: "โฆษณา", value: "ไม่มี (ข้ามได้)", ok: true }
       : {
@@ -87,7 +88,7 @@ export function StepPreview() {
           aria-label="ดู Preview เต็มจอ"
           className="group relative block w-full rounded-[2rem] text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <PhoneEventPage d={d} />
+          <PhonePreview d={d} />
           <span className="absolute inset-0 flex items-center justify-center rounded-[2rem] bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
             <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow">
               <Maximize2 className="size-4" /> ดูเต็มจอ
@@ -102,9 +103,12 @@ export function StepPreview() {
           <DialogHeader>
             <DialogTitle>Preview เต็มจอ · {g.nameTh || "(ยังไม่ตั้งชื่อ)"}</DialogTitle>
           </DialogHeader>
-          <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto rounded-xl bg-muted/40 p-6 lg:grid-cols-3">
+          <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto rounded-xl bg-muted/40 p-6 md:grid-cols-2 xl:grid-cols-4">
+            <PreviewColumn title="จอ Kiosk">
+              <KioskPreview d={d} />
+            </PreviewColumn>
             <PreviewColumn title="หน้า Event">
-              <PhoneEventPage d={d} />
+              <PhonePreview d={d} />
             </PreviewColumn>
             <PreviewColumn title="ฟอร์มลงทะเบียน (QR ลงทะเบียน)">
               <FormPreview fields={d.form.fields} primary={d.theme.primary} eventName={g.nameTh} />
@@ -129,38 +133,6 @@ function PreviewColumn({ title, children }: { title: string; children: React.Rea
     <div className="space-y-3">
       <p className="text-center text-sm font-semibold text-muted-foreground">{title}</p>
       {children}
-    </div>
-  );
-}
-
-// หน้า Event บนมือถือ (ใช้ทั้งตัวย่อในขั้นที่ 7 และใน Preview เต็มจอ)
-function PhoneEventPage({ d }: { d: EventDraft }) {
-  const g = d.general;
-  return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-4 shadow-lg">
-      <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-        <span className="rounded border border-dashed px-1">{d.theme.logo ? d.theme.logo.name : "Logo"}</span>
-        <span>TH</span>
-      </div>
-      <div
-        className="flex h-32 items-center justify-center rounded-xl text-xs text-muted-foreground"
-        style={{ backgroundColor: d.theme.secondary }}
-      >
-        {g.cover ? g.cover.name : "รูปปก"}
-      </div>
-      <span className="mt-3 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium">
-        {eventTypeLabel(g.type, g.typeOther)}
-      </span>
-      <h3 className="mt-1 text-lg font-bold">{g.nameTh}</h3>
-      <p className="mt-1 text-xs">{formatThaiDate(g.date, false)} · {g.startTime} – {g.endTime}</p>
-      <p className="text-xs">{g.venue}{g.spot && ` · ${g.spot}`}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{g.descTh}</p>
-      <span
-        style={{ backgroundColor: d.theme.primary }}
-        className="mt-4 block w-full rounded-lg py-2.5 text-center text-sm font-semibold text-white"
-      >
-        ลงทะเบียนเข้างาน
-      </span>
     </div>
   );
 }

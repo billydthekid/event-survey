@@ -9,12 +9,11 @@ import { LockedArea, PublishConfirm } from "./lock-dialogs";
 
 export const STEPS = [
   { n: 1, label: "ข้อมูลทั่วไป" },
-  { n: 2, label: "Theme" },
-  { n: 3, label: "โฆษณา" },
-  { n: 4, label: "ฟอร์มลงทะเบียน" },
-  { n: 5, label: "ช่วงเวลา" },
-  { n: 6, label: "Survey" },
-  { n: 7, label: "Preview" },
+  { n: 2, label: "Branding" },
+  { n: 3, label: "ฟอร์มลงทะเบียน" },
+  { n: 4, label: "ช่วงเวลา" },
+  { n: 5, label: "Survey" },
+  { n: 6, label: "Preview" },
 ] as const;
 
 interface Props {
@@ -34,7 +33,7 @@ interface Props {
 
 export function WizardShell(p: Props) {
   const isFirst = p.step === 1;
-  const isLast = p.step === 7;
+  const isLast = p.step === STEPS.length;
   const next = STEPS[p.step]; // step ถัดไป (index = step)
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -105,7 +104,7 @@ export function WizardShell(p: Props) {
 
           {/* Title */}
           <div>
-            <p className="text-xs text-muted-foreground">แก้ไข Event › ขั้นที่ {p.step} จาก 7</p>
+            <p className="text-xs text-muted-foreground">แก้ไข Event › ขั้นที่ {p.step} จาก {STEPS.length}</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">{p.title}</h1>
             <p className="text-sm text-muted-foreground">{p.subtitle}</p>
           </div>
