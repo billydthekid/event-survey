@@ -1,10 +1,11 @@
 // lib/store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { User, Event, ActionLog, Role } from "@/types";
+import { User, Event, ActionLog, Role, Registration, SurveyResponse } from "@/types";
 import { getApi } from "@/lib/api";
 import { mockUsers } from "@/lib/mock/user";
 import { mockEvents, makeDraftEvent } from "@/lib/mock/events";
+import { mockRegistrations, mockResponses } from "@/lib/mock/responses";
 import { makeUsername } from "@/lib/utils/username";
 import { KEEP_DAYS } from "@/lib/utils/status";
 
@@ -25,6 +26,8 @@ interface StoreState {
   users: User[];
   events: Event[];
   logs: ActionLog[];
+  registrations: Registration[];   // คนลงทะเบียน (Dashboard / Report ใช้)
+  responses: SurveyResponse[];     // คำตอบ Survey
 
   // ===== Actions =====
   login: (username: string, password: string) => Promise<User>;
@@ -49,6 +52,8 @@ export const useStore = create<StoreState>()(
       users: mockUsers,
       events: mockEvents,
       logs: [],
+      registrations: mockRegistrations,
+      responses: mockResponses,
 
       // ---------- Session ----------
       login: async (username, password) => {
@@ -201,6 +206,8 @@ export const useStore = create<StoreState>()(
         users: s.users,
         events: s.events,
         logs: s.logs,
+        registrations: s.registrations,
+        responses: s.responses,
       }),
       skipHydration: true,
     }
