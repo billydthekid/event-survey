@@ -138,16 +138,24 @@ type Values = Record<string, string | string[]>;
 const isChoice = (f: PublicField) =>
   f.type === "gender" || ((f.type === "dropdown" || f.type === "multi") && f.options.length > 0);
 
-function validate(f: PublicField, raw: string | string[] | undefined, lang: Lang, t: Text): string | undefined {
-  const label = pick(f.label, lang);
+// เก็บแค่ "ชนิดของ error" แล้วค่อยแปลเป็นข้อความตอนแสดง → สลับ TH/EN แล้วข้อความเปลี่ยนตามทันที
+type ErrorKind = "required" | "badEmail" | "badPhone" | "badAge" | "badNumber";
+
+function validate(f: PublicField, raw: string | string[] | undefined): ErrorKind | undefined {
   const v = Array.isArray(raw) ? raw : (raw ?? "").trim();
-  if (v.length === 0) return f.required ? (isChoice(f) ? t.needChoice(label) : t.needText(label)) : undefined;
+  if (v.length === 0) return f.required ? "required" : undefined;
   if (Array.isArray(v)) return undefined;
-  if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return t.badEmail;
-  if (f.type === "phone" && !/^0\d{8,9}$/.test(v.replace(/[\s-]/g, ""))) return t.badPhone;
-  if (f.type === "age" && !(/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 120)) return t.badAge;
-  if (f.type === "number" && !/^\d+$/.test(v)) return t.badNumber;
+  if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "badEmail";
+  if (f.type === "phone" && !/^0\d{8,9}$/.test(v.replace(/[\s-]/g, ""))) return "badPhone";
+  if (f.type === "age" && !(/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 120)) return "badAge";
+  if (f.type === "number" && !/^\d+$/.test(v)) return "badNumber";
   return undefined;
+}
+
+function errorMessage(f: PublicField, kind: ErrorKind, lang: Lang, t: Text): string {
+  if (kind !== "required") return t[kind];
+  const label = pick(f.label, lang);
+  return isChoice(f) ? t.needChoice(label) : t.needText(label);
 }
 
 // ============ ส่วนหลัก ============
@@ -164,7 +172,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
   const now = useNow(30_000); // ตรวจช่วงเวลาเปิด-ปิดซ้ำทุก 30 วินาที
 
   const [values, setValues] = useState<Values>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, ErrorKind>>({});
   const [tried, setTried] = useState(false); // กดส่งไปแล้วอย่างน้อย 1 ครั้ง → ตรวจสดขณะพิมพ์
   const [done, setDone] = useState<{ name: string; at: string } | null>(null);
 
@@ -237,9 +245,9 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
 
   // ---------- ฟอร์ม (A5 / A2) ----------
   const checkAll = (vals: Values) => {
-    const next: Record<string, string> = {};
+    const next: Record<string, ErrorKind> = {};
     for (const f of e.fields) {
-      const err = validate(f, vals[f.key], lang, t);
+      const err = validate(f, vals[f.key]);
       if (err) next[f.key] = err;
     }
     return next;
@@ -292,7 +300,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
               key={f.id}
               f={f}
               value={values[f.key]}
-              error={errors[f.key]}
+              error={errors[f.key] ? errorMessage(f, errors[f.key], lang, t) : undefined}
               onChange={(v) => setValue(f.key, v)}
               pal={pal}
               lang={lang}
