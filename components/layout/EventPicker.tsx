@@ -9,6 +9,7 @@ import { countByEvent, summarize, visibleEvents } from "@/lib/utils/stats";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { formatDayMonth } from "@/lib/utils/date";
 import { EventStatus } from "@/types";
+import CreateEventModal from "@/components/events/CreateEventModal";
 
 // ช่อง "กำลังดู ..." ใน Sidebar + popup เลือก Event
 // เลือก "ภาพรวมทุก Event" → /super · เลือก Event → /super/events/[id]/dashboard
@@ -47,6 +48,7 @@ function DateBox({ date, status, all }: { date?: string; status?: EventStatus; a
 // ============ ช่อง "กำลังดู" ใน Sidebar (กดแล้วเปิด popup) ============
 export function EventSwitcher({ eventId }: { eventId?: string }) {
   const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);   // modal สร้าง Event (ตัวเดียวกับปุ่มใน Sidebar)
   const event = useStore((s) => s.events.find((e) => e.id === eventId));
 
   // ไม่มี eventId = ดูทุก Event · มี id แต่หาไม่เจอ (ถูกลบ / พิมพ์ URL ผิด) = "ไม่พบ Event"
@@ -66,13 +68,33 @@ export function EventSwitcher({ eventId }: { eventId?: string }) {
         <ChevronsUpDown size={16} className="shrink-0 text-slate-400" />
       </button>
 
-      {open && <EventPicker currentId={eventId} onClose={() => setOpen(false)} />}
+      {open && (
+        <EventPicker
+          currentId={eventId}
+          onClose={() => setOpen(false)}
+          // ปิด popup เลือก Event ก่อน แล้วเปิด modal สร้าง Event ของ Billy
+          onCreate={() => {
+            setOpen(false);
+            setShowCreate(true);
+          }}
+        />
+      )}
+
+      {showCreate && <CreateEventModal onClose={() => setShowCreate(false)} />}
     </>
   );
 }
 
 // ============ popup เลือก Event ============
-function EventPicker({ currentId, onClose }: { currentId?: string; onClose: () => void }) {
+function EventPicker({
+  currentId,
+  onClose,
+  onCreate,
+}: {
+  currentId?: string;
+  onClose: () => void;
+  onCreate: () => void;
+}) {
   const router = useRouter();
   const events = useStore((s) => s.events);
   const registrations = useStore((s) => s.registrations);
@@ -203,13 +225,12 @@ function EventPicker({ currentId, onClose }: { currentId?: string; onClose: () =
           <Link href="/super/events" onClick={onClose} className="text-sm text-blue-600 hover:underline">
             ดูแบบเต็มหน้า →
           </Link>
-          <Link
-            href="/super/users"
-            onClick={onClose}
+          <button
+            onClick={onCreate}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             + สร้าง Event
-          </Link>
+          </button>
         </div>
       </div>
     </div>
