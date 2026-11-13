@@ -4,7 +4,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowUp, Calendar, ChevronDown, Copy, Lock, Smartphone, Trash2, X } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronDown, Copy, GripVertical, Lock, Smartphone, Trash2, X } from "lucide-react";
+import { useDragSort } from "@/lib/use-drag-sort";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -32,6 +33,11 @@ export default function SurveyBuilderPage() {
   const [editLang, setEditLang] = useState<"th" | "en">("th");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // ลากเรียงคำถาม (hook ต้องเรียกก่อน return ด้านล่าง จึงส่งรายการว่างระหว่างรอโหลด)
+  const sort = useDragSort(state.state === "ready" ? state.draft.survey.questions : [], (next) =>
+    patchEvent(id, "survey", { questions: next })
+  );
 
   if (state.state === "loading") return null;
   if (state.state === "denied") return <SurveyDenied />;
@@ -65,13 +71,6 @@ export default function SurveyBuilderPage() {
     setSelectedId(next[0]?.id ?? null);
   };
 
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= qs.length) return;
-    const next = [...qs];
-    [next[i], next[j]] = [next[j], next[i]];
-    setQs(next);
-  };
 
   const changeType = (q: SurveyQuestion, type: SurveyQType) =>
     update(q.id, { type, options: qtype(type).hasOptions && q.options.length < 2 ? defaultOptions(type) : q.options });
@@ -139,12 +138,22 @@ export default function SurveyBuilderPage() {
                 return (
                   <section
                     key={q.id}
+                    {...sort.itemProps(i)}
                     onClick={() => setSelectedId(q.id)}
                     onFocusCapture={() => setSelectedId(q.id)}
-                    className={cn("space-y-4 rounded-2xl border bg-background p-5 transition", isSel && "border-2 border-primary")}
+                    className={cn(
+                      "space-y-4 rounded-2xl border bg-background p-5 transition",
+                      isSel && "border-2 border-primary",
+                      sort.stateOf(i).dragging && "opacity-40",
+                      sort.stateOf(i).over && "ring-2 ring-primary/50"
+                    )}
                   >
                     <div className="flex items-center justify-between">
                       <p className="flex items-center gap-2 text-xs font-medium text-primary">
+                        {/* ที่จับ: กดค้างแล้วลากเพื่อเรียงคำถาม */}
+                        <span {...sort.handleProps(i)} className={cn(sort.handleProps(i).className, "text-muted-foreground")}>
+                          <GripVertical className="size-4" />
+                        </span>
                         <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
                           <meta.icon className="size-3.5" />
                         </span>
@@ -331,17 +340,7 @@ export default function SurveyBuilderPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">ลำดับ</p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={selectedIndex === 0} onClick={() => move(selectedIndex, -1)}>
-                    <ArrowUp className="size-4" /> ย้ายขึ้น
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={selectedIndex === qs.length - 1} onClick={() => move(selectedIndex, 1)}>
-                    <ArrowDown className="size-4" /> ย้ายลง
-                  </Button>
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">ลากที่ ⋮⋮ บนการ์ดเพื่อเรียงลำดับคำถาม</p>
             </div>
             </LockedArea>
           ) : (
