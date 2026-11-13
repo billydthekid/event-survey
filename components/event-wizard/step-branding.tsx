@@ -1,16 +1,16 @@
 "use client";
 // ขั้นที่ 2: Branding (เดิม Theme + โฆษณา)
-// - ซ้าย: Live Preview (มือถือ / จอ Kiosk) อัปเดตทันที — สลับตามแท็บรูปภาพที่เลือกด้านขวา
-// - ขวา: รูปภาพ [รูปปก 16:9 | โฆษณา] · ธีมสำเร็จรูป 6 แบบ · ปรับแต่งเอง (สีหลัก, พื้นหลัง สี/รูป, โหมด, โลโก้) · Reset
+// - ซ้าย: Live Preview จอ Kiosk อัปเดตทันที (ช่องรูป = โฆษณา · ไม่มีโฆษณา = รูปปก)
+// - ขวา: โลโก้ · รูปภาพ [รูปปก | โฆษณา] · ธีมสำเร็จรูป 6 แบบ + Reset · ปรับแต่งเอง (สีหลัก, พื้นหลัง สี/รูป, โหมด = รอปรับปรุง)
 // รูปทุกแบบเก็บเป็น data URL ใน wizard store (localStorage) — ยังไม่มี server
 // ธีมตอนนี้มีผลใน Wizard (Preview) · หน้าจริง /r, /s, Kiosk ยังใช้แค่สีหลัก + โหมด (ไฟล์ของเพื่อน)
 
 import { useRef, useState } from "react";
-import { Check, Crop, ImagePlus, Monitor, RotateCcw, Smartphone, Trash2 } from "lucide-react";
+import { Check, Crop, ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { KioskPreview, PhonePreview } from "@/components/event/brand-preview";
+import { KioskPreview } from "@/components/event/brand-preview";
 import { useWizardStore } from "@/lib/wizard-store";
 import { AD_HEIGHT, AD_WIDTH, dataUrlKB, readFileAsDataUrl, resizeToDataUrl } from "@/lib/image-crop";
 import { DEFAULT_PRESET, THEME_PRESETS, applyPreset } from "@/lib/theme-presets";
@@ -46,27 +46,44 @@ export function StepBranding() {
   return (
     <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
       {/* ===== Live Preview ===== */}
+      {/* ช่องรูปแสดงโฆษณา (เลื่อนวน) · ไม่มีโฆษณา = แสดงรูปปกแทน */}
       <div className="h-fit space-y-3 rounded-2xl border bg-muted/40 p-4 lg:sticky lg:top-0">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">Live Preview</p>
-          <ToggleGroup value={[media]} onValueChange={(v) => v[0] && setMedia(v[0] as Media)} variant="outline" size="sm">
-            <ToggleGroupItem value="cover" aria-label="มือถือ"><Smartphone className="size-4" /></ToggleGroupItem>
-            <ToggleGroupItem value="ads" aria-label="จอ Kiosk"><Monitor className="size-4" /></ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-        {media === "cover" ? <PhonePreview d={draft} /> : <KioskPreview d={draft} />}
-        <p className="text-center text-xs text-muted-foreground">{media === "cover" ? "หน้า Event บนมือถือ" : "จอ Kiosk หน้างาน"}</p>
+        <p className="text-sm font-semibold">Live Preview · จอ Kiosk</p>
+        <KioskPreview d={draft} />
       </div>
 
       <div className="min-w-0 space-y-5">
+        {/* ===== โลโก้ (บนสุด) ===== */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              โลโก้ <span className="ml-1 text-xs font-normal text-muted-foreground">· PNG/SVG พื้นใส · ไม่ใส่ = ใช้ตัวย่อรหัสงาน</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImageSlot
+              asset={t.logo}
+              accept="image/png,image/svg+xml,image/jpeg"
+              hint="ย่อเหลือ 256 px"
+              onPick={async (file) => {
+                const url = await resizeToDataUrl(await readFileAsDataUrl(file), 256, 256, "image/png");
+                patch("theme", { logo: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url } });
+              }}
+              onRemove={() => patch("theme", { logo: null })}
+              className="size-16"
+              contain
+            />
+          </CardContent>
+        </Card>
+
         {/* ===== รูปภาพ: รูปปก / โฆษณา ===== */}
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">รูปภาพ</CardTitle>
             <ToggleGroup value={[media]} onValueChange={(v) => v[0] && setMedia(v[0] as Media)} variant="outline" size="sm">
-              <ToggleGroupItem value="cover">รูปปก · มือถือ</ToggleGroupItem>
-              <ToggleGroupItem value="ads">โฆษณา · Kiosk ({draft.ads.items.length})</ToggleGroupItem>
+              <ToggleGroupItem value="cover">รูปปก</ToggleGroupItem>
+              <ToggleGroupItem value="ads">โฆษณา</ToggleGroupItem>
             </ToggleGroup>
             </div>
           </CardHeader>
@@ -151,16 +168,18 @@ export function StepBranding() {
               )}
             </Section>
 
-            <Section title="โหมด" hint="สีตัวหนังสือบนพื้นหลัง">
+            {/* โหมด: ยังกดไม่ได้ (รอปรับปรุง) — ตอนนี้โหมดเปลี่ยนได้จากธีมสำเร็จรูปเท่านั้น */}
+            <Section title="โหมด" hint="รอปรับปรุง · เปลี่ยนได้จากธีมสำเร็จรูป">
               <div className="grid grid-cols-3 gap-2">
                 {MODES.map((m) => (
                   <button
                     key={m.value}
                     type="button"
                     aria-pressed={t.mode === m.value}
-                    onClick={() => setTheme({ mode: m.value })}
+                    disabled
+                    title="รอปรับปรุง"
                     className={cn(
-                      "rounded-lg border px-3 py-2 text-left text-sm",
+                      "cursor-not-allowed rounded-lg border px-3 py-2 text-left text-sm opacity-60",
                       t.mode === m.value && "border-primary bg-primary/5 font-semibold text-primary"
                     )}
                   >
@@ -169,21 +188,6 @@ export function StepBranding() {
                   </button>
                 ))}
               </div>
-            </Section>
-
-            <Section title="โลโก้" hint="PNG/SVG พื้นใส · ไม่ใส่ = ใช้ตัวย่อรหัสงาน">
-              <ImageSlot
-                asset={t.logo}
-                accept="image/png,image/svg+xml,image/jpeg"
-                hint="ย่อเหลือ 256 px"
-                onPick={async (file) => {
-                  const url = await resizeToDataUrl(await readFileAsDataUrl(file), 256, 256, "image/png");
-                  patch("theme", { logo: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url } });
-                }}
-                onRemove={() => patch("theme", { logo: null })}
-                className="size-16"
-                contain
-              />
             </Section>
           </CardContent>
         </Card>
@@ -219,22 +223,25 @@ function CoverEditor() {
 
   return (
     <div className="space-y-2">
+      {/* ขนาดเท่ากับแท็บโฆษณา: ช่องวางไฟล์เตี้ย + รูปที่มีแล้วแสดงเป็นแถว (รูปย่อ + ปุ่ม) */}
       {cover?.dataUrl ? (
-        <div className="group relative aspect-video overflow-hidden rounded-xl border">
+        <div className="flex items-center gap-3 rounded-lg border bg-background p-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปปกที่ crop แล้ว */}
-          <img src={cover.dataUrl} alt="รูปปก" className="size-full object-cover" />
-          <div className="absolute right-2 bottom-2 flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => setCropping({ src: cover.dataUrl!, name: cover.name })}>
-              <Crop className="size-4" /> Crop
-            </Button>
-            <ReplaceButton onFile={pick} />
-            <Button size="icon" variant="secondary" className="text-destructive" aria-label="ลบรูปปก" onClick={() => patch("general", { cover: null })}>
-              <Trash2 className="size-4" />
-            </Button>
+          <img src={cover.dataUrl} alt="รูปปก" className="aspect-video w-20 shrink-0 rounded object-cover" />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="truncate font-semibold">{cover.name}</p>
+            <p className="text-xs text-muted-foreground">{cover.sizeKB} KB · 16:9</p>
           </div>
+          <Button variant="ghost" size="icon" aria-label="Crop ใหม่" onClick={() => setCropping({ src: cover.dataUrl!, name: cover.name })}>
+            <Crop className="size-4" />
+          </Button>
+          <ReplaceButton onFile={pick} />
+          <Button variant="ghost" size="icon" className="text-destructive" aria-label="ลบรูปปก" onClick={() => patch("general", { cover: null })}>
+            <Trash2 className="size-4" />
+          </Button>
         </div>
       ) : (
-        <FileDrop title="ลากรูปปกมาวาง หรือเลือกไฟล์" hint={`16:9 · ${AD_WIDTH}×${AD_HEIGHT} px · ไม่ใส่ก็ได้`} onFile={pick} className="aspect-video py-0" />
+        <FileDrop title="ลากรูปปกมาวาง หรือเลือกไฟล์" hint={`16:9 · ${AD_WIDTH}×${AD_HEIGHT} px · ไม่ใส่ก็ได้`} onFile={pick} className="py-6" />
       )}
       {cover && !cover.dataUrl && <p className="text-xs text-amber-700">{cover.name} · ไม่มีไฟล์รูป อัปโหลดใหม่</p>}
       {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
@@ -256,8 +263,8 @@ function ReplaceButton({ onFile }: { onFile: (f: File) => void }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Button size="sm" variant="secondary" onClick={() => ref.current?.click()}>
-        <ImagePlus className="size-4" /> เปลี่ยนรูป
+      <Button variant="ghost" size="icon" aria-label="เปลี่ยนรูป" title="เปลี่ยนรูป" onClick={() => ref.current?.click()}>
+        <ImagePlus className="size-4" />
       </Button>
       <input
         ref={ref}
