@@ -44,9 +44,12 @@ export function StepPreview() {
       value: `${formatThaiDate(d.schedule.regOpen.slice(0, 10), false)} – ${formatThaiDate(d.schedule.surveyClose.slice(0, 10), false)}`,
       ok: !!(d.schedule.regOpen && d.schedule.regClose),
     },
-    d.survey.questions.some((q) => !q.titleEn)
-      ? { label: "Survey", value: "EN ยังไม่แปล (ไม่บังคับ)", ok: false }
-      : { label: "Survey", value: `${d.survey.questions.length} คำถาม`, ok: true },
+    // Survey บังคับมีทุก Event: ยังไม่มีคำถาม = เผยแพร่ไม่ได้
+    d.survey.questions.length === 0
+      ? { label: "Survey", value: "ยังไม่มีคำถาม (บังคับอย่างน้อย 1 ข้อ)", ok: false }
+      : d.survey.questions.some((q) => !q.titleEn)
+        ? { label: "Survey", value: `${d.survey.questions.length} คำถาม · EN ยังไม่แปล (ไม่บังคับ)`, ok: false }
+        : { label: "Survey", value: `${d.survey.questions.length} คำถาม`, ok: true },
   ];
 
   return (

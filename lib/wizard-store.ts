@@ -70,16 +70,15 @@ function toDraft(ev: Event): EventDraft {
       surveyClose: ev.surveyWindow?.closesAt ?? "",
       remindAfterEnd: false,
     },
-    // Event ใหม่เปิดใช้ Survey เป็นค่าเริ่มต้น
-    survey: { enabled: ev.survey ? ev.survey.enabled : true, questions: [] },
+    survey: { enabled: true, questions: [] }, // Survey บังคับมีทุก Event (ไม่มีสวิตช์ปิดแล้ว)
   };
 }
 
 export const DEFAULT_AD_SECONDS = 6;
 
-// ข้อมูลเก่าใน localStorage (v2) → รูปแบบปัจจุบัน (v3)
-// - ad (รูปเดียว) → ads.items (หลายรูป) + seconds
-// - เลิกจำกัดจำนวนรับ / เลิกส่งข้อความเตือน
+// ข้อมูลเก่าใน localStorage → รูปแบบปัจจุบัน (v4)
+// - v3: ad (รูปเดียว) → ads.items (หลายรูป) + seconds · เลิกจำกัดจำนวนรับ / เลิกส่งข้อความเตือน
+// - v4: Survey บังคับมีทุก Event → enabled = true เสมอ
 type DraftV2 = Omit<EventDraft, "ads"> & { ad?: EventDraft["ads"]["items"][number] | null; ads?: EventDraft["ads"] };
 function migrateDraft(d: DraftV2): EventDraft {
   const { ad, ...rest } = d;
@@ -87,6 +86,7 @@ function migrateDraft(d: DraftV2): EventDraft {
     ...rest,
     ads: rest.ads ?? { items: ad ? [ad] : [], seconds: DEFAULT_AD_SECONDS },
     schedule: { ...rest.schedule, maxAttendees: "", remindAfterEnd: false },
+    survey: { ...rest.survey, enabled: true },
   };
 }
 
@@ -124,10 +124,10 @@ export const useWizardStore = create<State>()(
     }),
     {
       name: "event-admin-store-v2",
-      version: 3,
+      version: 4,
       migrate: (persisted, fromVersion) => {
         const s = persisted as { drafts?: Record<string, DraftV2>; draft?: DraftV2 };
-        if (fromVersion < 3) {
+        if (fromVersion < 4) {
           if (s.drafts) {
             s.drafts = Object.fromEntries(Object.entries(s.drafts).map(([k, d]) => [k, migrateDraft(d)]));
           }
