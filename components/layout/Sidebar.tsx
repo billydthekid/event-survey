@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, BarChart3,
-  History, Users, Trash2, Settings, LogOut, Plus, Ticket,
+  History, Users, Trash2, Settings, LogOut, Plus,
   type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -81,9 +81,7 @@ function SidebarContent() {
     <aside className="flex h-screen w-60 flex-col border-r border-slate-200 bg-[#F4F2F7] p-4">
       {/* โลโก้ */}
       <div className="mb-4 flex items-center gap-2 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <Ticket size={18} />
-        </div>
+        <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
         <span className="font-bold">
           Event<span className="text-blue-600">Survey</span>
         </span>

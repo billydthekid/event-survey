@@ -4,8 +4,8 @@ import { User } from "@/types";
 export const mockUsers: User[] = [
   {
     id: "u-admin-1",
-    name: "ธนพัฒน์ โสภารัตน์",
-    username: "thanapath.admin",
+    name: "Thanaphat S.",
+    username: "thanaphat.admin",
     password: "1234",
     role: "admin",
     org: "สำนักเทคโนโลยี",
@@ -17,8 +17,8 @@ export const mockUsers: User[] = [
   },
   {
     id: "u-admin-2",
-    name: "ธนกร มีสุข",
-    username: "thanakorn.admin",
+    name: "Sirawit W.",
+    username: "sirawit.admin",
     password: "1234",
     role: "admin",
     org: "สำนักเทคโนโลยี",
@@ -29,8 +29,8 @@ export const mockUsers: User[] = [
   },
   {
     id: "u-organizer-1",
-    name: "ณัฐพล ใจดี",
-    username: "nattapol.organizer",
+    name: "ThanatJak J.",
+    username: "Thanatjak.organizer",
     password: "1234",
     role: "organizer",
     org: "คณะ IT",
@@ -42,8 +42,8 @@ export const mockUsers: User[] = [
   },
   {
     id: "u-organizer-2",
-    name: "กมลชนก สุขใจ",
-    username: "kamonchanok.organizer",
+    name: "Pichapa P.",
+    username: "Pichapa.organizer",
     password: "1234",
     role: "organizer",
     org: "กิจการนักศึกษา",
