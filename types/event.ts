@@ -72,6 +72,18 @@ export interface EventDraft {
     remindAfterEnd: boolean;
   };
   survey: { enabled: boolean; questions: SurveyQuestion[] };
+  /** Event ปิด: รับลงทะเบียนเฉพาะรายชื่อที่ import (ไม่มี = Event เปิด) · ดู lib/allow-list.ts */
+  allowList?: AllowList;
+}
+
+export type AllowListKind = "email" | "phone";
+
+export interface AllowList {
+  closed: boolean; // เปิดโหมด Event ปิด
+  kind: AllowListKind; // ตรวจด้วยอีเมล หรือ เบอร์มือถือ
+  values: string[]; // ค่าที่ normalize แล้ว ไม่ซ้ำ
+  fileName: string;
+  importedAt: string;
 }
 
 /** ผู้ลงทะเบียน: values เก็บตาม id ของ field ในฟอร์ม */

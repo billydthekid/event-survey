@@ -52,7 +52,7 @@ export function StepPreview() {
             ))}
           </ul>
           <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
-            กดเผยแพร่แล้ว สถานะจะเปลี่ยนเป็น Scheduled และ Super Admin จะได้รับการแจ้งเตือน
+            กดเผยแพร่แล้ว สถานะจะเปลี่ยนเป็น Active และแก้ไข Event / Survey ไม่ได้อีก
           </p>
         </CardContent>
       </Card>
