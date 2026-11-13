@@ -57,7 +57,7 @@ function EventsPageContent() {
       <p className="text-sm text-slate-400">ผู้ดูแลระบบ / Event</p>
       <h1 className="mt-1 text-3xl font-bold">Event ทั้งหมด</h1>
       <p className="mt-1 text-slate-500">
-        Admin เห็น ลบ และมอบหมายผู้ดูแล (Organizer) ได้ทุก Event
+        Admin เห็น ลบ และมอบหมายผู้ดูแล Organizer ได้ทุก Event
       </p>
 
       <div className="mt-6 rounded-xl bg-white shadow-sm overflow-hidden">
