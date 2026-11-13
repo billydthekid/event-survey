@@ -6,19 +6,22 @@ import { cn } from "@/lib/utils";
 import type { UploadedAsset } from "@/types/event";
 
 interface Props {
-  onPick: (asset: UploadedAsset) => void;
+  onPick?: (asset: UploadedAsset) => void; // ได้แค่ชื่อ + ขนาด (mock)
+  onFile?: (file: File) => void; // ได้ไฟล์จริง (ใช้กับรูปโฆษณาที่ต้อง crop)
   title: string;
   hint?: string;
   accept?: string;
   className?: string;
 }
 
-export function FileDrop({ onPick, title, hint, accept = "image/png,image/jpeg", className }: Props) {
+export function FileDrop({ onPick, onFile, title, hint, accept = "image/png,image/jpeg", className }: Props) {
   const ref = useRef<HTMLInputElement>(null);
 
   const handle = (file?: File) => {
     if (!file) return;
-    onPick({ name: file.name, sizeKB: Math.round(file.size / 1024), cropped: false });
+    onFile?.(file);
+    onPick?.({ name: file.name, sizeKB: Math.round(file.size / 1024), cropped: false });
+    if (ref.current) ref.current.value = ""; // เลือกไฟล์เดิมซ้ำได้
   };
 
   return (

@@ -32,6 +32,8 @@ export interface PublicQuestion {
   required: boolean;
   options: BiText[];
   ratingLabels?: { min: BiText; max: BiText }; // คำกำกับใต้เลข 1 และ 5
+  ratingMax?: 5 | 10; // rating: คะแนนเต็ม (ไม่มี = 5)
+  ratingStyle?: "number" | "star"; // rating: แบบตัวเลข / ดาว (ไม่มี = ตัวเลข)
 }
 
 export interface PublicEvent {
@@ -133,6 +135,8 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
       title: { th: q.titleTh, en: q.titleEn || undefined },
       required: q.required,
       options: q.options.map((o) => ({ th: o })),
+      ratingMax: q.ratingMax,
+      ratingStyle: q.ratingStyle,
     }));
   } else {
     const source = event.survey?.questions.length ? event.survey : report?.survey;

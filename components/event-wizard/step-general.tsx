@@ -15,15 +15,9 @@ import { formatThaiDate } from "@/lib/utils/date";
 import { useNow } from "@/lib/hooks/useNow";
 import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
 import { FieldError } from "./field-error";
+import { AllowListCard } from "./allow-list-card";
+import { EVENT_TYPES } from "@/lib/event-types";
 import type { EventType } from "@/types/event";
-
-const TYPES: { value: EventType; label: string }[] = [
-  { value: "seminar", label: "สัมมนา" },
-  { value: "workshop", label: "Workshop" },
-  { value: "training", label: "อบรม" },
-  { value: "jobfair", label: "Job Fair" },
-  { value: "openhouse", label: "Open House" },
-];
 
 export function StepGeneral() {
   const g = useWizardStore((s) => s.draft.general);
@@ -66,15 +60,26 @@ export function StepGeneral() {
             <div className="space-y-1.5">
               <Label>ประเภทงาน <span className="text-destructive">*</span></Label>
               <ToggleGroup value={[g.type]} onValueChange={(v) => v[0] && set({ type: v[0] as EventType })} variant="outline" className="flex-wrap justify-start">
-                {TYPES.map((t) => (
+                {EVENT_TYPES.map((t) => (
                   <ToggleGroupItem key={t.value} value={t.value} className="rounded-full">
-                    {t.label}
+                    {t.th}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
+              {g.type === "other" && (
+                <Input
+                  placeholder="ระบุประเภทงาน เช่น งานบวช, ทัศนศึกษา"
+                  value={g.typeOther ?? ""}
+                  onChange={(e) => set({ typeOther: e.target.value })}
+                  aria-label="ประเภทงานอื่นๆ"
+                />
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* เปิด / ปิด Event (แทนจำนวนรับสูงสุดเดิมในขั้นที่ 5) */}
+        <AllowListCard />
 
         <Card>
           <CardHeader>

@@ -36,7 +36,8 @@ export type EventStatus =
   | "deleted";    // ถูกลบ (30 วัน)
 
 export type EventType =
-  | "seminar" | "workshop" | "training" | "jobfair" | "openhouse";
+  | "seminar" | "workshop" | "training" | "jobfair" | "openhouse"
+  | "conference" | "competition" | "exhibition" | "sports" | "volunteer" | "other";
 export type EventMode = "onsite" | "online";
 export type ThemeKind = "light" | "dark" | "bold";
 

@@ -255,7 +255,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
     }
     // Event ปิด: อีเมล/เบอร์ต้องอยู่ในรายชื่อที่ Organizer import ไว้ (lib/allow-list.ts)
     const allow = draft?.allowList;
-    if (e.maxAttendees > 0 && isActive(allow) && !next[allow.kind]) {
+    if (isActive(allow) && !next[allow.kind]) {
       const v = vals[allow.kind];
       if (typeof v === "string" && !isAllowed(allow, v)) next[allow.kind] = "notAllowed";
     }

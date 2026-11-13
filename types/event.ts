@@ -1,4 +1,7 @@
-export type EventType = "seminar" | "workshop" | "training" | "jobfair" | "openhouse";
+// ชื่อที่แสดงของแต่ละประเภทอยู่ที่ lib/event-types.ts · "other" = ผู้จัดพิมพ์ชื่อประเภทเอง (general.typeOther)
+export type EventType =
+  | "seminar" | "workshop" | "training" | "jobfair" | "openhouse"
+  | "conference" | "competition" | "exhibition" | "sports" | "volunteer" | "other";
 /** สถานะที่เก็บจริง (draft → scheduled เมื่อกดเผยแพร่) ส่วน open/active/ended คำนวณจากเวลา ดู lib/utils/event-phase.ts */
 export type EventStatus = "draft" | "scheduled";
 export type FieldKind = "text" | "email" | "number" | "dropdown" | "multiselect";
@@ -9,7 +12,18 @@ export interface UploadedAsset {
   name: string;
   sizeKB: number;
   cropped?: boolean;
+  /** ตัวรูปจริง (data URL) — ตอนนี้เก็บเฉพาะรูปโฆษณาที่ crop เป็น 16:9 แล้ว · ไม่มี = เก็บแค่ชื่อไฟล์ (mock) */
+  dataUrl?: string;
 }
+
+/** รูปโฆษณาบนจอ Kiosk: หลายรูปเลื่อนวนอัตโนมัติ ทุก `seconds` วินาที */
+export interface AdSettings {
+  items: UploadedAsset[];
+  seconds: number;
+}
+
+export type RatingMax = 5 | 10;
+export type RatingStyle = "number" | "star";
 
 export interface FormField {
   id: string;
@@ -27,6 +41,9 @@ export interface SurveyQuestion {
   titleEn: string;
   required: boolean;
   options: string[]; // ใช้กับ single / multi / dropdown
+  // ใช้กับ rating เท่านั้น · ไม่มีค่า = 1–5 แบบตัวเลข (ค่าเดิมก่อนมีตัวเลือกนี้)
+  ratingMax?: RatingMax;
+  ratingStyle?: RatingStyle;
 }
 
 export interface EventDraft {
@@ -40,6 +57,7 @@ export interface EventDraft {
     descTh: string;
     descEn: string;
     type: EventType;
+    typeOther?: string; // ชื่อประเภทที่พิมพ์เอง เมื่อ type = "other"
     organizer: string;
     phone: string;
     email: string;
@@ -61,14 +79,16 @@ export interface EventDraft {
     bg: UploadedAsset | null;
     logo: UploadedAsset | null;
   };
-  ad: UploadedAsset | null;
+  ads: AdSettings;
   form: { fields: FormField[] };
   schedule: {
     regOpen: string; // yyyy-MM-ddTHH:mm
     regClose: string;
+    /** เลิกใช้แล้ว (ไม่จำกัดจำนวน) — เก็บไว้เป็น "" เพราะ lib/public-event.ts ยังอ่านช่องนี้ */
     maxAttendees: string;
     surveyOpen: string;
     surveyClose: string;
+    /** เลิกใช้แล้ว (ตัดการส่งข้อความเตือนออก) */
     remindAfterEnd: boolean;
   };
   survey: { enabled: boolean; questions: SurveyQuestion[] };
