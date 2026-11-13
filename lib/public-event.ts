@@ -9,6 +9,7 @@
 import type { BiText, Event, FieldType, QuestionType } from "@/types";
 import type { BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
+import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
 
 // ============ ช่องในฟอร์มลงทะเบียน ============
@@ -35,8 +36,9 @@ export interface PublicQuestion {
   required: boolean;
   options: BiText[];
   ratingLabels?: { min: BiText; max: BiText }; // คำกำกับใต้เลข 1 และ 5
-  ratingMax?: 5 | 10; // rating: คะแนนเต็ม (ไม่มี = 5)
-  ratingStyle?: "number" | "star"; // rating: แบบตัวเลข / ดาว (ไม่มี = ตัวเลข)
+  ratingMax?: 5 | 10; // linear / rating: คะแนนเต็ม (ไม่มี = 5)
+  ratingStyle?: "number" | "star"; // rating ของข้อมูลตัวอย่าง (Report) · คำถามจาก Wizard: linear = ตัวเลข, rating = ดาว
+  rows?: BiText[]; // mcgrid / cbgrid: แถวของตาราง (options = คอลัมน์)
 }
 
 export interface PublicEvent {
@@ -138,14 +140,20 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
   // Survey: Wizard (ถ้ามีคำถาม) → Event → mock ของ Report
   let questions: PublicQuestion[] = [];
   if (draft && draft.survey.questions.length > 0) {
-    questions = draft.survey.questions.map((q) => ({
+    // 12 ประเภทจาก Survey Builder (lib/survey-types.ts) · ข้อมูลเก่า rating ตัวเลข → linear
+    questions = draft.survey.questions.map(normalizeQuestion).map((q) => ({
       id: q.id,
       type: q.type,
       title: { th: q.titleTh, en: q.titleEn || undefined },
       required: q.required,
-      options: q.options.map((o) => ({ th: o })),
+      options: q.options.filter((o) => o.trim()).map((o) => ({ th: o })),
       ratingMax: q.ratingMax,
-      ratingStyle: q.ratingStyle,
+      ratingStyle: q.type === "rating" ? "star" : q.type === "linear" ? "number" : undefined,
+      ratingLabels:
+        q.type === "linear" && (q.scaleLabels?.min || q.scaleLabels?.max)
+          ? { min: { th: q.scaleLabels.min }, max: { th: q.scaleLabels.max } }
+          : undefined,
+      rows: q.rows?.filter((r) => r.trim()).map((r) => ({ th: r })),
     }));
   } else {
     const source = event.survey?.questions.length ? event.survey : report?.survey;

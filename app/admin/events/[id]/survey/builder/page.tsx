@@ -4,26 +4,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, ChevronDown, Copy, GripVertical, Lock, Smartphone, Trash2, X } from "lucide-react";
+import { ArrowLeft, Copy, GripVertical, Lock, Smartphone, Trash2 } from "lucide-react";
 import { useDragSort } from "@/lib/use-drag-sort";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RatingSample, SurveyPreview, ratingOf } from "@/components/event/survey-preview";
+import { SurveyPreview, ratingOf } from "@/components/event/survey-preview";
+import { QuestionEditor } from "@/components/event/survey-question-editor";
 import { useWizardStore } from "@/lib/wizard-store";
 import { SurveyDenied, lockBannerText, useSurveyDraft } from "../surveyAccess";
-import { QTYPES, qtype } from "@/lib/survey-types";
+import { QTYPES, defaultsFor, normalizeQuestion, qtype } from "@/lib/survey-types";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { newId } from "@/lib/utils/id";
 import { cn } from "@/lib/utils";
-import type { RatingMax, RatingStyle, SurveyQType, SurveyQuestion } from "@/types/event";
+import type { RatingMax, SurveyQType, SurveyQuestion } from "@/types/event";
 import { eventTypeLabel } from "@/lib/event-types";
 import { LockedArea } from "@/components/event-wizard/lock-dialogs";
 
 
-const defaultOptions = (type: SurveyQType) => (qtype(type).hasOptions ? ["ตัวเลือก 1", "ตัวเลือก 2"] : []);
 
 export default function SurveyBuilderPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,7 +45,8 @@ export default function SurveyBuilderPage() {
   // ล็อกแล้ว → ใช้สถานะจริงใน store หลัก (Active / Ended) แทนสถานะที่คำนวณจากเวลาใน wizard
   const statusLabel = locked ? STATUS_LABEL[access.event.status].text : PHASE_META[getPhase(d)].th;
 
-  const qs = d.survey.questions;
+  // ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
+  const qs = d.survey.questions.map(normalizeQuestion);
   const selected = qs.find((q) => q.id === (selectedId ?? qs[0]?.id)) ?? null;
   const selectedIndex = selected ? qs.findIndex((q) => q.id === selected.id) : -1;
 
@@ -54,14 +55,16 @@ export default function SurveyBuilderPage() {
 
   const add = (type: SurveyQType) => {
     const nid = newId("q");
-    setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: defaultOptions(type) }]);
+    setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: [], ...defaultsFor(type) }]);
     setSelectedId(nid);
   };
 
   const duplicate = (qid: string) => {
     const i = qs.findIndex((q) => q.id === qid);
     const nid = newId("q");
-    setQs([...qs.slice(0, i + 1), { ...qs[i], id: nid, options: [...qs[i].options] }, ...qs.slice(i + 1)]);
+    const src = qs[i];
+    const copy = { ...src, id: nid, options: [...src.options], rows: src.rows ? [...src.rows] : undefined };
+    setQs([...qs.slice(0, i + 1), copy, ...qs.slice(i + 1)]);
     setSelectedId(nid);
   };
 
@@ -71,9 +74,7 @@ export default function SurveyBuilderPage() {
     setSelectedId(next[0]?.id ?? null);
   };
 
-
-  const changeType = (q: SurveyQuestion, type: SurveyQType) =>
-    update(q.id, { type, options: qtype(type).hasOptions && q.options.length < 2 ? defaultOptions(type) : q.options });
+  const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q) });
 
   const minutes = Math.max(1, Math.round(qs.length * 0.7));
   const surveyTitle = `แบบประเมินงาน ${eventTypeLabel(d.general.type, d.general.typeOther)}`;
@@ -181,58 +182,8 @@ export default function SurveyBuilderPage() {
                       {q.required && <span className="text-xl font-bold text-destructive">*</span>}
                     </div>
 
-                    {/* ตัวอย่างช่องตอบ */}
-                    {/* rating: หน้าตาเดียวกับ Preview และหน้า /s (คะแนนเต็ม/รูปแบบ ตั้งที่แผงขวา) */}
-                    {q.type === "rating" && <RatingSample q={q} primary={d.theme.primary} />}
-                    {q.type === "short" && (
-                      <div className="max-w-md rounded-lg border px-4 py-2.5 text-sm text-muted-foreground">ผู้ตอบพิมพ์คำตอบสั้น ๆ ที่นี่…</div>
-                    )}
-                    {q.type === "long" && (
-                      <div className="h-24 rounded-lg border px-4 py-3 text-sm text-muted-foreground">ผู้ตอบพิมพ์คำตอบที่นี่…</div>
-                    )}
-                    {q.type === "date" && (
-                      <div className="flex max-w-xs items-center justify-between rounded-lg border px-4 py-2.5 text-sm text-muted-foreground">
-                        dd / mm / yyyy <Calendar className="size-4" />
-                      </div>
-                    )}
-                    {meta.hasOptions && (
-                      <div className="space-y-2">
-                        {q.options.map((o, k) => (
-                          <div key={k} className="group flex max-w-2xl items-center gap-3 rounded-lg border px-4 py-2.5">
-                            {q.type === "dropdown" ? (
-                              <span className="w-4 text-center text-xs text-muted-foreground">{k + 1}</span>
-                            ) : (
-                              <span className={cn("size-4 shrink-0 border", q.type === "single" ? "rounded-full" : "rounded")} />
-                            )}
-                            <input
-                              value={o}
-                              onChange={(e) => update(q.id, { options: q.options.map((x, n) => (n === k ? e.target.value : x)) })}
-                              aria-label={`ตัวเลือก ${k + 1}`}
-                              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-                            />
-                            <button
-                              type="button"
-                              aria-label="ลบตัวเลือก"
-                              disabled={q.options.length <= 2}
-                              onClick={() => update(q.id, { options: q.options.filter((_, n) => n !== k) })}
-                              className="text-muted-foreground opacity-0 transition hover:text-foreground focus:opacity-100 group-hover:opacity-100 disabled:hidden"
-                            >
-                              <X className="size-4" />
-                            </button>
-                          </div>
-                        ))}
-                        {q.type === "dropdown" && (
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground"><ChevronDown className="size-3.5" /> ผู้ตอบเลือกจากรายการนี้</p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => update(q.id, { options: [...q.options, `ตัวเลือก ${q.options.length + 1}`] })}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          + เพิ่มตัวเลือก
-                        </button>
-                      </div>
-                    )}
+                    {/* ช่องตอบ: แก้ตัวเลือก / แถว-คอลัมน์ของตาราง / คำกำกับสเกล ในการ์ดได้เลย */}
+                    <QuestionEditor q={q} primary={d.theme.primary} update={(v) => update(q.id, v)} />
                   </section>
                 );
               })}
@@ -294,9 +245,9 @@ export default function SurveyBuilderPage() {
                 </div>
               </div>
 
-              {selected.type === "rating" && (
+              {(selected.type === "rating" || selected.type === "linear") && (
                 <div className="space-y-3 border-b pb-5">
-                  <p className="text-sm font-semibold">รูปแบบการให้คะแนน</p>
+                  <p className="text-sm font-semibold">{selected.type === "rating" ? "จำนวนดาว" : "ช่วงคะแนน"}</p>
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="text-muted-foreground">คะแนนเต็ม</span>
                     <ToggleGroup
@@ -307,18 +258,6 @@ export default function SurveyBuilderPage() {
                     >
                       <ToggleGroupItem value="5">1–5</ToggleGroupItem>
                       <ToggleGroupItem value="10">1–10</ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-muted-foreground">แสดงเป็น</span>
-                    <ToggleGroup
-                      value={[ratingOf(selected).style]}
-                      onValueChange={(v) => v[0] && update(selected.id, { ratingStyle: v[0] as RatingStyle })}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <ToggleGroupItem value="number">ตัวเลข</ToggleGroupItem>
-                      <ToggleGroupItem value="star">ดาว</ToggleGroupItem>
                     </ToggleGroup>
                   </div>
                 </div>

@@ -110,7 +110,9 @@ export interface FormField {
 
 // ============ Survey ============
 export type QuestionType =
-  | "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date";
+  | "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date"
+  // เพิ่มจาก Survey Builder 12 ประเภท (lib/survey-types.ts)
+  | "linear" | "opinion" | "mcgrid" | "cbgrid" | "yesno";
 
 export interface Question {
   id: string;
