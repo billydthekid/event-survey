@@ -15,12 +15,13 @@ const FRAME_H = Math.round(FRAME_W / AD_RATIO);
 
 interface Props {
   src: string | null; // data URL ของรูปต้นฉบับ (null = ปิด)
+  title?: string; // ค่าเริ่มต้น "Crop รูปโฆษณา 16:9"
   fileName: string;
   onCancel: () => void;
   onDone: (dataUrl: string) => void;
 }
 
-export function CropDialog({ src, fileName, onCancel, onDone }: Props) {
+export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", fileName, onCancel, onDone }: Props) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // มุมซ้ายบนของรูป เทียบกับกรอบ
@@ -73,7 +74,7 @@ export function CropDialog({ src, fileName, onCancel, onDone }: Props) {
     <Dialog open={src !== null} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
-          <DialogTitle>Crop รูปโฆษณา 16:9</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {fileName}
             {img && ` · ต้นฉบับ ${img.naturalWidth} × ${img.naturalHeight} px`} · ผลลัพธ์ {AD_WIDTH} × {AD_HEIGHT} px
@@ -127,11 +128,11 @@ export function CropDialog({ src, fileName, onCancel, onDone }: Props) {
           <span className="w-12 text-right tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Move className="size-3.5" /> ลากรูปเพื่อเลือกส่วนที่จะแสดงบนจอ Kiosk
+          <Move className="size-3.5" /> ลากรูปเพื่อเลือกส่วนที่จะแสดง
         </p>
         {small && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700">
-            <AlertTriangle className="size-3.5" /> รูปเล็กกว่า {AD_WIDTH} × {AD_HEIGHT} px อาจไม่คมชัดบนจอ Kiosk
+            <AlertTriangle className="size-3.5" /> รูปเล็กกว่า {AD_WIDTH} × {AD_HEIGHT} px อาจไม่คมชัด
           </p>
         )}
 

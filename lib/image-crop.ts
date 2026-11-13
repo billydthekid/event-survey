@@ -48,3 +48,32 @@ export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, quality = 0
 
 /** ขนาดไฟล์โดยประมาณของ data URL (KB) */
 export const dataUrlKB = (url: string) => Math.round((url.length * 3) / 4 / 1024);
+
+/**
+ * ย่อรูปให้อยู่ในกรอบ maxW × maxH (ไม่ตัด ไม่ขยาย) → data URL
+ * โลโก้ใช้ PNG (คงพื้นใส) · รูปพื้นหลังใช้ JPEG (ไฟล์เล็ก)
+ */
+export async function resizeToDataUrl(
+  src: string,
+  maxW: number,
+  maxH: number,
+  type: "image/png" | "image/jpeg" = "image/jpeg",
+  quality = 0.82
+): Promise<string> {
+  const img = await loadImage(src);
+  const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("เบราว์เซอร์ไม่รองรับ canvas");
+  if (type === "image/jpeg") {
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, w, h);
+  }
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL(type, quality);
+}
