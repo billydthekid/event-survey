@@ -17,6 +17,26 @@ interface NewUserInput {
   password: string;
 }
 
+// ส่วนที่แก้ได้ของ Event: id ห้ามเปลี่ยน, object ซ้อน (theme, registration, ...) ส่งมาบางส่วนได้
+export type EventPatch = {
+  [K in Exclude<keyof Event, "id">]?: Event[K] extends Record<string, unknown> | undefined
+    ? Partial<NonNullable<Event[K]>>
+    : Event[K];
+};
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+function applyEventPatch(e: Event, patch: EventPatch): Event {
+  const next: Record<string, unknown> = { ...e };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    const prev = next[key];
+    next[key] = isPlainObject(value) && isPlainObject(prev) ? { ...prev, ...value } : value;
+  }
+  return next as unknown as Event;
+}
+
 interface StoreState {
   // ===== Session =====
   currentUser: User | null;
@@ -40,6 +60,9 @@ interface StoreState {
   createDraftEvent: (eventName: string, adminId?: string | null) => Event;
   // เปลี่ยน/เพิ่มผู้ดูแล event (ใช้บนหน้า Event list ของ Admin)
   setEventAdmin: (eventId: string, adminId: string) => void;
+  // แก้ข้อมูล Event (ใช้จาก Wizard ของ Organizer) — ค่าที่เป็น object (theme, registration ฯลฯ) รวมกับของเดิม 1 ชั้น
+  // ไม่บันทึก log เอง เพราะ Wizard เรียกทุกครั้งที่พิมพ์ — ผู้เรียกเลือก addLog เองเมื่อเป็น action สำคัญ (เช่น เผยแพร่)
+  updateEvent: (eventId: string, patch: EventPatch) => void;
   resetPassword: (userId: string, newPassword: string) => void;
   toggleActive: (userId: string) => void;
   addLog: (action: string, targetType: string, targetId: string, detail?: string) => void;
@@ -179,6 +202,14 @@ export const useStore = create<StoreState>()(
           eventId,
           `มอบหมายให้ ${newUser?.name ?? newAdminId}`
         );
+      },
+
+      // ---------- แก้ข้อมูล Event ----------
+      updateEvent: (eventId, patch) => {
+        if (!get().events.some((e) => e.id === eventId)) return;
+        set({
+          events: get().events.map((e) => (e.id === eventId ? applyEventPatch(e, patch) : e)),
+        });
       },
 
       // ---------- รีเซ็ต password (Admin ตั้งรหัสเองได้) ----------
