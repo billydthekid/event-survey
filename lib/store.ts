@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 import { User, Event, ActionLog, Role, Registration, SurveyResponse } from "@/types";
 import { mockUsers } from "@/lib/mock/user";
 import { mockEvents, makeDraftEvent, WORKSHOP_AD } from "@/lib/mock/events";
-import { mockRegistrations, mockResponses } from "@/lib/mock/responses";
+import { mockRegistrations, mockResponses, withMockSurvey } from "@/lib/mock/responses";
 import { makeUsername } from "@/lib/utils/username";
 import { newId } from "@/lib/utils/id";
 import { KEEP_DAYS } from "@/lib/utils/status";
@@ -82,7 +82,7 @@ export const useStore = create<StoreState>()(
       currentUser: null,
       hydrated: false,
       users: mockUsers,
-      events: mockEvents,
+      events: mockEvents.map(withMockSurvey),   // + คำถาม Survey ตัวอย่าง (lib/mock/responses.ts)
       logs: [],
       registrations: mockRegistrations,
       responses: mockResponses,
@@ -334,7 +334,8 @@ export const useStore = create<StoreState>()(
       // v1: ใส่รูปโฆษณา Kiosk ให้ Workshop Figma (e-workshop)
       // v2: เปลี่ยนชื่อ role: "super" → "admin", "event" → "organizer"
       // v3: แปลง username suffix เก่า (.super/.event) ให้ตรงชื่อใหม่ (.admin/.organizer)
-      version: 3,
+      // v4: (Jin) ใช้ข้อมูลตัวอย่างชุดเดียวกับหน้า Report + ใส่คำถาม Survey ตัวอย่างใน event.survey
+      version: 4,
       migrate: (persisted, fromVersion) => {
         const s = persisted as Partial<StoreState> & Record<string, unknown>;
 
@@ -383,6 +384,20 @@ export const useStore = create<StoreState>()(
               ...s.currentUser,
               username: renameUsername(s.currentUser.username),
             };
+          }
+        }
+
+        // v3 → v4: เปลี่ยนข้อมูลตัวอย่าง (lib/mock/responses.ts) — ไม่ต้องล้าง localStorage เอง
+        //   - Event ตัวอย่างที่ยังไม่มี survey → ใส่คำถามตัวอย่าง
+        //   - ลบคนลงทะเบียน / คำตอบตัวอย่างชุดเก่า (id ขึ้นต้น "reg-e-" / "res-e-") แล้วใส่ชุดใหม่
+        //   - ของที่ผู้ใช้กรอกจริงจากหน้า /r, /s (id จาก newId เช่น "reg-mh3k…") เก็บไว้เหมือนเดิม
+        if (fromVersion < 4) {
+          if (Array.isArray(s.events)) s.events = s.events.map(withMockSurvey);
+          if (Array.isArray(s.registrations)) {
+            s.registrations = [...mockRegistrations, ...s.registrations.filter((r) => !r.id.startsWith("reg-e-"))];
+          }
+          if (Array.isArray(s.responses)) {
+            s.responses = [...mockResponses, ...s.responses.filter((r) => !r.id.startsWith("res-e-"))];
           }
         }
 
