@@ -1,14 +1,99 @@
-import { AlignLeft, Calendar, ChevronDown, CircleDot, ListChecks, Star, Type, type LucideIcon } from "lucide-react";
-import type { SurveyQType } from "@/types/event";
+// lib/survey-types.ts
+// ประเภทคำถาม Survey 12 แบบ (แบบ Google Form) — ใช้ร่วมกัน: Survey Builder, Preview, หน้า /s, ขั้นที่ 6 ของ Wizard
+//
+// การเก็บข้อมูลของแต่ละแบบ (SurveyQuestion):
+// - single / multi / dropdown / opinion / yesno → options = ตัวเลือก (opinion = ระดับความเห็น, yesno = ใช่/ไม่ใช่ ตายตัว)
+// - linear (Linear Scale ตัวเลข) / rating (ดาว) → ratingMax = 5 หรือ 10 · linear มี scaleLabels คำกำกับปลายทั้งสองข้าง
+// - mcgrid / cbgrid (ตาราง)       → rows = หัวข้อ (แถว) · options = ตัวเลือก (คอลัมน์)
+import {
+  AlignLeft, Calendar, CheckSquare, ChevronDown, CircleDot, Grid2x2Check, Grid3x3, SlidersHorizontal, Star, ThumbsUp,
+  ToggleLeft, Type, type LucideIcon,
+} from "lucide-react";
+import type { SurveyQType, SurveyQuestion } from "@/types/event";
 
-export const QTYPES: { value: SurveyQType; th: string; en: string; icon: LucideIcon; hasOptions: boolean }[] = [
-  { value: "short", th: "ข้อความสั้น", en: "Short text", icon: Type, hasOptions: false },
-  { value: "long", th: "ข้อความยาว", en: "Long text", icon: AlignLeft, hasOptions: false },
-  { value: "single", th: "ตัวเลือกเดียว", en: "Single choice", icon: CircleDot, hasOptions: true },
-  { value: "multi", th: "หลายตัวเลือก", en: "Multiple choice", icon: ListChecks, hasOptions: true },
-  { value: "dropdown", th: "Dropdown", en: "Dropdown", icon: ChevronDown, hasOptions: true },
-  { value: "rating", th: "Rating / Scale", en: "Rating / Scale", icon: Star, hasOptions: false },
-  { value: "date", th: "วันที่", en: "Date", icon: Calendar, hasOptions: false },
+export interface QTypeMeta {
+  value: SurveyQType;
+  th: string;
+  en: string; // ชื่อแบบ Google Form
+  example: string; // ตัวอย่างการใช้งาน
+  icon: LucideIcon;
+  hasOptions: boolean; // ผู้สร้างแก้ตัวเลือกได้
+  hasRows: boolean; // ตาราง (แถว × คอลัมน์)
+}
+
+export const QTYPES: QTypeMeta[] = [
+  { value: "short", th: "ข้อความสั้น", en: "Short Answer", example: "ระบุความคิดเห็นสั้น ๆ", icon: Type, hasOptions: false, hasRows: false },
+  { value: "long", th: "ข้อความยาว", en: "Paragraph", example: "ข้อเสนอแนะเพิ่มเติม", icon: AlignLeft, hasOptions: false, hasRows: false },
+  { value: "single", th: "ตัวเลือกเดียว", en: "Multiple Choice", example: "คุณรู้จัก Event จากช่องทางใด", icon: CircleDot, hasOptions: true, hasRows: false },
+  { value: "multi", th: "หลายตัวเลือก", en: "Checkboxes", example: "คุณชอบกิจกรรมส่วนไหนบ้าง", icon: CheckSquare, hasOptions: true, hasRows: false },
+  { value: "dropdown", th: "Dropdown", en: "Dropdown", example: "เลือกประเภทผู้เข้าร่วม", icon: ChevronDown, hasOptions: true, hasRows: false },
+  { value: "linear", th: "สเกลตัวเลข", en: "Linear Scale", example: "ให้คะแนน 1–5", icon: SlidersHorizontal, hasOptions: false, hasRows: false },
+  { value: "rating", th: "ให้ดาว", en: "Rating", example: "ให้คะแนนด้วยดาว ⭐", icon: Star, hasOptions: false, hasRows: false },
+  { value: "opinion", th: "ระดับความเห็น", en: "Opinion Scale", example: "ระดับความเห็นด้วย", icon: ThumbsUp, hasOptions: true, hasRows: false },
+  { value: "mcgrid", th: "ตารางเลือกข้อเดียว", en: "Multiple Choice Grid", example: "ประเมินหลายหัวข้อ", icon: Grid3x3, hasOptions: true, hasRows: true },
+  { value: "cbgrid", th: "ตารางเลือกหลายข้อ", en: "Checkbox Grid", example: "เลือกได้หลายข้อในตาราง", icon: Grid2x2Check, hasOptions: true, hasRows: true },
+  { value: "yesno", th: "ใช่ / ไม่ใช่", en: "Yes / No", example: "ต้องการเข้าร่วมอีกหรือไม่", icon: ToggleLeft, hasOptions: false, hasRows: false },
+  { value: "date", th: "วันที่", en: "Date", example: "วันที่ทำแบบสำรวจ", icon: Calendar, hasOptions: false, hasRows: false },
 ];
 
-export const qtype = (t: SurveyQType) => QTYPES.find((q) => q.value === t)!;
+export const qtype = (t: SurveyQType) => QTYPES.find((q) => q.value === t) ?? QTYPES[0];
+
+export const OPINION_LEVELS = ["ไม่เห็นด้วยอย่างยิ่ง", "ไม่เห็นด้วย", "เฉย ๆ", "เห็นด้วย", "เห็นด้วยอย่างยิ่ง"];
+export const YES_NO = ["ใช่", "ไม่ใช่"];
+export const GRID_COLUMNS = ["ดีมาก", "ดี", "พอใช้", "ควรปรับปรุง"];
+export const GRID_ROWS = ["หัวข้อ 1", "หัวข้อ 2"];
+
+/** ค่าตั้งต้นเมื่อเพิ่มคำถาม / เปลี่ยนประเภท (คงค่าที่ใช้ต่อได้ของคำถามเดิมไว้) */
+export function defaultsFor(type: SurveyQType, prev?: SurveyQuestion): Partial<SurveyQuestion> {
+  const keepOptions = prev && prev.options.length >= 2;
+  switch (type) {
+    case "single":
+    case "multi":
+    case "dropdown":
+      return { options: keepOptions && qtype(prev.type).hasOptions && !qtype(prev.type).hasRows ? prev.options : ["ตัวเลือก 1", "ตัวเลือก 2"] };
+    case "opinion":
+      return { options: [...OPINION_LEVELS] };
+    case "yesno":
+      return { options: [...YES_NO] };
+    case "mcgrid":
+    case "cbgrid":
+      return {
+        rows: prev?.rows?.length ? prev.rows : [...GRID_ROWS],
+        options: prev && qtype(prev.type).hasRows ? prev.options : [...GRID_COLUMNS],
+      };
+    case "linear":
+      return { options: [], ratingMax: prev?.ratingMax ?? 5, ratingStyle: undefined };
+    case "rating":
+      // ratingStyle "star" = เครื่องหมายว่าเป็น Rating ดาวแบบใหม่ (ข้อมูลเก่า rating ที่ไม่มีค่านี้ = สเกลตัวเลข)
+      return { options: [], ratingMax: prev?.ratingMax ?? 5, ratingStyle: "star" };
+    default:
+      return { options: [], ratingStyle: undefined };
+  }
+}
+
+/**
+ * ข้อมูลเก่า: "rating" ที่ไม่ได้ตั้งเป็นดาว = สเกลตัวเลข → แปลงเป็น "linear" ตอนอ่าน
+ * (เรียกซ้ำได้: rating ดาวเก็บ ratingStyle "star" ไว้เสมอ จึงไม่ถูกแปลงซ้ำ)
+ */
+export function normalizeQuestion(q: SurveyQuestion): SurveyQuestion {
+  if (q.type === "rating" && q.ratingStyle !== "star") return { ...q, type: "linear", ratingStyle: undefined };
+  if (q.type !== "rating" && q.ratingStyle) return { ...q, ratingStyle: undefined };
+  return q;
+}
+
+// ============ คำตอบ ============
+// ตาราง: mcgrid → string[] เรียงตามแถว (ช่องว่าง = ยังไม่ตอบแถวนั้น)
+//        cbgrid → string[] ของ "แถว::คอลัมน์" (เลือกได้หลายช่องต่อแถว)
+export const gridCell = (row: string, col: string) => `${row}::${col}`;
+
+type Answer = string | string[] | number | undefined;
+
+/** ตอบข้อนี้ครบแล้วหรือยัง (ตาราง = ตอบครบทุกแถว) */
+export function isAnswered(q: { type: SurveyQType; rows?: { th: string }[] | string[] }, v: Answer): boolean {
+  if (v === undefined) return false;
+  if (typeof v === "number") return true;
+  const rows = (q.rows ?? []).map((r) => (typeof r === "string" ? r : r.th));
+  if (q.type === "mcgrid") return Array.isArray(v) && rows.length > 0 && rows.every((_, i) => !!v[i]);
+  if (q.type === "cbgrid") return Array.isArray(v) && rows.every((r) => v.some((c) => c.startsWith(`${r}::`)));
+  return Array.isArray(v) ? v.length > 0 : v.trim() !== "";
+}

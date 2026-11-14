@@ -1,0 +1,307 @@
+"use client";
+
+
+import { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { ArrowLeft, Copy, GripVertical, Lock, Smartphone, Trash2 } from "lucide-react";
+import { useDragSort } from "@/lib/use-drag-sort";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SurveyPreview, ratingOf } from "@/components/event/survey-preview";
+import { QuestionEditor } from "@/components/event/survey-question-editor";
+import { useWizardStore } from "@/lib/wizard-store";
+import { SurveyDenied, lockBannerText, useSurveyDraft } from "../surveyAccess";
+import { QTYPES, defaultsFor, normalizeQuestion, qtype } from "@/lib/survey-types";
+import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
+import { STATUS_LABEL } from "@/lib/utils/status";
+import { newId } from "@/lib/utils/id";
+import { cn } from "@/lib/utils";
+import type { RatingMax, SurveyQType, SurveyQuestion } from "@/types/event";
+import { eventTypeLabel } from "@/lib/event-types";
+import { LockedArea } from "@/components/event-wizard/lock-dialogs";
+
+
+
+export default function SurveyBuilderPage() {
+  const { id } = useParams<{ id: string }>();
+  const state = useSurveyDraft(id); // ด่านสิทธิ์ + ข้อมูล (ใช้ร่วมกับหน้าสรุป Survey)
+  const patchEvent = useWizardStore((s) => s.patchEvent);
+
+  const [editLang, setEditLang] = useState<"th" | "en">("th");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  // ลากเรียงคำถาม (hook ต้องเรียกก่อน return ด้านล่าง จึงส่งรายการว่างระหว่างรอโหลด)
+  const sort = useDragSort(state.state === "ready" ? state.draft.survey.questions : [], (next) =>
+    patchEvent(id, "survey", { questions: next })
+  );
+
+  if (state.state === "loading") return null;
+  if (state.state === "denied") return <SurveyDenied />;
+  const { draft: d, locked, access } = state;
+  // ล็อกแล้ว → ใช้สถานะจริงใน store หลัก (Active / Ended) แทนสถานะที่คำนวณจากเวลาใน wizard
+  const statusLabel = locked ? STATUS_LABEL[access.event.status].text : PHASE_META[getPhase(d)].th;
+
+  // ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
+  const qs = d.survey.questions.map(normalizeQuestion);
+  const selected = qs.find((q) => q.id === (selectedId ?? qs[0]?.id)) ?? null;
+  const selectedIndex = selected ? qs.findIndex((q) => q.id === selected.id) : -1;
+
+  const setQs = (next: SurveyQuestion[]) => patchEvent(id, "survey", { questions: next });
+  const update = (qid: string, v: Partial<SurveyQuestion>) => setQs(qs.map((q) => (q.id === qid ? { ...q, ...v } : q)));
+
+  const add = (type: SurveyQType) => {
+    const nid = newId("q");
+    setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: [], ...defaultsFor(type) }]);
+    setSelectedId(nid);
+  };
+
+  const duplicate = (qid: string) => {
+    const i = qs.findIndex((q) => q.id === qid);
+    const nid = newId("q");
+    const src = qs[i];
+    const copy = { ...src, id: nid, options: [...src.options], rows: src.rows ? [...src.rows] : undefined };
+    setQs([...qs.slice(0, i + 1), copy, ...qs.slice(i + 1)]);
+    setSelectedId(nid);
+  };
+
+  const remove = (qid: string) => {
+    const next = qs.filter((q) => q.id !== qid);
+    setQs(next);
+    setSelectedId(next[0]?.id ?? null);
+  };
+
+  const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q) });
+
+  const minutes = Math.max(1, Math.round(qs.length * 0.7));
+  const surveyTitle = `แบบประเมินงาน ${eventTypeLabel(d.general.type, d.general.typeOther)}`;
+  const field = editLang === "th" ? "titleTh" : "titleEn";
+
+  return (
+    <div className="space-y-5 [--primary:oklch(0.546_0.245_262.881)] [--primary-foreground:oklch(1_0_0)] [--ring:oklch(0.546_0.245_262.881)]">
+      {/* แถบหัวของหน้า (อยู่ในกรอบ admin ที่มี Sidebar อยู่แล้ว) */}
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-background px-5 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" size="icon" aria-label="กลับไปหน้า Survey" nativeButton={false} render={<Link href={`/admin/events/${id}/survey`} />}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="leading-tight">
+            <p className="text-xs text-muted-foreground">Survey · {statusLabel}</p>
+            <p className="font-semibold">{d.general.nameTh}</p>
+          </div>
+          <span className="ml-2 text-xs text-emerald-700">✓ บันทึกแล้ว</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* ไม่มีสวิตช์ "เปิดใช้ Survey" แล้ว — Survey บังคับมีทุก Event */}
+          <ToggleGroup value={[editLang]} onValueChange={(v) => v[0] && setEditLang(v[0] as "th" | "en")} variant="outline" size="sm">
+            <ToggleGroupItem value="th">TH</ToggleGroupItem>
+            <ToggleGroupItem value="en">EN</ToggleGroupItem>
+          </ToggleGroup>
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Smartphone className="size-4" /> Preview มือถือ
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* คอลัมน์หลัก */}
+        <div className="min-w-0 space-y-5">
+            {/* แบนเนอร์ล็อก: แสดงเฉพาะเมื่อล็อกแล้ว (Draft ไม่แสดง) */}
+            {locked && (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                <Lock className="size-4 shrink-0" />
+                {lockBannerText(d, locked)}
+              </div>
+            )}
+
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{surveyTitle}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">ใช้เวลาประมาณ {minutes} นาที · 1 Event มีได้ 1 Survey</p>
+            </div>
+
+            {/* ล็อกแล้ว: คลิกตรงไหนก็เด้งหน้าต่าง "Event เผยแพร่แล้ว แก้ไขไม่ได้" */}
+            <LockedArea locked={locked}>
+            <div className="min-w-0 space-y-4">
+              {qs.length === 0 && (
+                <p className="rounded-2xl border border-dashed bg-background py-12 text-center text-sm text-muted-foreground">
+                  ยังไม่มีคำถาม เลือกประเภทด้านล่างเพื่อเริ่มสร้าง
+                </p>
+              )}
+
+              {qs.map((q, i) => {
+                const isSel = selected?.id === q.id;
+                const meta = qtype(q.type);
+                const value = q[field];
+                return (
+                  <section
+                    key={q.id}
+                    {...sort.itemProps(i)}
+                    onClick={() => setSelectedId(q.id)}
+                    onFocusCapture={() => setSelectedId(q.id)}
+                    className={cn(
+                      "space-y-4 rounded-2xl border bg-background p-5 transition",
+                      isSel && "border-2 border-primary",
+                      sort.stateOf(i).dragging && "opacity-40",
+                      sort.stateOf(i).over && "ring-2 ring-primary/50"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="flex items-center gap-2 text-xs font-medium text-primary">
+                        {/* ที่จับ: กดค้างแล้วลากเพื่อเรียงคำถาม */}
+                        <span {...sort.handleProps(i)} className={cn(sort.handleProps(i).className, "text-muted-foreground")}>
+                          <GripVertical className="size-4" />
+                        </span>
+                        <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
+                          <meta.icon className="size-3.5" />
+                        </span>
+                        {i + 1} · {meta.th}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="icon" aria-label="ทำสำเนา" onClick={() => duplicate(q.id)}>
+                          <Copy className="size-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" aria-label="ลบ" className="bg-red-50 text-red-600 hover:bg-red-100" onClick={() => remove(q.id)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* ชื่อคำถาม พิมพ์แก้ในการ์ดได้เลย */}
+                    <div className="flex items-baseline gap-1">
+                      <input
+                        value={value}
+                        onChange={(e) => update(q.id, { [field]: e.target.value })}
+                        placeholder={editLang === "en" ? q.titleTh || "Type your question…" : "พิมพ์คำถาม…"}
+                        aria-label="ชื่อคำถาม"
+                        className="field-sizing-content min-w-[10ch] max-w-full bg-transparent text-xl font-bold outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
+                      />
+                      {q.required && <span className="text-xl font-bold text-destructive">*</span>}
+                    </div>
+
+                    {/* ช่องตอบ: แก้ตัวเลือก / แถว-คอลัมน์ของตาราง / คำกำกับสเกล ในการ์ดได้เลย */}
+                    <QuestionEditor q={q} primary={d.theme.primary} update={(v) => update(q.id, v)} />
+                  </section>
+                );
+              })}
+
+              {/* เพิ่มคำถาม */}
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed bg-background/60 p-4">
+                <span className="mr-2 text-sm text-muted-foreground">เพิ่มคำถาม</span>
+                {QTYPES.map((qt) => (
+                  <button
+                    key={qt.value}
+                    type="button"
+                    onClick={() => add(qt.value)}
+                    className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
+                  >
+                    <qt.icon className="size-4" /> {qt.th}
+                  </button>
+                ))}
+              </div>
+            </div>
+            </LockedArea>
+        </div>
+
+        {/* แผงตั้งค่าคำถามที่เลือก */}
+        <aside className="rounded-2xl bg-background p-6 shadow-sm lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+          {selected ? (
+            <LockedArea locked={locked}>
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs text-primary">คำถามที่ {selectedIndex + 1}</p>
+                <h2 className="text-xl font-bold">ตั้งค่า</h2>
+              </div>
+
+              <div className="flex items-center justify-between border-b pb-5">
+                <div>
+                  <p className="text-sm font-semibold">Required</p>
+                  <p className="text-xs text-muted-foreground">ต้องตอบก่อนส่ง</p>
+                </div>
+                <Switch checked={selected.required} onCheckedChange={(v) => update(selected.id, { required: v })} />
+              </div>
+
+              <div className="space-y-2 border-b pb-5">
+                <p className="text-sm font-semibold">ประเภทคำตอบ</p>
+                {/* ปุ่มพร้อมไอคอนแทน <select> (select ของเบราว์เซอร์ใส่ไอคอนไม่ได้) */}
+                <div className="grid grid-cols-2 gap-2">
+                  {QTYPES.map((qt) => (
+                    <button
+                      key={qt.value}
+                      type="button"
+                      aria-pressed={selected.type === qt.value}
+                      onClick={() => changeType(selected, qt.value)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm",
+                        selected.type === qt.value && "border-primary bg-primary/5 font-semibold text-primary"
+                      )}
+                    >
+                      <qt.icon className="size-4 shrink-0" /> {qt.th}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(selected.type === "rating" || selected.type === "linear") && (
+                <div className="space-y-3 border-b pb-5">
+                  <p className="text-sm font-semibold">{selected.type === "rating" ? "จำนวนดาว" : "ช่วงคะแนน"}</p>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">คะแนนเต็ม</span>
+                    <ToggleGroup
+                      value={[String(ratingOf(selected).max)]}
+                      onValueChange={(v) => v[0] && update(selected.id, { ratingMax: Number(v[0]) as RatingMax })}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <ToggleGroupItem value="5">1–5</ToggleGroupItem>
+                      <ToggleGroupItem value="10">1–10</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 border-b pb-5">
+                <p className="text-sm font-semibold">ภาษา</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">ไทย</span>
+                  <span className={cn("font-semibold", selected.titleTh ? "text-emerald-700" : "text-amber-700")}>
+                    {selected.titleTh ? "ครบ" : "ยังไม่ได้กรอก"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">English</span>
+                  <span className={cn("font-semibold", selected.titleEn ? "text-emerald-700" : "text-amber-700")}>
+                    {selected.titleEn ? "ครบ" : "ยังไม่ได้แปล"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">ลากที่ ⋮⋮ บนการ์ดเพื่อเรียงลำดับคำถาม</p>
+            </div>
+            </LockedArea>
+          ) : (
+            <p className="text-sm text-muted-foreground">เลือกคำถามเพื่อตั้งค่า</p>
+          )}
+
+          <div className="mt-6 space-y-1 rounded-xl bg-muted/60 p-4 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">สิทธิ์ของคุณ</p>
+            <p>แก้ไขคำถามได้จนกว่าจะเผยแพร่ Event · หลังจากนั้นดูผลและ Export ได้อย่างเดียว · การลบ Survey ทำได้โดย Admin เท่านั้น</p>
+          </div>
+        </aside>
+      </div>
+
+      {/* Preview มือถือ */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Preview มือถือ ({editLang.toUpperCase()})</DialogTitle>
+          </DialogHeader>
+          <SurveyPreview questions={qs} lang={editLang} primary={d.theme.primary} title={surveyTitle} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

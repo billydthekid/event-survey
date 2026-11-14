@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { EventDraft } from "@/types/event";
 import type { Event } from "@/types";
 import { createMockDrafts } from "@/lib/mock/event-draft";
+import { migrateField } from "@/lib/form-types";
 
 type PatchValue<K extends keyof EventDraft> = EventDraft[K] extends object | null
   ? EventDraft[K] extends null ? EventDraft[K] : Partial<NonNullable<EventDraft[K]>> | EventDraft[K]
@@ -59,17 +60,36 @@ function toDraft(ev: Event): EventDraft {
       bg: null,
       logo: null,
     },
-    ad: null,
+    // รูปโฆษณาเดิมใน store หลัก (URL) → รายการแรก
+    ads: { items: ev.adImage ? [{ name: "โฆษณา", sizeKB: 0, cropped: true, dataUrl: ev.adImage }] : [], seconds: DEFAULT_AD_SECONDS },
     form: { fields: [] },
     schedule: {
       regOpen: ev.registration?.opensAt ?? "",
       regClose: ev.registration?.closesAt ?? "",
-      maxAttendees: ev.registration?.maxAttendees?.toString() ?? "",
+      maxAttendees: "", // ไม่จำกัดจำนวนแล้ว
       surveyOpen: ev.surveyWindow?.opensAt ?? "",
       surveyClose: ev.surveyWindow?.closesAt ?? "",
       remindAfterEnd: false,
     },
-    survey: { enabled: !!ev.survey?.enabled, questions: [] },
+    survey: { enabled: true, questions: [] }, // Survey บังคับมีทุก Event (ไม่มีสวิตช์ปิดแล้ว)
+  };
+}
+
+export const DEFAULT_AD_SECONDS = 6;
+
+// ข้อมูลเก่าใน localStorage → รูปแบบปัจจุบัน (v5) · ทุกขั้นเรียกซ้ำได้ (ข้อมูลใหม่ผ่านแล้วไม่เปลี่ยน)
+// - v3: ad (รูปเดียว) → ads.items (หลายรูป) + seconds · เลิกจำกัดจำนวนรับ / เลิกส่งข้อความเตือน
+// - v4: Survey บังคับมีทุก Event → enabled = true เสมอ
+// - v5: ฟอร์มลงทะเบียน 12 ประเภท · ช่องพื้นฐานเดิม (basicKey) → ประเภทปกติ (lib/form-types.ts)
+type DraftV2 = Omit<EventDraft, "ads"> & { ad?: EventDraft["ads"]["items"][number] | null; ads?: EventDraft["ads"] };
+function migrateDraft(d: DraftV2): EventDraft {
+  const { ad, ...rest } = d;
+  return {
+    ...rest,
+    ads: rest.ads ?? { items: ad ? [ad] : [], seconds: DEFAULT_AD_SECONDS },
+    schedule: { ...rest.schedule, maxAttendees: "", remindAfterEnd: false },
+    survey: { ...rest.survey, enabled: true },
+    form: { fields: rest.form.fields.map((f) => migrateField(f as Parameters<typeof migrateField>[0])) },
   };
 }
 
@@ -105,6 +125,19 @@ export const useWizardStore = create<State>()(
       patch: (key, value) => get().patchEvent(get().draft.id, key, value),
       publish: () => get().patchEvent(get().draft.id, "status", "scheduled"),
     }),
-    { name: "event-admin-store-v2", version: 2 }
+    {
+      name: "event-admin-store-v2",
+      version: 5,
+      migrate: (persisted, fromVersion) => {
+        const s = persisted as { drafts?: Record<string, DraftV2>; draft?: DraftV2 };
+        if (fromVersion < 5) {
+          if (s.drafts) {
+            s.drafts = Object.fromEntries(Object.entries(s.drafts).map(([k, d]) => [k, migrateDraft(d)]));
+          }
+          if (s.draft) s.draft = migrateDraft(s.draft);
+        }
+        return s as unknown as State;
+      },
+    }
   )
 );

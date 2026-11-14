@@ -12,11 +12,11 @@ import { answersOf, pct, summarize, tr } from "./summary";
 const TEXT = {
   th: {
     header: ["ข้อ", "คำถาม", "ชนิด", "ตัวเลือก / คะแนน / คำตอบ", "จำนวน", "%", "ตัวหาร (คน)", "ค่าเฉลี่ย"],
-    types: { rating: "Rating", single: "ตัวเลือกเดียว", multi: "หลายตัวเลือก", dropdown: "Dropdown", short: "ข้อความสั้น", long: "ข้อความยาว", date: "วันที่" },
+    types: { rating: "Rating", single: "ตัวเลือกเดียว", multi: "หลายตัวเลือก", dropdown: "Dropdown", short: "ข้อความสั้น", long: "ข้อความยาว", date: "วันที่", linear: "สเกลตัวเลข", opinion: "ระดับความเห็น", mcgrid: "ตารางเลือกข้อเดียว", cbgrid: "ตารางเลือกหลายข้อ", yesno: "ใช่ / ไม่ใช่" },
   },
   en: {
     header: ["No.", "Question", "Type", "Option / Score / Answer", "Count", "%", "Base (people)", "Average"],
-    types: { rating: "Rating", single: "Single choice", multi: "Multiple choice", dropdown: "Dropdown", short: "Short text", long: "Long text", date: "Date" },
+    types: { rating: "Rating", single: "Single choice", multi: "Multiple choice", dropdown: "Dropdown", short: "Short text", long: "Long text", date: "Date", linear: "Linear scale", opinion: "Opinion scale", mcgrid: "Multiple choice grid", cbgrid: "Checkbox grid", yesno: "Yes / No" },
   },
 };
 

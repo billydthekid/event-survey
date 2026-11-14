@@ -11,6 +11,12 @@ export const TYPE_LABEL: Record<EventType, string> = {
   training: "อบรม",
   jobfair: "Job Fair",
   openhouse: "Open House",
+  conference: "ประชุมวิชาการ",
+  competition: "แข่งขัน",
+  exhibition: "นิทรรศการ",
+  sports: "กีฬา",
+  volunteer: "จิตอาสา",
+  other: "อื่นๆ",
 };
 
 // ---------- ตัวเลือกหน้าจอ Kiosk ----------
