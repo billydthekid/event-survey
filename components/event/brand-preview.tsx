@@ -70,7 +70,7 @@ export function PhonePreview({ d }: { d: EventDraft }) {
   );
 }
 
-export function KioskPreview({ d }: { d: EventDraft }) {
+export function KioskPreview({ d }: { d: EventDraft }) { // Live Preview จอ Kiosk
   const g = d.general;
   const c = previewColors(d.theme);
   const srcs = d.ads.items.map((a) => a.dataUrl).filter((s): s is string => !!s);
@@ -78,7 +78,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
   const ms = Math.max(3, d.ads.seconds || 6) * 1000;
   useEffect(() => {
     if (srcs.length < 2) return;
-    const t = setInterval(() => setIndex((i) => i + 1), ms);
+    const t = setInterval(() => setIndex((i) => i + 1), ms); // ถ้ามีรูปโฆษณามากกว่า 1 รูป → เลื่อนทุก ms วินาที สลับรูปวนไปเรื่อย ๆ
     return () => clearInterval(t);
   }, [srcs.length, ms]);
   const current = index % Math.max(1, srcs.length);
@@ -97,7 +97,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
               key={i}
               src={src}
               alt=""
-              className="absolute inset-0 size-full object-cover transition-opacity duration-700"
+              className="absolute inset-0 size-full object-cover transition-opacity duration-700" // เลื่อนรูปโฆษณาแบบ crossfade
               style={{ opacity: i === current ? 1 : 0 }}
             />
           ))

@@ -44,11 +44,11 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
   }, [src]);
 
   // scale = จากพิกเซลรูปจริง → พิกเซลบนจอ (cover กรอบ × zoom)
-  const base = img ? Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight) : 1;
+  const base = img ? Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight) : 1; // scale ของรูปเต็มกรอบ ภาพเต็มกรอบตอนเปิด
   const scale = base * zoom;
   const dw = img ? img.naturalWidth * scale : 0;
   const dh = img ? img.naturalHeight * scale : 0;
-  const clamp = (x: number, y: number) => ({
+  const clamp = (x: number, y: number) => ({ // ป้องกันลากออกนอกกรอบ ล็อกขอบไม่ให้เห็นช่องว่าง
     x: Math.min(0, Math.max(FRAME_W - dw, x)),
     y: Math.min(0, Math.max(FRAME_H - dh, y)),
   });
@@ -56,7 +56,7 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
   const small = img !== null && (img.naturalWidth < AD_WIDTH || img.naturalHeight < AD_HEIGHT);
 
   // zoom รอบจุดกึ่งกลางกรอบ
-  const changeZoom = (z: number) => {
+  const changeZoom = (z: number) => { // ซูมรอบจุดกลาง
     if (!img) return;
     const cx = (FRAME_W / 2 - pos.x) / scale;
     const cy = (FRAME_H / 2 - pos.y) / scale;
@@ -65,7 +65,7 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
     setOffset({ x: FRAME_W / 2 - cx * ns, y: FRAME_H / 2 - cy * ns });
   };
 
-  const confirm = () => {
+  const confirm = () => { // ตัดรูปแล้วส่งกลับ data URL กด "ใช้รูปนี้"
     if (!img) return;
     onDone(cropToDataUrl(img, { x: -pos.x / scale, y: -pos.y / scale, width: FRAME_W / scale, height: FRAME_H / scale }));
   };
@@ -116,7 +116,7 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
         <div className="flex items-center gap-3 text-sm">
           <ZoomIn className="size-4 text-muted-foreground" />
           <input
-            type="range"
+            type="range" // zoom แถบซูม 1–3 เท่า
             min={1}
             max={3}
             step={0.01}

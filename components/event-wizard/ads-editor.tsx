@@ -17,9 +17,9 @@ import type { UploadedAsset } from "@/types/event";
 import { FileDrop } from "./file-drop";
 import { CropDialog } from "./crop-dialog";
 
-const MAX_ADS = 5;
-const MIN_SECONDS = 3;
-const MAX_SECONDS = 60;
+const MAX_ADS = 5; // ใส่ได้สูงสุด 5 รูป (เก็บใน localStorage ของเบราว์เซอร์)
+const MIN_SECONDS = 3; // เลื่อนรูปทุก 3 วินาที (ต่ำสุด) · ถ้าใส่ 0 = ไม่เลื่อน
+const MAX_SECONDS = 60; // เลื่อนรูปทุก 60 วินาที (สูงสุด)
 
 // รูปที่กำลัง crop: index = null → รูปใหม่ (เพิ่มท้ายรายการ), ตัวเลข → crop รูปเดิมใหม่
 type Cropping = { src: string; name: string; index: number | null };
@@ -30,7 +30,7 @@ export function AdsEditor() {
   const setItems = (items: UploadedAsset[]) => patch("ads", { items });
   const [cropping, setCropping] = useState<Cropping | null>(null);
   const [error, setError] = useState("");
-  const sort = useDragSort(ads.items, setItems);
+  const sort = useDragSort(ads.items, setItems); // ลากเรียงรูปโฆษณา
   const full = ads.items.length >= MAX_ADS;
 
   const pickFile = async (file: File) => {

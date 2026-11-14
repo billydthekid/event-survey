@@ -34,7 +34,7 @@ const origin = () => process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "unde
 const noProtocol = (u: string) => u.replace(/^https?:\/\//, "");
 
 type WindowState = { label: string; cls: string };
-function windowState(w: Window, now: Date, openLabel: string): WindowState {
+function windowState(w: Window, now: Date, openLabel: string): WindowState {  // ตรวจเวลาตอนนี้เทียบกับ opensAt / closesAt → แสดง Badge
   if (w.opensAt && now < new Date(w.opensAt)) return { label: "ยังไม่เปิด", cls: "bg-amber-100 text-amber-800" };
   if (w.closesAt && now > new Date(w.closesAt)) return { label: "ปิดแล้ว", cls: "bg-slate-200 text-slate-700" };
   return { label: openLabel, cls: "bg-emerald-100 text-emerald-800" };
@@ -51,7 +51,7 @@ function QrCard({ title, url, state, filename }: {
     const canvas = wrap.current?.querySelector("canvas");
     if (!canvas) return;
     const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
+    a.href = canvas.toDataURL("image/png"); //ดาวน์โหลด PNG
     a.download = `${filename}.png`;
     a.click();
   };

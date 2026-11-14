@@ -33,7 +33,7 @@ export function StepForm() {
   const update = (id: string, v: Partial<FormField>) => setFields(fields.map((f) => (f.id === id ? { ...f, ...v } : f)));
   const select = (id: string) => setSelectedId(id);
 
-  const add = (kind: FieldKind) => {
+  const add = (kind: FieldKind) => { // เพิ่มช่องใหม่: ประเภท + ชื่อตัวอย่าง + id ใหม่
     const k = formKind(kind);
     const id = newId("f");
     setFields([...fields, { id, label: k.example, kind, hint: k.th, required: false, options: k.hasOptions ? [...DEFAULT_OPTIONS] : undefined }]);
@@ -41,7 +41,7 @@ export function StepForm() {
     setJustAdded(id);
   };
 
-  const duplicate = (id: string) => {
+  const duplicate = (id: string) => { // ทำสำเนาช่อง: copy + id ใหม่ + insert หลังช่องเดิม
     const i = fields.findIndex((f) => f.id === id);
     const nid = newId("f");
     const copy = { ...fields[i], id: nid, options: fields[i].options ? [...fields[i].options!] : undefined };
@@ -49,7 +49,7 @@ export function StepForm() {
     setSelectedId(nid);
   };
 
-  const remove = (id: string) => {
+  const remove = (id: string) => { // ลบช่อง: filter + เลือกช่องถัดไป (หรือ null ถ้าไม่มีเหลือ)
     const next = fields.filter((f) => f.id !== id);
     setFields(next);
     setSelectedId(next[0]?.id ?? null);
@@ -61,7 +61,7 @@ export function StepForm() {
     update(f.id, { kind, hint: k.th, options: k.hasOptions ? (f.options?.length ? f.options : [...DEFAULT_OPTIONS]) : f.options });
   };
 
-  const sort = useDragSort(fields, setFields);
+  const sort = useDragSort(fields, setFields); // ลากเรียงช่องในฟอร์ม
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
@@ -80,7 +80,7 @@ export function StepForm() {
           </p>
         )}
 
-        {fields.map((f, i) => {
+        {fields.map((f, i) => { // การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ทำสำเนา + ลบ
           const k = formKind(f.kind);
           const isSel = selected?.id === f.id;
           const options = f.options ?? [];

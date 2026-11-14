@@ -12,7 +12,7 @@ import type { EventDraft } from "@/types/event";
 // สถานะที่ Organizer ยังแก้ได้ (ตรงกับ EDITABLE ใน EventSidebar)
 const EDITABLE: Event["status"][] = ["draft", "scheduled"];
 
-export function isWizardLocked(status: Event["status"]): boolean {
+export function isWizardLocked(status: Event["status"]): boolean { // ถ้าเป็น Active / Ended → ล็อก Wizard ทั้งหมด (แก้ได้เฉพาะใน store หลัก)
   return !EDITABLE.includes(status);
 }
 

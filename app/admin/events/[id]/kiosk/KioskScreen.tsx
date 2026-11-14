@@ -428,7 +428,7 @@ function AdSlideshow({ ads, seconds }: { ads: string[]; seconds: number }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (ads.length < 2) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), seconds * 1000);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), seconds * 1000); 
     return () => clearInterval(timer);
   }, [ads.length, seconds]);
 

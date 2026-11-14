@@ -53,6 +53,7 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
   );
 }
 
+// ถามยืนยันก่อนเผยแพร่ เพราะเผยแพร่แล้วจะแก้ไม่ได้อีก
 export function PublishConfirm({
   open,
   onOpenChange,

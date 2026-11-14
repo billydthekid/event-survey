@@ -73,6 +73,7 @@ export default function EditEventPage() {
 
   const dateErrors = validateDates(current, now);
   const missing = missingGeneral(current);
+
   // เหตุผลที่ยังเผยแพร่ไม่ได้ (เรียงตามความสำคัญ · ไม่มี = เผยแพร่ได้)
   const publishBlock =
     missing.length > 0
@@ -98,6 +99,7 @@ export default function EditEventPage() {
       onPublish={() => {
         if (publishBlock) return;
         publish();
+
         // เผยแพร่ = Active ทันที (Draft → เผยแพร่ → Active → Ended) และล็อก Wizard ต่อจากนี้
         updateEvent(id, { ...toEventPatch(current), status: "active" });
         addLog("publish_event", "event", id, `เผยแพร่ "${current.general.nameTh}"`);
@@ -112,7 +114,7 @@ export default function EditEventPage() {
       {step === 6 && <StepPreview />}
     </WizardShell>
 
-    {/* อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
+    {/* popup หลังเผยแพร่ อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
     <QrDialog
       open={qrOpen}
       onOpenChange={(v) => {
