@@ -46,7 +46,9 @@ function EventDashboard() {
   const latest = latestAt(registrations);
   const range = eventRange(event);
   const slots = range ? registrationSlots(range, registrations, now) : null;
-  const satisfaction = satisfactionSummary(responses);
+  // ความพึงพอใจ = ข้อ Rating ข้อแรกของ Survey (Workshop = q1 "ความพึงพอใจต่อ Workshop")
+  const ratingId = event.survey?.questions.find((q) => q.type === "rating")?.id;
+  const satisfaction = satisfactionSummary(responses, ratingId);
   const timeLeft = countdown(event, now);
 
   const s = STATUS_LABEL[event.status];

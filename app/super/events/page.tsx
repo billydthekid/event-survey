@@ -1,16 +1,30 @@
 // app/super/events/page.tsx
-//
-// รายการ Event ทั้งหมด — Admin ลบ + assign/เปลี่ยนผู้ดูแลได้ที่นี่
+// หน้ารวม Event ทุกงาน (Admin) — Billy: ตาราง + ลบ + เลือก/เปลี่ยนผู้ดูแล + ไฮไลต์ ?new= · Jin: KPI / ค้นหา / กรอง / เรียง
+// ตาม Figma "Admin · Event ทั้งหมด (รวม)" · กดแถว → Dashboard ของ Event นั้น
 //
 // ถ้ามี query ?new=<id> จะ highlight แถวนั้น + เปิด picker ให้เลย (เพราะเพิ่งสร้าง event จาก sidebar)
 "use client";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Trash2, X, UserPlus, UserCog, Search, Check } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  CalendarDays, Check, CheckCircle2, Clock, PlayCircle, Plus, Search, Trash2, UserCog, UserPlus, X,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
-import { Event, User } from "@/types";
+import { countByEvent, visibleEvents } from "@/lib/utils/stats";
+import { formatThaiDate } from "@/lib/utils/date";
+import { matchKeyword, sortEvents, SortKey } from "@/lib/utils/eventList";
+import { adminNames } from "@/components/dashboard/EventTable";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { EventFilterBar } from "@/components/events/EventFilterBar";
+import { Badge, EventColumn, EventListTable } from "@/components/events/EventListTable";
+import CreateEventModal from "@/components/events/CreateEventModal";
+import { Event, EventStatus, User } from "@/types";
 
+// ปุ่มกรองสถานะ (ลำดับตาม Figma)
+const STATUS_CHIPS: EventStatus[] = ["active", "scheduled", "ended", "draft"];
+
+// ครอบ <Suspense>: useSearchParams ต้องรอ URL (cacheComponents)
 export default function EventsPage() {
   return (
     <Suspense fallback={null}>
@@ -20,32 +34,89 @@ export default function EventsPage() {
 }
 
 function EventsPageContent() {
+  const router = useRouter();
   const events = useStore((s) => s.events);
   const users = useStore((s) => s.users);
+  const registrations = useStore((s) => s.registrations);
   const deleteEvent = useStore((s) => s.deleteEvent);
   const setEventAdmin = useStore((s) => s.setEventAdmin);
 
   const searchParams = useSearchParams();
   const newEventId = searchParams.get("new");
 
-  const [target, setTarget] = useState<Event | null>(null);       // event ที่จะลบ
-  const [assignTarget, setAssignTarget] = useState<Event | null>(null); // event ที่จะ assign
+  const [search, setSearch] = useState("");
+  const [chip, setChip] = useState("all");
+  const [sort, setSort] = useState<SortKey>("date");
+  const [target, setTarget] = useState<Event | null>(null);             // event ที่จะลบ
+  const [assignTarget, setAssignTarget] = useState<Event | null>(null); // event ที่กดปุ่มเลือก/เปลี่ยนผู้ดูแล
+  const [dismissedNewId, setDismissedNewId] = useState<string | null>(null); // ?new= ที่ปิด picker ไปแล้ว
+  const [creating, setCreating] = useState(false);                      // เปิด modal สร้าง Event
 
   // ถ้าเพิ่งสร้างจาก sidebar และยังไม่มีผู้ดูแล → เปิด picker ให้เลย
-  useEffect(() => {
-    if (!newEventId) return;
-    const ev = events.find((e) => e.id === newEventId);
-    if (ev && ev.adminIds.length === 0) setAssignTarget(ev);
-  }, [newEventId, events]);
+  // คิดจากค่าที่มีตอน render (ไม่ใช้ useEffect + setState → eslint react-hooks/set-state-in-effect)
+  // เก็บ id ที่ปิดไปแล้ว ไม่ใช่ true/false → สร้าง Event ใหม่อีกตัว (?new= เปลี่ยน) picker ก็ยังเปิดให้
+  const newEvent = newEventId ? events.find((e) => e.id === newEventId) : undefined;
+  const autoAssign = newEvent && newEvent.adminIds.length === 0 && newEventId !== dismissedNewId ? newEvent : null;
+  const assigning = assignTarget ?? autoAssign;
+  const closeAssign = () => {
+    setAssignTarget(null);
+    setDismissedNewId(newEventId);
+  };
 
-  // ไม่โชว์ตัวที่ถูกลบแล้ว (ไปดูที่หน้ารายการที่ถูกลบ)
-  const list = events.filter((e) => e.status !== "deleted");
+  // ---------- คิดตัวเลข ----------
+  const list = visibleEvents(events);   // ไม่โชว์ตัวที่ถูกลบแล้ว (ไปดูที่หน้ารายการที่ถูกลบ)
+  const registered = countByEvent(registrations);
+  const count = (status: EventStatus) => list.filter((e) => e.status === status).length;
+  const namesOf = (status: EventStatus) => list.filter((e) => e.status === status).map((e) => e.name.th).join(" · ");
 
-  const adminNames = (e: Event) =>
-    e.adminIds
-      .map((id) => users.find((u) => u.id === id)?.name)
-      .filter(Boolean)
-      .join(", ") || "-";
+  const shown = sortEvents(
+    list.filter((e) => (chip === "all" || e.status === chip) && matchKeyword(e, search)),
+    sort,
+    registered
+  );
+
+  // ---------- คอลัมน์ของหน้านี้ (ชื่อ Event อยู่ใน EventListTable แล้ว) ----------
+  const columns: EventColumn[] = [
+    { key: "date", header: "วันที่จัด", render: (e) => formatThaiDate(e.date) },
+    { key: "status", header: "สถานะ", render: (e) => <Badge {...STATUS_LABEL[e.status]} /> },
+    {
+      key: "admin", header: "ผู้ดูแล",
+      render: (e) =>
+        e.adminIds.length === 0
+          ? <span className="text-xs text-amber-600">ยังไม่มีผู้ดูแล</span>
+          : adminNames(e, users),
+    },
+    {
+      key: "registered", header: "ลงทะเบียน", align: "right",
+      render: (e) => `${(registered[e.id] ?? 0).toLocaleString("th-TH")} คน`,
+    },
+    {
+      key: "manage", header: "จัดการ",
+      render: (e) => {
+        const noAdmin = e.adminIds.length === 0;
+        return (
+          <div className="flex items-center gap-4 whitespace-nowrap text-xs">
+            <span className="text-blue-600">ดู →</span>
+            {/* stopPropagation: กดปุ่มแล้วไม่ให้ไปเปิดหน้า Dashboard ด้วย */}
+            <button
+              onClick={(ev) => { ev.stopPropagation(); setAssignTarget(e); }}
+              className="flex items-center gap-1 text-blue-600 hover:underline"
+              title={noAdmin ? "เลือกผู้ดูแล" : "เปลี่ยนผู้ดูแล"}
+            >
+              {noAdmin ? <UserPlus size={14} /> : <UserCog size={14} />}
+              {noAdmin ? "เลือกผู้ดูแล" : "เปลี่ยนผู้ดูแล"}
+            </button>
+            <button
+              onClick={(ev) => { ev.stopPropagation(); setTarget(e); }}
+              className="flex items-center gap-1 text-red-500 hover:underline"
+            >
+              <Trash2 size={14} /> ลบ
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
 
   const handleConfirmDelete = () => {
     if (target) deleteEvent(target.id);
@@ -54,93 +125,71 @@ function EventsPageContent() {
 
   return (
     <div>
-      <p className="text-sm text-slate-400">ผู้ดูแลระบบ / Event</p>
-      <h1 className="mt-1 text-3xl font-bold">Event ทั้งหมด</h1>
-      <p className="mt-1 text-slate-500">
-        Admin เห็น ลบ และมอบหมายผู้ดูแล Organizer ได้ทุก Event
-      </p>
-
-      <div className="mt-6 rounded-xl bg-white shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-100 text-left text-slate-500">
-            <tr>
-              <th className="px-5 py-3">ชื่อ Event</th>
-              <th className="px-5 py-3">รหัส</th>
-              <th className="px-5 py-3">วันที่จัด</th>
-              <th className="px-5 py-3">สถานะ</th>
-              <th className="px-5 py-3">ผู้ดูแล</th>
-              <th className="px-5 py-3">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((e) => {
-              const s = STATUS_LABEL[e.status];
-              const noAdmin = e.adminIds.length === 0;
-              const isNew = e.id === newEventId;
-              return (
-                <tr
-                  key={e.id}
-                  className={`border-t border-slate-100 ${
-                    isNew ? "bg-blue-50/50" : ""
-                  }`}
-                >
-                  <td className="px-5 py-4 font-semibold">
-                    {e.name.th}
-                    {isNew && (
-                      <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">
-                        เพิ่งสร้าง
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4 text-slate-500">{e.code}</td>
-                  <td className="px-5 py-4">{e.date || "ยังไม่กำหนด"}</td>
-                  <td className="px-5 py-4">
-                    <span className={`rounded-full px-3 py-1 text-xs ${s.color}`}>
-                      {s.text}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    {noAdmin ? (
-                      <span className="text-xs text-amber-600">ยังไม่มีผู้ดูแล</span>
-                    ) : (
-                      adminNames(e)
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setAssignTarget(e)}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                        title={noAdmin ? "เลือกผู้ดูแล" : "เปลี่ยนผู้ดูแล"}
-                      >
-                        {noAdmin ? <UserPlus size={14} /> : <UserCog size={14} />}
-                        {noAdmin ? "เลือกผู้ดูแล" : "เปลี่ยนผู้ดูแล"}
-                      </button>
-                      <button
-                        onClick={() => setTarget(e)}
-                        className="flex items-center gap-1 text-xs text-red-500 hover:underline"
-                      >
-                        <Trash2 size={14} /> ลบ
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* ===== หัวข้อ ===== */}
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-sm text-slate-400">ผู้ดูแลระบบ / Event</p>
+          <h1 className="mt-1 text-3xl font-bold">Event ทั้งหมด</h1>
+          <p className="mt-1 text-slate-500">
+            Admin เห็น ลบ และมอบหมายผู้ดูแล Organizer ได้ทุก Event · กดแถวเพื่อเปิด Dashboard ของ Event นั้น
+          </p>
+        </div>
+        {/* ใช้ modal เดียวกับปุ่ม "สร้าง Event" ใน Sidebar ของ Billy */}
+        <button
+          onClick={() => setCreating(true)}
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <Plus size={16} /> สร้าง Event (Draft)
+        </button>
       </div>
 
+      {/* ===== KPI 4 ใบ ===== */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard icon={CalendarDays} label="Event ทั้งหมด" value={list.length} sub="ไม่รวม Event ที่ถูกลบ" />
+        <KpiCard icon={PlayCircle} label="กำลังจัดงาน" value={count("active")} sub={namesOf("active") || "-"} tone="green" />
+        <KpiCard icon={Clock} label="ใกล้ถึง" value={count("scheduled")} sub={namesOf("scheduled") || "-"} tone="purple" />
+        <KpiCard icon={CheckCircle2} label="จบแล้ว" value={count("ended")} sub={namesOf("ended") || "-"} tone="orange" />
+      </div>
+
+      {/* ===== ตาราง ===== */}
+      <div className="mt-6">
+        <EventListTable
+          title="รายการ Event"
+          total={list.length}
+          events={shown}
+          columns={columns}
+          highlightId={newEventId}
+          onSelect={(id) => router.push(`/super/events/${id}/dashboard`)}
+          toolbar={
+            <EventFilterBar
+              search={search}
+              onSearch={setSearch}
+              chips={[
+                { key: "all", label: "ทั้งหมด" },
+                ...STATUS_CHIPS.map((s) => ({ key: s, label: STATUS_LABEL[s].text, count: count(s) })),
+              ]}
+              chip={chip}
+              onChip={setChip}
+              sort={sort}
+              onSort={setSort}
+            />
+          }
+        />
+      </div>
+
+      {/* Modal สร้าง Event (ของ Billy) → สร้างเสร็จพามาหน้านี้พร้อม ?new=<id> */}
+      {creating && <CreateEventModal onClose={() => setCreating(false)} />}
+
       {/* Modal เลือก/เปลี่ยนผู้ดูแล */}
-      {assignTarget && (
+      {assigning && (
         <AssignAdminModal
-          event={assignTarget}
+          event={assigning}
           users={users}
           onConfirm={(adminId) => {
-            setEventAdmin(assignTarget.id, adminId);
-            setAssignTarget(null);
+            setEventAdmin(assigning.id, adminId);
+            closeAssign();
           }}
-          onClose={() => setAssignTarget(null)}
+          onClose={closeAssign}
         />
       )}
 

@@ -92,10 +92,11 @@ export function registrationSlots(
 }
 
 // ความพึงพอใจ: นับแต่ละคะแนน (เรียง 5 → 1) + ค่าเฉลี่ยทศนิยม 1 ตำแหน่ง
-export function satisfactionSummary(responses: SurveyResponse[]) {
+// questionId = ข้อ Rating ที่ใช้นับ (หน้าเว็บส่งข้อ Rating ข้อแรกของ Survey มา เช่น "q1") · ไม่มี → นับได้ 0 ทุกระดับ
+export function satisfactionSummary(responses: SurveyResponse[], questionId?: string) {
   const levels = [5, 4, 3, 2, 1].map((score) => ({
     score,
-    count: responses.filter((r) => Number(r.answers.satisfaction) === score).length,
+    count: questionId ? responses.filter((r) => Number(r.answers[questionId]) === score).length : 0,
   }));
   const total = levels.reduce((sum, l) => sum + l.count, 0);
   const points = levels.reduce((sum, l) => sum + l.score * l.count, 0);

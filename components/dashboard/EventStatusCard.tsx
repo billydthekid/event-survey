@@ -1,6 +1,7 @@
 // components/dashboard/EventStatusCard.tsx
 import { ClipboardList, Lock, QrCode, TabletSmartphone, Users, type LucideIcon } from "lucide-react";
 import { Event } from "@/types";
+import { isEditLocked } from "@/lib/utils/eventInfo";
 
 // การ์ด "สถานะ Event" (หน้า ③) — 5 แถว: QR ลงทะเบียน · Survey · จอ Kiosk · ทีมดูแล · แก้ไขข้อมูล
 // ข้อมูลที่ Event ยังไม่ได้กรอก (เช่น Draft) แสดง "ยังไม่กำหนด"
@@ -56,12 +57,12 @@ export function EventStatusCard({ event, now }: EventStatusCardProps) {
     { icon: ClipboardList, tone: "blue", label: "Survey", value: surveyState(event) },
     { icon: TabletSmartphone, tone: "purple", label: "จอ Kiosk", value: KIOSK_LABEL[event.kiosk.screen] },
     { icon: Users, tone: "pink", label: "ทีมดูแล", value: `${event.adminIds.length} คน` },
-    // ⚠️ กฎล็อกยังไม่ได้ตกลงกับทีม — ตอนนี้ถือว่าเริ่มงานแล้ว (กำลังจัดงาน / จบแล้ว) = ล็อก
+    // กฎล็อกอยู่ใน isEditLocked (ตกลงกับ Jin 13 พ.ย.) — ใช้ร่วมกับหน้า Event
     {
       icon: Lock,
       tone: "orange",
       label: "แก้ไขข้อมูล",
-      value: event.status === "active" || event.status === "ended" ? "ล็อกแล้ว" : "แก้ไขได้",
+      value: isEditLocked(event) ? "ล็อกแล้ว" : "แก้ไขได้",
     },
   ];
 
