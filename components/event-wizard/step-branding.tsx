@@ -66,7 +66,7 @@ export function StepBranding() {
               accept="image/png,image/svg+xml,image/jpeg"
               hint="ย่อเหลือ 256 px"
               onPick={async (file) => {
-                const url = await resizeToDataUrl(await readFileAsDataUrl(file), 256, 256, "image/png");
+                const url = await resizeToDataUrl(await readFileAsDataUrl(file), 256, 256, "image/png"); // โลโก้ใช้ PNG (คงพื้นใส) · ย่อเหลือ 256 px
                 patch("theme", { logo: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url } });
               }}
               onRemove={() => patch("theme", { logo: null })}
@@ -159,7 +159,7 @@ export function StepBranding() {
                   asset={t.bg}
                   hint="แนวตั้ง · ย่อเหลือ 1080×1920 px"
                   onPick={async (file) => {
-                    const url = await resizeToDataUrl(await readFileAsDataUrl(file), 1080, 1920, "image/jpeg");
+                    const url = await resizeToDataUrl(await readFileAsDataUrl(file), 1080, 1920, "image/jpeg"); // รูปพื้นหลังใช้ JPEG (ไฟล์เล็ก)
                     setTheme({ bg: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url } });
                   }}
                   onRemove={() => setTheme({ bg: null })}

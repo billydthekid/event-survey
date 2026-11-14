@@ -46,7 +46,7 @@ export function useDragSort<T>(items: T[], onChange: (next: T[]) => void) {
       e.preventDefault();
       if (dragIdx !== i) {
         const next = [...items];
-        const [moved] = next.splice(dragIdx, 1);
+        const [moved] = next.splice(dragIdx, 1); // ย้ายลำดับsplice ครั้งเดียวตอนปล่อย
         next.splice(i, 0, moved);
         onChange(next);
       }

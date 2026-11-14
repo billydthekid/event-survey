@@ -40,7 +40,7 @@ const BASIC_KIND: Record<string, FieldKind> = {
   name: "short", email: "email", age: "number", gender: "radio", phone: "phone", idno: "short",
 };
 
-export function migrateField(f: LegacyField): FormField {
+export function migrateField(f: LegacyField): FormField { // แปลงข้อมูลเก่า → ประเภทใหม่ (ใช้ตอนอ่าน draft จาก localStorage / DB)
   const kind = (f.basicKey && BASIC_KIND[f.basicKey]) || LEGACY_KIND[f.kind] || (f.kind as FieldKind);
   const options =
     f.options ?? (f.basicKey === "gender" ? ["ชาย", "หญิง", "ไม่ระบุ"] : formKind(kind).hasOptions ? [...DEFAULT_OPTIONS] : undefined);

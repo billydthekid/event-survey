@@ -31,10 +31,12 @@ export function StepSchedule() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>เปิดรับ</Label>
-              <Input type="datetime-local" min={nowLocal} value={sc.regOpen} onChange={(e) => set({ regOpen: e.target.value })} />
+              {/* วันที่เปิดรับลงทะเบียน */}
+              <Input type="datetime-local" min={nowLocal} value={sc.regOpen} onChange={(e) => set({ regOpen: e.target.value })} /> 
             </div>
             <div className="space-y-1.5">
               <Label>ปิดรับ</Label>
+              {/* วันที่ปิดรับลงทะเบียน */}
               <Input
                 type="datetime-local"
                 min={sc.regOpen || nowLocal}

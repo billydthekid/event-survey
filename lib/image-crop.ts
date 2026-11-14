@@ -6,7 +6,7 @@ export const AD_WIDTH = 1920;
 export const AD_HEIGHT = 1080;
 export const AD_RATIO = AD_WIDTH / AD_HEIGHT; // 16:9
 
-export function readFileAsDataUrl(file: File): Promise<string> {
+export function readFileAsDataUrl(file: File): Promise<string> { // อ่านไฟล์ → data URL
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
@@ -42,8 +42,8 @@ export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, quality = 0
   ctx.fillStyle = "#FFFFFF"; // PNG พื้นใส → พื้นขาว (JPEG ไม่มีความโปร่งใส)
   ctx.fillRect(0, 0, AD_WIDTH, AD_HEIGHT);
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, AD_WIDTH, AD_HEIGHT);
-  return canvas.toDataURL("image/jpeg", quality);
+  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, AD_WIDTH, AD_HEIGHT); // ตัดแล้วย่อ/ขยาย ตัดเป็น 1920×1080
+  return canvas.toDataURL("image/jpeg", quality); // data URL ของ JPEG ได้ไฟล์ JPEG 85%
 }
 
 /** ขนาดไฟล์โดยประมาณของ data URL (KB) */
@@ -61,7 +61,7 @@ export async function resizeToDataUrl(
   quality = 0.82
 ): Promise<string> {
   const img = await loadImage(src);
-  const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+  const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight); // อยู่ในกรอบทั้งรูป ไม่ขยาย
   const w = Math.max(1, Math.round(img.naturalWidth * scale));
   const h = Math.max(1, Math.round(img.naturalHeight * scale));
   const canvas = document.createElement("canvas");
@@ -74,6 +74,6 @@ export async function resizeToDataUrl(
     ctx.fillRect(0, 0, w, h);
   }
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h); // ย่อรูป วาดขนาดใหม่
   return canvas.toDataURL(type, quality);
 }

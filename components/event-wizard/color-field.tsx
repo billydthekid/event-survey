@@ -30,7 +30,7 @@ export function ColorField({
   const onHex = (v: string) => {
     const val = (v.startsWith("#") ? v : `#${v}`).toUpperCase();
     setHexDraft(val);
-    if (/^#[0-9A-F]{6}$/.test(val)) onChange(val);
+    if (/^#[0-9A-F]{6}$/.test(val)) onChange(val); // ตรวจ HEX ถ้าเป็น #RRGGBB → ส่งกลับ
   };
   const custom = !presets.some((c) => c.toUpperCase() === value.toUpperCase());
 
@@ -63,7 +63,7 @@ export function ColorField({
       >
         <Pipette className={cn("size-4", custom ? (whiteTextContrast(value) >= 3 ? "text-white" : "text-slate-900") : "text-white")} />
         <input
-          type="color"
+          type="color" // ตัวเลือกสีของเบราว์เซอร์ ถาดเลือกสี
           value={/^#[0-9A-F]{6}$/i.test(value) ? value : "#000000"}
           onChange={(e) => pick(e.target.value)}
           aria-label={`${label} เลือกสีเอง`}

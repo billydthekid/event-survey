@@ -7,10 +7,10 @@ import type { AllowList, AllowListKind, EventDraft } from "@/types/event";
 
 export const ALLOW_KIND_LABEL: Record<AllowListKind, string> = { email: "อีเมล", phone: "เบอร์มือถือ" };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // ตรวจอีเมล
 
 /** ทำให้อยู่ในรูปมาตรฐาน · คืน null ถ้ารูปแบบไม่ถูกต้อง */
-export function normalizeContact(kind: AllowListKind, raw: string): string | null {
+export function normalizeContact(kind: AllowListKind, raw: string): string | null { // แปลงรูปแบบ (+66→0, เติม 0)
   const v = raw.trim();
   if (!v) return null;
   if (kind === "email") {
@@ -29,7 +29,7 @@ export function isActive(list: AllowList | undefined): list is AllowList {
 }
 
 /** ผู้กรอกฟอร์มมีชื่อในรายชื่อไหม (รายชื่อไม่ได้เปิดใช้ = ผ่านเสมอ) */
-export function isAllowed(list: AllowList | undefined, raw: string): boolean {
+export function isAllowed(list: AllowList | undefined, raw: string): boolean { // เช็กตอนลงทะเบียน
   if (!isActive(list)) return true;
   const v = normalizeContact(list.kind, raw);
   return v !== null && list.values.includes(v);
@@ -56,7 +56,7 @@ export interface ParseResult {
   column: string; // ชื่อคอลัมน์ที่ใช้ (หรือ "คอลัมน์แรก")
 }
 
-const HEADER_HINTS: Record<AllowListKind, RegExp> = {
+const HEADER_HINTS: Record<AllowListKind, RegExp> = { //หาคอลัมน์ email/เบอร์
   email: /e-?mail|อีเมล/i,
   phone: /phone|mobile|tel|เบอร์|โทร|มือถือ/i,
 };
@@ -64,7 +64,7 @@ const HEADER_HINTS: Record<AllowListKind, RegExp> = {
 /** อ่านไฟล์ .csv / .xlsx / .xls → แถวของ string (แถวแรกอาจเป็นหัวตาราง) */
 export async function readRows(file: File): Promise<string[][]> {
   // โหลด SheetJS เฉพาะตอน import (ไม่ให้ bundle ของหน้าอื่นใหญ่ขึ้น) · อ่านได้ทั้ง CSV และ Excel
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx"); // อ่าน Excel/CSV
   const isCsv = /\.csv$/i.test(file.name);
   // CSV อ่านเป็นข้อความ UTF-8 (ภาษาไทยไม่เพี้ยน) · Excel อ่านเป็น binary
   const wb = isCsv
@@ -77,7 +77,7 @@ export async function readRows(file: File): Promise<string[][]> {
 }
 
 /** เลือกคอลัมน์ตามชื่อหัวตาราง (ไม่เจอ → คอลัมน์แรก) แล้วตรวจ/ตัดซ้ำ */
-export function parseRows(kind: AllowListKind, rows: string[][]): ParseResult {
+export function parseRows(kind: AllowListKind, rows: string[][]): ParseResult { // อ่านแถว
   if (rows.length === 0) return { values: [], invalid: [], duplicates: 0, column: "-" };
 
   let col = rows[0].findIndex((h) => HEADER_HINTS[kind].test(h));
@@ -92,7 +92,7 @@ export function parseRows(kind: AllowListKind, rows: string[][]): ParseResult {
     if (normalizeContact(kind, rows[0][0] ?? "") === null) body = rows.slice(1);
   }
 
-  const seen = new Set<string>();
+  const seen = new Set<string>(); // ตัดซ้ำ
   const invalid: string[] = [];
   let duplicates = 0;
   for (const r of body) {
@@ -107,7 +107,7 @@ export function parseRows(kind: AllowListKind, rows: string[][]): ParseResult {
 }
 
 /** ไฟล์ตัวอย่างให้ดาวน์โหลด (มี BOM ให้ Excel เปิดภาษาไทยได้) */
-export function templateCsv(kind: AllowListKind): string {
+export function templateCsv(kind: AllowListKind): string { // สร้างไฟล์ตัวอย่าง
   const rows =
     kind === "email"
       ? ["email", "somchai@example.com", "suda@example.com"]
