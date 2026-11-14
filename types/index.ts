@@ -36,7 +36,8 @@ export type EventStatus =
   | "deleted";    // ถูกลบ (30 วัน)
 
 export type EventType =
-  | "seminar" | "workshop" | "training" | "jobfair" | "openhouse";
+  | "seminar" | "workshop" | "training" | "jobfair" | "openhouse"
+  | "conference" | "competition" | "exhibition" | "sports" | "volunteer" | "other";
 export type EventMode = "onsite" | "online";
 export type ThemeKind = "light" | "dark" | "bold";
 
@@ -109,7 +110,9 @@ export interface FormField {
 
 // ============ Survey ============
 export type QuestionType =
-  | "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date";
+  | "short" | "long" | "single" | "multi" | "dropdown" | "rating" | "date"
+  // เพิ่มจาก Survey Builder 12 ประเภท (lib/survey-types.ts)
+  | "linear" | "opinion" | "mcgrid" | "cbgrid" | "yesno";
 
 export interface Question {
   id: string;

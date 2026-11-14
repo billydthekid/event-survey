@@ -1,30 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { FileDrop } from "./file-drop";
 import { formatThaiDate } from "@/lib/utils/date";
+import { useNow } from "@/lib/hooks/useNow";
+import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
+import { FieldError } from "./field-error";
+import { AllowListCard } from "./allow-list-card";
+import { EVENT_TYPES } from "@/lib/event-types";
 import type { EventType } from "@/types/event";
-
-const TYPES: { value: EventType; label: string }[] = [
-  { value: "seminar", label: "สัมมนา" },
-  { value: "workshop", label: "Workshop" },
-  { value: "training", label: "อบรม" },
-  { value: "jobfair", label: "Job Fair" },
-  { value: "openhouse", label: "Open House" },
-];
 
 export function StepGeneral() {
   const g = useWizardStore((s) => s.draft.general);
+  const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
+  const now = useNow();
+  const { today } = nowParts(now);
+  const err = validateDates(draft, now);
   const [lang, setLang] = useState<"th" | "en">("th");
   const set = (v: Partial<typeof g>) => patch("general", v);
 
@@ -59,15 +57,26 @@ export function StepGeneral() {
             <div className="space-y-1.5">
               <Label>ประเภทงาน <span className="text-destructive">*</span></Label>
               <ToggleGroup value={[g.type]} onValueChange={(v) => v[0] && set({ type: v[0] as EventType })} variant="outline" className="flex-wrap justify-start">
-                {TYPES.map((t) => (
+                {EVENT_TYPES.map((t) => (
                   <ToggleGroupItem key={t.value} value={t.value} className="rounded-full">
-                    {t.label}
+                    {t.th}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
+              {g.type === "other" && (
+                <Input
+                  placeholder="ระบุประเภทงาน เช่น งานบวช, ทัศนศึกษา"
+                  value={g.typeOther ?? ""}
+                  onChange={(e) => set({ typeOther: e.target.value })}
+                  aria-label="ประเภทงานอื่นๆ"
+                />
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* เปิด / ปิด Event (แทนจำนวนรับสูงสุดเดิมในขั้นที่ 5) */}
+        <AllowListCard />
 
         <Card>
           <CardHeader>
@@ -110,22 +119,41 @@ export function StepGeneral() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label>วันที่จัด</Label>
-                <Input type="date" value={g.date} onChange={(e) => set({ date: e.target.value })} />
-                <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>
+                <Label>วันที่จัด <span className="text-destructive">*</span></Label>
+                <Input
+                  type="date"
+                  min={today}
+                  value={g.date}
+                  aria-invalid={!!err.date}
+                  onChange={(e) => set({ date: e.target.value })}
+                />
+                {err.date ? <FieldError text={err.date} /> : <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>เวลาเริ่ม</Label>
-                <Input type="time" value={g.startTime} onChange={(e) => set({ startTime: e.target.value })} />
+                <Label>เวลาเริ่ม <span className="text-destructive">*</span></Label>
+                <Input
+                  type="time"
+                  value={g.startTime}
+                  aria-invalid={!!err.startTime}
+                  onChange={(e) => set({ startTime: e.target.value })}
+                />
+                <FieldError text={err.startTime} />
               </div>
               <div className="space-y-1.5">
-                <Label>เวลาสิ้นสุด</Label>
-                <Input type="time" value={g.endTime} onChange={(e) => set({ endTime: e.target.value })} />
+                <Label>เวลาสิ้นสุด <span className="text-destructive">*</span></Label>
+                <Input
+                  type="time"
+                  min={g.startTime || undefined}
+                  value={g.endTime}
+                  aria-invalid={!!err.endTime}
+                  onChange={(e) => set({ endTime: e.target.value })}
+                />
+                <FieldError text={err.endTime} />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
               <div className="space-y-1.5">
-                <Label>{g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"}</Label>
+                <Label>{g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"} <span className="text-destructive">*</span></Label>
                 <Input value={g.venue} onChange={(e) => set({ venue: e.target.value })} />
               </div>
               {g.mode === "onsite" && (
@@ -143,33 +171,7 @@ export function StepGeneral() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">รูปปก Event</CardTitle>
-            <CardDescription>แสดงด้านบนหน้า Event บนมือถือ</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {g.cover ? (
-              <div className="flex items-center gap-3 rounded-lg border p-3">
-                <div className="flex h-10 w-16 items-center justify-center rounded bg-primary/10 text-[10px] text-primary">16:9</div>
-                <div className="flex-1 text-sm">
-                  <p className="font-semibold">{g.cover.name}</p>
-                  <p className="text-xs text-muted-foreground">{g.cover.sizeKB} KB</p>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => set({ cover: null })}>เปลี่ยนรูป</Button>
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => set({ cover: null })}>
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ) : (
-              <FileDrop title="ลากรูปมาวาง หรือเลือกไฟล์" onPick={(a) => set({ cover: a })} />
-            )}
-            <p className="text-xs text-muted-foreground">
-              แนะนำสัดส่วน 16:9 · JPG / PNG ไม่เกิน 5 MB · ไม่ใส่ก็ได้ หน้า Event จะใช้สีหลักของ Theme แทน
-            </p>
-          </CardContent>
-        </Card>
+        {/* รูปปก Event ย้ายไปขั้นที่ 2 Branding (แท็บ "รูปปก") */}
       </div>
     </div>
   );

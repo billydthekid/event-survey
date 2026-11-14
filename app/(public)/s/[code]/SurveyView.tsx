@@ -36,10 +36,13 @@ import {
   FieldLabel,
   FormAlert,
   RatingScale,
+  Segmented,
   SelectInput,
   TextArea,
   TextInput,
 } from "@/components/public/form-controls";
+import { SurveyGrid } from "@/components/public/survey-grid";
+import { isAnswered } from "@/lib/survey-types";
 
 // ============ ข้อความ 2 ภาษา ============
 const TEXT = {
@@ -102,8 +105,8 @@ type Text = (typeof TEXT)["th"];
 type Answer = string | string[] | number;
 type Answers = Record<string, Answer>;
 
-const answered = (v: Answer | undefined) =>
-  v !== undefined && (typeof v === "number" || (Array.isArray(v) ? v.length > 0 : v.trim() !== ""));
+// ตอบครบหรือยัง — ตาราง (mcgrid / cbgrid) ต้องตอบครบทุกแถว (lib/survey-types.ts)
+const answered = (q: PublicQuestion, v: Answer | undefined) => isAnswered(q, v);
 
 // ============ ส่วนหลัก ============
 export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
@@ -136,8 +139,8 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
   const pal = palette(e);
   const qs = e.survey.questions;
   const required = qs.filter((q) => q.required);
-  const requiredDone = required.filter((q) => answered(answers[q.id])).length;
-  const allDone = qs.filter((q) => answered(answers[q.id])).length;
+  const requiredDone = required.filter((q) => answered(q, answers[q.id])).length;
+  const allDone = qs.filter((q) => answered(q, answers[q.id])).length;
   // แถบความคืบหน้า: นับข้อบังคับ (ไม่มีข้อบังคับ → นับทุกข้อ)
   const progress = required.length > 0 ? requiredDone / required.length : qs.length > 0 ? allDone / qs.length : 0;
 
@@ -197,7 +200,7 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
   }
 
   // ---------- แบบประเมิน (B1) ----------
-  const missing = tried ? required.filter((q) => !answered(answers[q.id])) : [];
+  const missing = tried ? required.filter((q) => !answered(q, answers[q.id])) : [];
   const minutes = Math.max(1, Math.round(qs.length * 0.7)); // สูตรเดียวกับหน้า Survey Builder
 
   const setAnswer = (id: string, v: Answer) => setAnswers((a) => ({ ...a, [id]: v }));
@@ -205,7 +208,7 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
   const handleSubmit = (ev: React.FormEvent) => {
     ev.preventDefault();
     setTried(true);
-    const firstMissing = required.find((q) => !answered(answers[q.id]));
+    const firstMissing = required.find((q) => !answered(q, answers[q.id]));
     if (firstMissing) {
       const el = document.getElementById(`q-${firstMissing.id}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -215,7 +218,7 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
     const clean: Answers = {};
     for (const q of qs) {
       const v = answers[q.id];
-      if (answered(v)) clean[q.id] = typeof v === "string" ? v.trim() : v!;
+      if (answered(q, v)) clean[q.id] = typeof v === "string" ? v.trim() : v!;
     }
     submitSurveyResponse(e.id, clean);
     setDone(true);
@@ -290,8 +293,10 @@ function QuestionInput({
   const isTextInput = q.type === "short" || q.type === "long" || q.type === "date" || q.type === "dropdown";
 
   let control: React.ReactNode;
+  const rows = (q.rows ?? []).map((r) => ({ value: r.th, label: pick(r, lang) }));
   switch (q.type) {
-    case "rating":
+    case "rating": // ดาว (คำถามจาก Wizard) / ตัวเลข (ข้อมูลตัวอย่างเดิม)
+    case "linear": // Linear Scale ตัวเลข
       control = (
         <RatingScale
           pal={pal}
@@ -300,6 +305,29 @@ function QuestionInput({
           onChange={onChange}
           minLabel={q.ratingLabels ? pick(q.ratingLabels.min, lang) : t.rating.min}
           maxLabel={q.ratingLabels ? pick(q.ratingLabels.max, lang) : t.rating.max}
+          label={title}
+          max={q.ratingMax}
+          variant={q.type === "linear" ? "number" : q.ratingStyle}
+        />
+      );
+      break;
+    case "opinion": // ระดับความเห็น (เลือกได้ข้อเดียว)
+      control = <ChoiceList pal={pal} error={error} options={options} multiple={false} value={str} onChange={onChange} label={title} />;
+      break;
+    case "yesno":
+      control = <Segmented pal={pal} error={error} options={options} value={str} onChange={onChange} label={title} />;
+      break;
+    case "mcgrid":
+    case "cbgrid":
+      control = (
+        <SurveyGrid
+          pal={pal}
+          error={error}
+          rows={rows}
+          columns={options}
+          multiple={q.type === "cbgrid"}
+          value={Array.isArray(value) ? value : []}
+          onChange={onChange}
           label={title}
         />
       );

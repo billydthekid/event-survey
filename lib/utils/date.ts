@@ -44,6 +44,13 @@ export function isEventLocked(date: string, startTime: string): boolean {
   return new Date() >= new Date(`${date}T${startTime}`);
 }
 
+/** 30 ต.ค. 14:00 (รับ yyyy-MM-ddTHH:mm) — ว่าง/ผิดรูปแบบ → "-" */
+export function formatThaiShortDateTime(iso: string) {
+  if (!iso) return "-";
+  const d = parseISO(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return `${format(d, "d MMM", { locale: th })} ${format(d, "HH:mm")}`;
+}
 // ============ ส่วนของ jinnkvvlll (Dashboard / Report) ============
 
 export function formatDayMonth(date: string): { day: string; month: string } | null {

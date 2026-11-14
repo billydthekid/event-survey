@@ -215,7 +215,7 @@ export function KioskScreen({
       ) : (
         <main className="flex min-h-0 flex-1 flex-col gap-12 px-12 pt-4 pb-12">
           {/* ===== รูปโฆษณา (หดได้ เมื่อข้อความ/QR ต้องการพื้นที่) ===== */}
-          {m.ads.length > 0 && <AdSlideshow ads={m.ads} />}
+          {m.ads.length > 0 && <AdSlideshow ads={m.ads} seconds={m.adSeconds} />}
 
           {/* ===== ชื่องาน + วันเวลา + สถานที่ ===== */}
           <section className="shrink-0">
@@ -423,14 +423,14 @@ function StatusChip({ scene, text, mode }: { scene: Exclude<KioskScene, "closed"
   );
 }
 
-// ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก 6 วินาที) ============
-function AdSlideshow({ ads }: { ads: string[] }) {
+// ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้น Branding) ============
+function AdSlideshow({ ads, seconds }: { ads: string[]; seconds: number }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (ads.length < 2) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), 6000);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), seconds * 1000); 
     return () => clearInterval(timer);
-  }, [ads.length]);
+  }, [ads.length, seconds]);
 
   return (
     // สูงได้สุด 16:9 ของความกว้าง (984 × 9/16 ≈ 554 px) / ถ้าพื้นที่ไม่พอจะหดลง (ไม่ต่ำกว่า 240 px)

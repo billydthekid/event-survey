@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getReportData } from "./[id]/report/mockData";
 import { formatEventWhen } from "./dateFormat";
+import { EventQrButton } from "@/components/event/event-qr-button";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา (ใช้เฉพาะหน้านี้) ============
 const TEXT = {
@@ -217,7 +218,7 @@ function EventAction({ event, view, t }: { event: Event; view: ViewStatus; t: Te
   if (view === "draft") {
     // ไปหน้า Wizard 7 ขั้นของเพื่อน (feature/create-event)
     return (
-      <div className="flex w-40 shrink-0 justify-end">
+      <div className="flex w-56 shrink-0 justify-end">
         <Button
           variant="link"
           nativeButton={false}
@@ -231,7 +232,9 @@ function EventAction({ event, view, t }: { event: Event; view: ViewStatus; t: Te
   }
 
   return (
-    <div className="flex w-40 shrink-0 justify-end">
+    <div className="flex w-56 shrink-0 items-center justify-end gap-3">
+      {/* QR ลงทะเบียน / Survey (popup เดียวกับหลังกดเผยแพร่ · components/event/event-qr-button.tsx) */}
+      <EventQrButton event={event} />
       {/* Button ของ Base UI ใช้ render แทน asChild; nativeButton={false} เพราะข้างในเป็นลิงก์ <a> */}
       <Button
         variant="link"

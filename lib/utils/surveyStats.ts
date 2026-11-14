@@ -12,6 +12,11 @@ export const QTYPE_LABEL: Record<QuestionType, string> = {
   dropdown: "Dropdown",
   rating: "Rating 1–5",
   date: "วันที่",
+  linear: "สเกลตัวเลข",
+  opinion: "ระดับความเห็น",
+  mcgrid: "ตารางเลือกข้อเดียว",
+  cbgrid: "ตารางเลือกหลายข้อ",
+  yesno: "ใช่ / ไม่ใช่",
 };
 
 // ข้อความตามภาษา — ไม่มีภาษาอังกฤษ → ใช้ไทย

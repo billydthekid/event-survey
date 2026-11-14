@@ -15,7 +15,7 @@ import { pct, summarize, Summary, tr } from "./summary";
 const TEXT = {
   th: {
     qLabel: (n: number, type: string) => `ข้อ ${n} · ${type}`,
-    types: { rating: "Rating", single: "ตัวเลือกเดียว", multi: "หลายตัวเลือก", dropdown: "Dropdown", short: "ข้อความสั้น", long: "ข้อความยาว", date: "วันที่" },
+    types: { rating: "Rating", single: "ตัวเลือกเดียว", multi: "หลายตัวเลือก", dropdown: "Dropdown", short: "ข้อความสั้น", long: "ข้อความยาว", date: "วันที่", linear: "สเกลตัวเลข", opinion: "ระดับความเห็น", mcgrid: "ตารางเลือกข้อเดียว", cbgrid: "ตารางเลือกหลายข้อ", yesno: "ใช่ / ไม่ใช่" },
     avg: (avg: string) => `เฉลี่ย ${avg} / 5`,
     answers: (n: number) => `${n} คำตอบ`,
     multiPeople: (n: number) => `เลือกได้หลายข้อ · ${n} คน`,
@@ -26,7 +26,7 @@ const TEXT = {
   },
   en: {
     qLabel: (n: number, type: string) => `Q${n} · ${type}`,
-    types: { rating: "Rating", single: "Single choice", multi: "Multiple choice", dropdown: "Dropdown", short: "Short text", long: "Long text", date: "Date" },
+    types: { rating: "Rating", single: "Single choice", multi: "Multiple choice", dropdown: "Dropdown", short: "Short text", long: "Long text", date: "Date", linear: "Linear scale", opinion: "Opinion scale", mcgrid: "Multiple choice grid", cbgrid: "Checkbox grid", yesno: "Yes / No" },
     avg: (avg: string) => `avg. ${avg} / 5`,
     answers: (n: number) => `${n} responses`,
     multiPeople: (n: number) => `Multiple answers allowed · ${n} people`,

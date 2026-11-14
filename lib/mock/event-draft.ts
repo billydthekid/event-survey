@@ -13,11 +13,11 @@ const q = (
 ): SurveyQuestion => ({ id, type, titleTh, titleEn: "", required, options });
 
 const formFields = (): EventDraft["form"]["fields"] => [
-  { id: "f-name", label: "ชื่อ – นามสกุล", kind: "text", hint: "ข้อความสั้น", required: true, basicKey: "name" },
-  { id: "f-sid", label: "รหัสนักศึกษา", kind: "number", hint: "Custom · ตัวเลข 10 หลัก", required: true },
-  { id: "f-year", label: "ชั้นปี", kind: "dropdown", hint: "Dropdown · ปี 1–4 / ศิษย์เก่า", required: true },
-  { id: "f-email", label: "อีเมล", kind: "email", hint: "อีเมล", required: true, basicKey: "email" },
-  { id: "f-track", label: "สายที่สนใจ", kind: "multiselect", hint: "Custom · หลายตัวเลือก", required: false },
+  { id: "f-name", label: "ชื่อ – นามสกุล", kind: "short", hint: "ข้อความสั้น", required: true },
+  { id: "f-sid", label: "รหัสนักศึกษา", kind: "number", hint: "ตัวเลข", required: true },
+  { id: "f-year", label: "ชั้นปี", kind: "dropdown", hint: "Dropdown", required: true, options: ["ปี 1", "ปี 2", "ปี 3", "ปี 4", "ศิษย์เก่า"] },
+  { id: "f-email", label: "อีเมล", kind: "email", hint: "อีเมล", required: true },
+  { id: "f-track", label: "สายที่สนใจ", kind: "checkbox", hint: "หลายตัวเลือก", required: false, options: ["UX/UI", "Data", "Dev"] },
 ];
 
 interface Opts {
@@ -53,15 +53,15 @@ function make(o: Opts): EventDraft {
       venue: o.venue, spot: o.spot, mapUrl: "", cover: { name: `cover-${o.code}.jpg`, sizeKB: 512 },
     },
     theme: { primary: o.primary, secondary: o.secondary, mode: "light", bgType: "color", bg: null, logo: null },
-    ad: { name: `poster-${o.code}.jpg`, sizeKB: 820, cropped: o.status !== "draft" },
+    ads: { items: [{ name: `poster-${o.code}.jpg`, sizeKB: 820, cropped: o.status !== "draft" }], seconds: 6 },
     form: { fields: formFields() },
     schedule: {
       regOpen: dt(o.regOpenOffset, "09:00"),
       regClose: `${date}T${o.start}`,
-      maxAttendees: o.max,
+      maxAttendees: "", // ไม่จำกัดจำนวนแล้ว (เดิม o.max)
       surveyOpen: `${date}T${o.end}`,
       surveyClose: dt(o.dayOffset + 3, "23:59"),
-      remindAfterEnd: true,
+      remindAfterEnd: false,
     },
     survey: { enabled: true, questions: o.questions },
   };
@@ -112,11 +112,3 @@ export const createMockDrafts = (): Record<string, EventDraft> => {
   return { [a.id]: a, [b.id]: b, [c.id]: c };
 };
 
-export const BASIC_FIELDS = [
-  { basicKey: "name", label: "ชื่อ – นามสกุล", kind: "text", hint: "ข้อความสั้น" },
-  { basicKey: "email", label: "อีเมล", kind: "email", hint: "อีเมล" },
-  { basicKey: "age", label: "อายุ", kind: "number", hint: "ตัวเลข" },
-  { basicKey: "gender", label: "เพศ", kind: "dropdown", hint: "Dropdown" },
-  { basicKey: "phone", label: "เบอร์โทร", kind: "text", hint: "เบอร์โทรศัพท์" },
-  { basicKey: "idno", label: "เลขประจำตัว", kind: "text", hint: "ข้อความสั้น" },
-] as const;

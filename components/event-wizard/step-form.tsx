@@ -1,191 +1,254 @@
 "use client";
+// ขั้นที่ 4: ฟอร์มลงทะเบียน — แบบ Google Form / Survey Builder
+// - การ์ดทีละช่อง: พิมพ์ชื่อช่องในการ์ด · ตั้งตัวเลือก (Multiple Choice / Checkboxes / Dropdown) · ทำสำเนา · ลบ
+// - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts)
+// - แถบ "เพิ่มช่อง" = 12 ประเภท (lib/form-types.ts) · กดแล้วได้ช่องพร้อมชื่อตัวอย่าง แก้ชื่อได้
+// - แผงขวา: Required + เปลี่ยนประเภท · ปุ่ม "Preview ฟอร์ม" เปิดหน้าตาแบบที่ผู้เข้าร่วมเห็น
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, GripVertical, Plus } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Copy, Eye, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FieldSample, FormPreview } from "@/components/event/form-preview";
 import { useWizardStore } from "@/lib/wizard-store";
-import { BASIC_FIELDS } from "@/lib/mock/event-draft";
+import { useDragSort } from "@/lib/use-drag-sort";
+import { DEFAULT_OPTIONS, FORM_KINDS, formKind } from "@/lib/form-types";
 import { cn } from "@/lib/utils";
 import { newId } from "@/lib/utils/id";
 import type { FieldKind, FormField } from "@/types/event";
 
-const KIND_LABEL: Record<FieldKind, string> = {
-  text: "ข้อความสั้น",
-  email: "อีเมล",
-  number: "ตัวเลข",
-  dropdown: "Dropdown",
-  multiselect: "หลายตัวเลือก",
-};
-
 export function StepForm() {
   const fields = useWizardStore((s) => s.draft.form.fields);
+  const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
   const setFields = (f: FormField[]) => patch("form", { fields: f });
 
-  const [open, setOpen] = useState(false);
-  const [label, setLabel] = useState("");
-  const [kind, setKind] = useState<FieldKind>("text");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<string | null>(null); // ช่องที่เพิ่งเพิ่ม → โฟกัสชื่อให้พิมพ์ต่อได้เลย
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const selected = fields.find((f) => f.id === (selectedId ?? fields[0]?.id)) ?? null;
+  const selectedIndex = selected ? fields.findIndex((f) => f.id === selected.id) : -1;
 
-  const toggleBasic = (b: (typeof BASIC_FIELDS)[number]) => {
-    const exists = fields.find((f) => f.basicKey === b.basicKey);
-    if (exists) return setFields(fields.filter((f) => f.id !== exists.id));
-    setFields([
-      ...fields,
-      { id: `f-${b.basicKey}`, label: b.label, kind: b.kind, hint: b.hint, required: false, basicKey: b.basicKey },
-    ]);
+  const update = (id: string, v: Partial<FormField>) => setFields(fields.map((f) => (f.id === id ? { ...f, ...v } : f)));
+  const select = (id: string) => setSelectedId(id);
+
+  const add = (kind: FieldKind) => { // เพิ่มช่องใหม่: ประเภท + ชื่อตัวอย่าง + id ใหม่
+    const k = formKind(kind);
+    const id = newId("f");
+    setFields([...fields, { id, label: k.example, kind, hint: k.th, required: false, options: k.hasOptions ? [...DEFAULT_OPTIONS] : undefined }]);
+    setSelectedId(id);
+    setJustAdded(id);
   };
 
-  // ลากเรียง (HTML5 drag & drop ไม่ต้องพึ่งไลบรารี)
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-  const drop = (to: number) => {
-    if (dragIdx === null || dragIdx === to) return;
-    const next = [...fields];
-    const [item] = next.splice(dragIdx, 1);
-    next.splice(to, 0, item);
+  const duplicate = (id: string) => { // ทำสำเนาช่อง: copy + id ใหม่ + insert หลังช่องเดิม
+    const i = fields.findIndex((f) => f.id === id);
+    const nid = newId("f");
+    const copy = { ...fields[i], id: nid, options: fields[i].options ? [...fields[i].options!] : undefined };
+    setFields([...fields.slice(0, i + 1), copy, ...fields.slice(i + 1)]);
+    setSelectedId(nid);
+  };
+
+  const remove = (id: string) => { // ลบช่อง: filter + เลือกช่องถัดไป (หรือ null ถ้าไม่มีเหลือ)
+    const next = fields.filter((f) => f.id !== id);
     setFields(next);
+    setSelectedId(next[0]?.id ?? null);
   };
 
-  const move = (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= fields.length) return;
-    const next = [...fields];
-    [next[i], next[j]] = [next[j], next[i]];
-    setFields(next);
+  // เปลี่ยนประเภท: ประเภทที่มีตัวเลือกแต่ยังไม่มี → ใส่ตัวเลือกตั้งต้นให้
+  const changeKind = (f: FormField, kind: FieldKind) => {
+    const k = formKind(kind);
+    update(f.id, { kind, hint: k.th, options: k.hasOptions ? (f.options?.length ? f.options : [...DEFAULT_OPTIONS]) : f.options });
   };
 
-  const addCustom = () => {
-    if (!label.trim()) return;
-    setFields([
-      ...fields,
-      { id: newId("c"), label: label.trim(), kind, hint: `Custom · ${KIND_LABEL[kind]}`, required: false },
-    ]);
-    setLabel("");
-    setKind("text");
-    setOpen(false);
-  };
+  const sort = useDragSort(fields, setFields); // ลากเรียงช่องในฟอร์ม
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <Card className="self-start">
-        <CardHeader>
-          <CardTitle className="text-sm">ช่องพื้นฐาน · แตะเพื่อเพิ่ม/เอาออก</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {BASIC_FIELDS.map((b) => {
-              const on = fields.some((f) => f.basicKey === b.basicKey);
-              return (
-                <Button
-                  key={b.basicKey}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => toggleBasic(b)}
-                  className={cn("rounded-full", on && "border-primary bg-primary/10 text-primary")}
-                >
-                  {!on && <Plus className="size-3" />} {b.label}
-                </Button>
-              );
-            })}
-          </div>
+    <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+      {/* ===== การ์ดช่องในฟอร์ม ===== */}
+      <div className="min-w-0 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">{fields.length} ช่อง · ลากที่ ⋮⋮ เพื่อเรียงลำดับ</p>
+          <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+            <Eye className="size-4" /> Preview ฟอร์ม
+          </Button>
+        </div>
 
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button variant="outline" size="sm" className="text-primary" />}>
-              <Plus className="size-4" /> เพิ่ม Custom field
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>เพิ่ม Custom field</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>ชื่อช่อง</Label>
-                  <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="เช่น คณะ / สาขา" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>ประเภท</Label>
-                  <ToggleGroup
-                    value={[kind]}
-                    onValueChange={(v) => v[0] && setKind(v[0] as FieldKind)}
-                    variant="outline"
-                    className="flex-wrap justify-start"
-                  >
-                    {Object.entries(KIND_LABEL).map(([k, v]) => (
-                      <ToggleGroupItem key={k} value={k} className="rounded-full">{v}</ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={addCustom}>เพิ่ม</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardContent>
-      </Card>
+        {fields.length === 0 && (
+          <p className="rounded-2xl border border-dashed bg-background py-12 text-center text-sm text-muted-foreground">
+            ยังไม่มีช่องในฟอร์ม เลือกประเภทจากแถบด้านล่างเพื่อเริ่มสร้าง
+          </p>
+        )}
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm">ช่องในฟอร์ม ({fields.length})</CardTitle>
-          <span className="text-xs text-muted-foreground">ลากเพื่อเรียงลำดับ (หรือกดลูกศร)</span>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {fields.map((f, i) => (
-            <div
+        {fields.map((f, i) => { // การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ทำสำเนา + ลบ
+          const k = formKind(f.kind);
+          const isSel = selected?.id === f.id;
+          const options = f.options ?? [];
+          return (
+            <section
               key={f.id}
-              draggable
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setOverIdx(i);
-              }}
-              onDrop={() => {
-                drop(i);
-                setDragIdx(null);
-                setOverIdx(null);
-              }}
-              onDragEnd={() => {
-                setDragIdx(null);
-                setOverIdx(null);
-              }}
+              {...sort.itemProps(i)}
+              onClick={() => select(f.id)}
+              onFocusCapture={() => select(f.id)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border p-3 bg-background",
-                dragIdx === i && "opacity-40",
-                overIdx === i && dragIdx !== null && dragIdx !== i && "border-primary ring-1 ring-primary"
+                "space-y-3 rounded-2xl border bg-background p-5 transition",
+                isSel && "border-2 border-primary",
+                sort.stateOf(i).dragging && "opacity-40",
+                sort.stateOf(i).over && "ring-2 ring-primary/50"
               )}
             >
-              <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" aria-hidden />
-              <div className="flex flex-col">
-                <Button variant="ghost" size="icon" className="size-5" disabled={i === 0} onClick={() => move(i, -1)} aria-label="ขึ้น">
-                  <ArrowUp className="size-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="size-5" disabled={i === fields.length - 1} onClick={() => move(i, 1)} aria-label="ลง">
-                  <ArrowDown className="size-3" />
-                </Button>
+              <div className="flex items-center justify-between">
+                <p className="flex items-center gap-2 text-xs font-medium text-primary">
+                  <span {...sort.handleProps(i)} className={cn(sort.handleProps(i).className, "text-muted-foreground")}>
+                    <GripVertical className="size-4" />
+                  </span>
+                  <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
+                    <k.icon className="size-3.5" />
+                  </span>
+                  {i + 1} · {k.en}{k.en !== k.th && ` · ${k.th}`}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="icon" aria-label="ทำสำเนา" onClick={(e) => { e.stopPropagation(); duplicate(f.id); }}>
+                    <Copy className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="ลบช่องนี้"
+                    className="bg-red-50 text-red-600 hover:bg-red-100"
+                    onClick={(e) => { e.stopPropagation(); remove(f.id); }}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold">{f.label}</p>
-                <p className="text-xs text-muted-foreground">{f.hint}</p>
+
+              <div className="flex items-baseline gap-1">
+                <input
+                  value={f.label}
+                  onChange={(e) => update(f.id, { label: e.target.value })}
+                  placeholder={`พิมพ์ชื่อช่อง เช่น ${k.example}`}
+                  aria-label="ชื่อช่อง"
+                  autoFocus={justAdded === f.id}
+                  onFocus={(e) => justAdded === f.id && e.currentTarget.select()}
+                  className="field-sizing-content min-w-[14ch] max-w-full bg-transparent text-lg font-bold outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
+                />
+                {f.required && <span className="text-lg font-bold text-destructive">*</span>}
               </div>
-              <span className="text-xs text-muted-foreground">Required</span>
-              <Switch
-                checked={f.required}
-                onCheckedChange={(v) => setFields(fields.map((x) => (x.id === f.id ? { ...x, required: v } : x)))}
-              />
-            </div>
+
+              {k.hasOptions ? (
+                // ตัวเลือกแก้ในการ์ดได้เลย (แบบ Survey Builder)
+                <div className="space-y-2">
+                  {options.map((o, n) => (
+                    <div key={n} className="group flex max-w-2xl items-center gap-3 rounded-lg border px-4 py-2.5">
+                      {f.kind === "dropdown" ? (
+                        <span className="w-4 text-center text-xs text-muted-foreground">{n + 1}</span>
+                      ) : (
+                        <span className={cn("size-4 shrink-0 border", f.kind === "radio" ? "rounded-full" : "rounded")} />
+                      )}
+                      <input
+                        value={o}
+                        onChange={(e) => update(f.id, { options: options.map((x, m) => (m === n ? e.target.value : x)) })}
+                        aria-label={`ตัวเลือก ${n + 1}`}
+                        className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                      />
+                      <button
+                        type="button"
+                        aria-label="ลบตัวเลือก"
+                        disabled={options.length <= 2}
+                        onClick={() => update(f.id, { options: options.filter((_, m) => m !== n) })}
+                        className="text-muted-foreground opacity-0 transition hover:text-foreground focus:opacity-100 group-hover:opacity-100 disabled:hidden"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => update(f.id, { options: [...options, `ตัวเลือก ${options.length + 1}`] })}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    + เพิ่มตัวเลือก
+                  </button>
+                </div>
+              ) : (
+                <FieldSample f={f} className="max-w-md" />
+              )}
+            </section>
+          );
+        })}
+
+        {/* ===== แถบเพิ่มช่อง: 12 ประเภท ===== */}
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed bg-background/60 p-4">
+          <span className="mr-2 text-sm text-muted-foreground">เพิ่มช่อง</span>
+          {FORM_KINDS.map((k) => (
+            <button
+              key={k.value}
+              type="button"
+              title={`${k.en} · เช่น ${k.example}`}
+              onClick={() => add(k.value)}
+              className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
+            >
+              <Plus className="size-3.5" /> <k.icon className="size-4" /> {k.th}
+            </button>
           ))}
-          {fields.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีช่องในฟอร์ม</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* ===== แผงตั้งค่า ===== */}
+      <aside className="h-fit space-y-6 rounded-2xl border bg-background p-6 lg:sticky lg:top-0">
+        {selected ? (
+          <>
+            <div>
+              <p className="text-xs text-primary">ช่องที่ {selectedIndex + 1}</p>
+              <h2 className="text-xl font-bold">ตั้งค่า</h2>
+            </div>
+
+            <div className="flex items-center justify-between border-b pb-5">
+              <div>
+                <p className="text-sm font-semibold">Required</p>
+                <p className="text-xs text-muted-foreground">ต้องกรอกก่อนส่ง</p>
+              </div>
+              <Switch checked={selected.required} onCheckedChange={(v) => update(selected.id, { required: v })} />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">ประเภทคำตอบ</p>
+              <div className="grid grid-cols-2 gap-2">
+                {FORM_KINDS.map((k) => (
+                  <button
+                    key={k.value}
+                    type="button"
+                    aria-pressed={selected.kind === k.value}
+                    onClick={() => changeKind(selected, k.value)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm",
+                      selected.kind === k.value && "border-primary bg-primary/5 font-semibold text-primary"
+                    )}
+                  >
+                    <k.icon className="size-4 shrink-0" /> {k.th}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formKind(selected.kind).en} · ตัวอย่าง: {formKind(selected.kind).example}
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">เลือกช่องเพื่อตั้งค่า</p>
+        )}
+      </aside>
+
+      {/* ===== Preview ฟอร์ม (แบบ Google Form) ===== */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Preview ฟอร์มลงทะเบียน</DialogTitle>
+          </DialogHeader>
+          <FormPreview fields={fields} primary={draft.theme.primary} eventName={draft.general.nameTh} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
