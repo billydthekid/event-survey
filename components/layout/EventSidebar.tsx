@@ -3,7 +3,7 @@
 // โครงตามต้นแบบ (dashboard.png / myevent.png):
 //   โลโก้ (กดแล้วไป Event ของฉัน), Event ของฉัน (เมนูหลักเดียว) →"Event ที่เลือก" + ตัวสลับ → เมนูของ Event → Settings, Logout
 // - Event ที่เลือก: id ใน URL ชนะเสมอ / หน้าที่ไม่มี id ใช้ Event ล่าสุดที่จำไว้ (localStorage) / ไม่มี → เลือกตามกติกา
-// - เมนู "ข้อมูล Event" ไปหน้า Wizard (/edit · รวม Survey ไว้ในขั้นที่ 4) เฉพาะ Event ที่ยังแก้ได้ (Draft / Scheduled)
+// - ปุ่ม "ตั้งค่า Event" (ใต้ตัวสลับ) ไปหน้า Wizard (/edit · รวม Survey ไว้ในขั้นที่ 4) เฉพาะ Event ที่ยังแก้ได้ (Draft / Scheduled)
 //   Event ที่ Active / Ended → สีเทา + ป้าย "ล็อกแล้ว" กดไม่ได้ (กติกา: Event Admin แก้ได้เฉพาะก่อน Active)
 // - usePathname() ทำงานได้เพราะ admin layout ครอบคอมโพเนนต์นี้ด้วย <Suspense> แล้ว
 "use client";
@@ -11,8 +11,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  List, LayoutGrid, CalendarDays, BarChart3, Smartphone,
-  SlidersHorizontal, LogOut, ChevronsUpDown, Check, type LucideIcon,
+  List, LayoutGrid, BarChart3, Smartphone,
+  SlidersHorizontal, LogOut, ChevronsUpDown, Check, Settings, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Event, Lang } from "@/types";
@@ -27,7 +27,7 @@ const TEXT = {
     myEvents: "Event ของฉัน",
     selectedEvent: "Event ที่เลือก",
     dashboard: "Dashboard",
-    info: "ข้อมูล Event",
+    info: "ตั้งค่า Event",
     report: "Report",
     kiosk: "หน้า Kiosk",
     settings: "Settings",
@@ -41,7 +41,7 @@ const TEXT = {
     myEvents: "My Events",
     selectedEvent: "Selected event",
     dashboard: "Dashboard",
-    info: "Event info",
+    info: "Event settings",
     report: "Report",
     kiosk: "Kiosk",
     settings: "Settings",
@@ -215,9 +215,10 @@ export function EventSidebar() {
       locked,
     };
   };
+  // "ตั้งค่า Event" (Wizard /edit) เป็นปุ่มสีน้ำเงินใต้ตัวสลับ แทนเมนู "ข้อมูล Event" เดิม
+  const settingsItem = eventItem("edit", t.info, Settings, "/edit", "edit");
   const eventMenu: Menu[] = [
     eventItem("dashboard", t.dashboard, LayoutGrid, "", ""),
-    eventItem("edit", t.info, CalendarDays, "/edit", "edit"),
     eventItem("report", t.report, BarChart3, "/report", "report"),
     eventItem("kiosk", t.kiosk, Smartphone, "/kiosk", "kiosk"),
   ];
@@ -254,6 +255,9 @@ export function EventSidebar() {
         t={t}
         onSelect={handleSelect}
       />
+
+      {/* ===== ปุ่มตั้งค่า Event (เปิด Wizard) ===== */}
+      <SettingsButton menu={settingsItem} t={t} />
 
       {/* ===== เมนูของ Event ===== */}
       <nav className="mt-3 flex flex-col gap-1">
@@ -312,6 +316,34 @@ function MenuItem({ menu, t }: { menu: Menu; t: Text }) {
     >
       <Icon size={18} />
       {menu.label}
+    </Link>
+  );
+}
+
+// ============ ปุ่ม "ตั้งค่า Event" (หน้าตาแบบปุ่ม "+ สร้าง Event" ของ Super) ============
+// href = null → ยังไม่มี Event ที่เลือก หรือ Event ล็อกแล้ว → สีเทา กดไม่ได้ (+ ป้าย "ล็อกแล้ว")
+function SettingsButton({ menu, t }: { menu: Menu; t: Text }) {
+  const Icon = menu.icon;
+  const base = "mt-3 flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold";
+
+  if (!menu.href) {
+    return (
+      <span aria-disabled="true" className={`${base} cursor-not-allowed bg-slate-200 text-slate-400`}>
+        <Icon size={16} /> {menu.label}
+        {menu.locked && (
+          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-normal text-slate-500">{t.locked}</span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={menu.href}
+      aria-current={menu.active ? "page" : undefined}
+      className={`${base} bg-blue-600 text-white hover:bg-blue-700 ${menu.active ? "ring-2 ring-blue-300 ring-offset-1" : ""}`}
+    >
+      <Icon size={16} /> {menu.label}
     </Link>
   );
 }
