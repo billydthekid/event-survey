@@ -2,7 +2,7 @@
 // Live Preview ของ Branding — วาดจาก draft ใน wizard store (อัปเดตทันทีที่แก้)
 // - PhonePreview: หน้า Event บนมือถือ (รูปปก, โลโก้, พื้นหลัง, โหมด, สีหลัก)
 // - KioskPreview: จอ Kiosk แนวตั้ง (พื้นหลัง, โลโก้, โฆษณาเลื่อนวน, กรอบ QR สีหลัก)
-// ใช้ในขั้น Branding (ซ้าย) และขั้น Preview (เต็มจอ)
+// ใช้ในขั้น Branding (บนสุด) และขั้น Preview
 // หมายเหตุ: ตอนนี้ธีมมีผลเฉพาะใน Wizard · หน้าจริง /r, /s และจอ Kiosk ยังใช้แค่สีหลัก + โหมด
 
 import { useEffect, useState } from "react";

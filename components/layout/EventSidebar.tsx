@@ -3,7 +3,7 @@
 // โครงตามต้นแบบ (dashboard.png / myevent.png):
 //   โลโก้ (กดแล้วไป Event ของฉัน), Event ของฉัน (เมนูหลักเดียว) →"Event ที่เลือก" + ตัวสลับ → เมนูของ Event → Settings, Logout
 // - Event ที่เลือก: id ใน URL ชนะเสมอ / หน้าที่ไม่มี id ใช้ Event ล่าสุดที่จำไว้ (localStorage) / ไม่มี → เลือกตามกติกา
-// - เมนู "ข้อมูล Event" / "Survey" ไปหน้า Wizard ของเพื่อน (/edit, /survey) เฉพาะ Event ที่ยังแก้ได้ (Draft / Scheduled)
+// - เมนู "ข้อมูล Event" ไปหน้า Wizard (/edit · รวม Survey ไว้ในขั้นที่ 4) เฉพาะ Event ที่ยังแก้ได้ (Draft / Scheduled)
 //   Event ที่ Active / Ended → สีเทา + ป้าย "ล็อกแล้ว" กดไม่ได้ (กติกา: Event Admin แก้ได้เฉพาะก่อน Active)
 // - usePathname() ทำงานได้เพราะ admin layout ครอบคอมโพเนนต์นี้ด้วย <Suspense> แล้ว
 "use client";
@@ -11,7 +11,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  List, LayoutGrid, CalendarDays, ClipboardList, BarChart3, Smartphone,
+  List, LayoutGrid, CalendarDays, BarChart3, Smartphone,
   SlidersHorizontal, LogOut, ChevronsUpDown, Check, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -28,7 +28,6 @@ const TEXT = {
     selectedEvent: "Event ที่เลือก",
     dashboard: "Dashboard",
     info: "ข้อมูล Event",
-    survey: "Survey",
     report: "Report",
     kiosk: "หน้า Kiosk",
     settings: "Settings",
@@ -43,7 +42,6 @@ const TEXT = {
     selectedEvent: "Selected event",
     dashboard: "Dashboard",
     info: "Event info",
-    survey: "Survey",
     report: "Report",
     kiosk: "Kiosk",
     settings: "Settings",
@@ -127,7 +125,7 @@ type Menu = {
 };
 
 // เมนูที่ไปหน้า Wizard (แก้ข้อมูล Event) — เปิดได้เฉพาะ Event ที่ยังแก้ได้
-const WIZARD_KEYS = new Set(["edit", "survey"]);
+const WIZARD_KEYS = new Set(["edit"]);
 // สถานะที่ Event Admin ยังแก้ได้ (ก่อน Active) — ตัดสินจากสถานะใน store หลักอย่างเดียว
 // (Wizard ล็อกตามวันเวลาเริ่มงานอีกชั้นหนึ่ง เช่น Scheduled ที่วันผ่านไปแล้ว → เข้าได้แต่ Wizard ล็อกเอง)
 const EDITABLE: Event["status"][] = ["draft", "scheduled"];
@@ -220,7 +218,6 @@ export function EventSidebar() {
   const eventMenu: Menu[] = [
     eventItem("dashboard", t.dashboard, LayoutGrid, "", ""),
     eventItem("edit", t.info, CalendarDays, "/edit", "edit"),
-    eventItem("survey", t.survey, ClipboardList, "/survey", "survey"),
     eventItem("report", t.report, BarChart3, "/report", "report"),
     eventItem("kiosk", t.kiosk, Smartphone, "/kiosk", "kiosk"),
   ];
