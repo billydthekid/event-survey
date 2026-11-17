@@ -8,7 +8,7 @@
 import { use, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, ChevronRight, Clock, Download, MapPin, QrCode, ShieldAlert, Smartphone, BarChart3, type LucideIcon,
+  ChevronLeft, Clock, Download, MapPin, QrCode, ShieldAlert, Smartphone, BarChart3, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
@@ -24,7 +24,6 @@ import { Donut, HBar, VBars, type VBar } from "./report/charts";
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
 const TEXT = {
   th: {
-    myEvents: "Event ของฉัน",
     viewingAs: "คุณดูในฐานะ Event Admin · เห็นเฉพาะข้อมูลของ Event นี้",
     // STATUS_LABEL ใน lib มีแต่ภาษาไทย → ชื่อสถานะเก็บในพจนานุกรมนี้ (สีป้ายยังใช้ของ lib)
     status: { draft: "ฉบับร่าง", scheduled: "ใกล้ถึง", active: "กำลังจัดงาน", ended: "จบแล้ว", deleted: "ถูกลบ" },
@@ -74,10 +73,9 @@ const TEXT = {
     noDataHint: "Dashboard จะมีข้อมูลเมื่อ Event เริ่มจัดงานแล้ว",
     notFound: "ไม่พบ Event / ไม่มีสิทธิ์",
     notFoundHint: "Event นี้ไม่มีอยู่ ถูกลบไปแล้ว หรือไม่ได้มอบหมายให้คุณดูแล",
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
   },
   en: {
-    myEvents: "My Events",
     viewingAs: "You're viewing as Event Admin · Only this event's data is shown",
     status: { draft: "Draft", scheduled: "Scheduled", active: "Active", ended: "Ended", deleted: "Deleted" },
     qr: "Registration / Survey QR",
@@ -126,7 +124,7 @@ const TEXT = {
     noDataHint: "The dashboard will have data once the event has started",
     notFound: "Event not found / No permission",
     notFoundHint: "This event doesn't exist, was deleted, or isn't assigned to you",
-    back: "Back to My Events",
+    back: "Go to assigned event",
   },
 };
 type Text = (typeof TEXT)["th"];
@@ -151,7 +149,7 @@ export function DashboardView({ params }: { params: Promise<{ id: string }> }) {
         <ShieldAlert size={32} className="text-slate-400" />
         <p className="text-lg font-semibold">{t.notFound}</p>
         <p className="text-sm text-slate-500">{t.notFoundHint}</p>
-        <Button variant="ghost" nativeButton={false} render={<Link href="/admin/events" />} className="mt-3 text-blue-600">
+        <Button variant="ghost" nativeButton={false} render={<Link href="/admin" />} className="mt-3 text-blue-600">
           <ChevronLeft /> {t.back}
         </Button>
       </Card>
@@ -198,14 +196,12 @@ export function DashboardView({ params }: { params: Promise<{ id: string }> }) {
 }
 
 // ============ ส่วนหัว ============
-// "Event ของฉัน ›" / ชื่อ Event / ป้ายสถานะ + ข้อความ "คุณดูในฐานะ ..."
+// ชื่อ Event / ป้ายสถานะ + ข้อความ "คุณดูในฐานะ ..."
+// (ไม่มี breadcrumb "Event ของฉัน ›" แล้ว — 1 Event Admin ดูแล 1 Event จึงไม่มีหน้ารายการให้กลับไป)
 function Header({ event, lang, t }: { event: Event; lang: Lang; t: Text }) {
   return (
     <div>
-      <Link href="/admin/events" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
-        {t.myEvents} <ChevronRight size={14} />
-      </Link>
-      <h1 className="mt-1 text-3xl font-bold">{tr(event.name, lang)}</h1>
+      <h1 className="text-3xl font-bold">{tr(event.name, lang)}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
         <StatusBadge status={event.status} t={t} />
         <span>{t.viewingAs}</span>
