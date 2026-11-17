@@ -7,7 +7,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  CalendarDays, Check, CheckCircle2, Clock, PlayCircle, Plus, Search, Trash2, UserCog, UserPlus, X,
+  CalendarDays, Check, CheckCircle2, Clock, PlayCircle, Search, Trash2, UserCog, UserPlus, X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
@@ -18,7 +18,6 @@ import { adminNames } from "@/components/dashboard/EventTable";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { EventFilterBar } from "@/components/events/EventFilterBar";
 import { Badge, EventColumn, EventListTable } from "@/components/events/EventListTable";
-import CreateEventModal from "@/components/events/CreateEventModal";
 import { Event, EventStatus, User } from "@/types";
 
 // ปุ่มกรองสถานะ (ลำดับตาม Figma)
@@ -50,7 +49,6 @@ function EventsPageContent() {
   const [target, setTarget] = useState<Event | null>(null);             // event ที่จะลบ
   const [assignTarget, setAssignTarget] = useState<Event | null>(null); // event ที่กดปุ่มเลือก/เปลี่ยนผู้ดูแล
   const [dismissedNewId, setDismissedNewId] = useState<string | null>(null); // ?new= ที่ปิด picker ไปแล้ว
-  const [creating, setCreating] = useState(false);                      // เปิด modal สร้าง Event
 
   // ถ้าเพิ่งสร้างจาก sidebar และยังไม่มีผู้ดูแล → เปิด picker ให้เลย
   // คิดจากค่าที่มีตอน render (ไม่ใช้ useEffect + setState → eslint react-hooks/set-state-in-effect)
@@ -126,21 +124,13 @@ function EventsPageContent() {
   return (
     <div>
       {/* ===== หัวข้อ ===== */}
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-sm text-slate-400">ผู้ดูแลระบบ / Event</p>
-          <h1 className="mt-1 text-3xl font-bold">Event ทั้งหมด</h1>
-          <p className="mt-1 text-slate-500">
-            Admin เห็น ลบ และมอบหมายผู้ดูแล Organizer ได้ทุก Event · กดแถวเพื่อเปิด Dashboard ของ Event นั้น
-          </p>
-        </div>
-        {/* ใช้ modal เดียวกับปุ่ม "สร้าง Event" ใน Sidebar ของ Billy */}
-        <button
-          onClick={() => setCreating(true)}
-          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          <Plus size={16} /> สร้าง Event (Draft)
-        </button>
+      {/* ปุ่มสร้าง Event มีที่ Sidebar ที่เดียว (ไม่ทำซ้ำในหน้านี้) */}
+      <div>
+        <p className="text-sm text-slate-400">ผู้ดูแลระบบ / Event</p>
+        <h1 className="mt-1 text-3xl font-bold">Event ทั้งหมด</h1>
+        <p className="mt-1 text-slate-500">
+          Admin เห็น ลบ และมอบหมายผู้ดูแล Organizer ได้ทุก Event · กดแถวเพื่อเปิด Dashboard ของ Event นั้น
+        </p>
       </div>
 
       {/* ===== KPI 4 ใบ ===== */}
@@ -176,9 +166,6 @@ function EventsPageContent() {
           }
         />
       </div>
-
-      {/* Modal สร้าง Event (ของ Billy) → สร้างเสร็จพามาหน้านี้พร้อม ?new=<id> */}
-      {creating && <CreateEventModal onClose={() => setCreating(false)} />}
 
       {/* Modal เลือก/เปลี่ยนผู้ดูแล */}
       {assigning && (

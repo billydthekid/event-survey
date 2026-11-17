@@ -303,10 +303,16 @@ export default function UsersPage() {
         </p>
       </div>
 
-      {/* ================= Drawer สร้างบัญชี ================= */}
+      {/* ================= Modal สร้างบัญชี (กลางจอ) ================= */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/40">
-          <div className="flex h-full w-[480px] flex-col bg-white p-6">
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={closeDrawer}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">เพิ่มผู้ใช้</h2>
               <button onClick={closeDrawer} aria-label="ปิด">
@@ -391,7 +397,7 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="mt-auto flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
               <button
                 onClick={closeDrawer}
                 className="rounded-lg bg-slate-100 px-4 py-2 text-sm"
