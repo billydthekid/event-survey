@@ -28,7 +28,7 @@ const TEXT = {
     noDataHint: "รายงานจะมีข้อมูลเมื่อ Event เริ่มจัดงานแล้ว",
     notFound: "ไม่พบ Event / ไม่มีสิทธิ์",
     notFoundHint: "Event นี้ไม่มีอยู่ ถูกลบไปแล้ว หรือไม่ได้มอบหมายให้คุณดูแล",
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
   },
   en: {
     title: "Report",
@@ -39,7 +39,7 @@ const TEXT = {
     noDataHint: "The report will have data once the event has started",
     notFound: "Event not found / No permission",
     notFoundHint: "This event doesn't exist, was deleted, or isn't assigned to you",
-    back: "Back to My Events",
+    back: "Go to assigned event",
   },
 };
 
@@ -95,7 +95,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           <ShieldAlert size={32} className="text-slate-400" />
           <p className="text-lg font-semibold">{t.notFound}</p>
           <p className="text-sm text-slate-500">{t.notFoundHint}</p>
-          <Button variant="ghost" nativeButton={false} render={<Link href="/admin/events" />} className="mt-3 text-blue-600">
+          <Button variant="ghost" nativeButton={false} render={<Link href="/admin" />} className="mt-3 text-blue-600">
             <ChevronLeft /> {t.back}
           </Button>
         </Card>
@@ -130,7 +130,8 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   return (
     <div>
       {/* ===== ส่วนหัว ===== */}
-      <Link href="/admin/events" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
+      {/* "‹ ชื่อ Event" → กลับ Dashboard ของ Event นี้ */}
+      <Link href={`/admin/events/${event.id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
         <ChevronLeft size={16} /> {event.name.th}
       </Link>
       <div className="mt-1 flex items-end justify-between">

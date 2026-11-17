@@ -24,7 +24,8 @@ const TEXT = {
     fullscreen: "เต็มจอ",
     exitFullscreen: "ออกจากเต็มจอ",
     exit: "ออกจาก Kiosk",
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
+    backDashboard: "กลับไป Dashboard",
     draft: "เผยแพร่ก่อนจึงเปิด Kiosk ได้",
     draftHint: "Event นี้ยังเป็นฉบับร่าง",
     notFound: "ไม่พบ Event / ไม่มีสิทธิ์",
@@ -34,7 +35,8 @@ const TEXT = {
     fullscreen: "Fullscreen",
     exitFullscreen: "Exit fullscreen",
     exit: "Exit Kiosk",
-    back: "Back to My Events",
+    back: "Go to assigned event",
+    backDashboard: "Back to Dashboard",
     draft: "Publish the event before opening Kiosk",
     draftHint: "This event is still a draft",
     notFound: "Event not found / No permission",
@@ -128,7 +130,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
 
   const handleExit = async () => {
     if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
-    router.push("/admin/events");
+    router.push(`/admin/events/${id}`); // ออกจาก Kiosk → กลับ Dashboard ของ Event นี้
   };
 
   if (!hydrated) return null;
@@ -144,8 +146,14 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
           {!allowed && <ShieldAlert size={40} className="text-slate-400" />}
           <p className="text-2xl font-semibold">{allowed ? t.draft : t.notFound}</p>
           <p className="text-slate-500">{allowed ? t.draftHint : t.notFoundHint}</p>
-          <Button variant="ghost" nativeButton={false} render={<Link href="/admin/events" />} className="mt-3 text-blue-600">
-            <ArrowLeft /> {t.back}
+          {/* ไม่มีสิทธิ์ → /admin (พาไป Event ที่ได้รับมอบหมาย) | ยังเป็น Draft → Dashboard ของ Event นี้ */}
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href={allowed ? `/admin/events/${id}` : "/admin"} />}
+            className="mt-3 text-blue-600"
+          >
+            <ArrowLeft /> {allowed ? t.backDashboard : t.back}
           </Button>
         </Card>
       </div>

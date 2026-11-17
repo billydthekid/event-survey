@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 // ============ พจนานุกรมข้อความ 2 ภาษา (ใช้เฉพาะหน้านี้) ============
 const TEXT = {
   th: {
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
+    backDashboard: "กลับไป Dashboard",
     title: "QR ลงทะเบียน / Survey",
     subtitle: "พิมพ์ติดหน้างาน หรือส่งลิงก์ให้ผู้เข้าร่วม",
     qrRegister: "QR ลงทะเบียน",
@@ -33,7 +34,8 @@ const TEXT = {
     draftHint: "Event ที่เป็นฉบับร่างยังไม่มีลิงก์ลงทะเบียนและ Survey",
   },
   en: {
-    back: "Back to My Events",
+    back: "Go to assigned event",
+    backDashboard: "Back to Dashboard",
     title: "Registration / Survey QR",
     subtitle: "Print it at the venue or share the link with attendees",
     qrRegister: "Registration QR",
@@ -100,7 +102,7 @@ export function QrView({ params }: { params: Promise<{ id: string }> }) {
           <ShieldAlert size={32} className="text-slate-400" />
           <p className="text-lg font-semibold">{t.notFound}</p>
           <p className="text-sm text-slate-500">{t.notFoundHint}</p>
-          <BackButton label={t.back} className="mt-3" />
+          <BackButton href="/admin" label={t.back} className="mt-3" />
         </Card>
       </div>
     );
@@ -149,7 +151,7 @@ function Header({ event, t, langToggle }: { event: Event; t: Text; langToggle: R
   return (
     <div>
       <div className="flex items-center justify-between">
-        <BackButton label={t.back} />
+        <BackButton href={`/admin/events/${event.id}`} label={t.backDashboard} />
         {langToggle}
       </div>
       <div className="mt-3 flex items-center gap-3">
@@ -259,13 +261,14 @@ function QrCard({
   );
 }
 
-// ============ ปุ่มกลับไปหน้า Event ของฉัน ============
-function BackButton({ label, className }: { label: string; className?: string }) {
+// ============ ปุ่มกลับ ============
+// href: หน้าปกติ → Dashboard ของ Event นี้ | การ์ด "ไม่พบ" → /admin (พาไป Event ที่ได้รับมอบหมาย)
+function BackButton({ href, label, className }: { href: string; label: string; className?: string }) {
   return (
     <Button
       variant="ghost"
       nativeButton={false}
-      render={<Link href="/admin/events" />}
+      render={<Link href={href} />}
       className={`text-blue-600 ${className ?? ""}`}
     >
       <ArrowLeft /> {label}
