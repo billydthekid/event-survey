@@ -1,9 +1,10 @@
 "use client";
-// ขั้นที่ 4: ฟอร์มลงทะเบียน — แบบ Google Form / Survey Builder
-// - การ์ดทีละช่อง: พิมพ์ชื่อช่องในการ์ด · ตั้งตัวเลือก (Multiple Choice / Checkboxes / Dropdown) · ทำสำเนา · ลบ
+// ขั้นที่ 3: ฟอร์มลงทะเบียน — หน้าเดียวเรียงลงมา: เวลาเปิด–ปิดรับลงทะเบียน → ช่องในฟอร์ม (แบบ Google Form)
+// - การ์ดทีละช่อง: พิมพ์ชื่อช่อง · ตั้งตัวเลือก (Multiple Choice / Checkboxes / Dropdown) · ทำสำเนา · ลบ
+// - ท้ายการ์ด: เปลี่ยนประเภท + Required (เดิมอยู่แผงขวา)
 // - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts)
 // - แถบ "เพิ่มช่อง" = 12 ประเภท (lib/form-types.ts) · กดแล้วได้ช่องพร้อมชื่อตัวอย่าง แก้ชื่อได้
-// - แผงขวา: Required + เปลี่ยนประเภท · ปุ่ม "Preview ฟอร์ม" เปิดหน้าตาแบบที่ผู้เข้าร่วมเห็น
+// - ต้องมีอย่างน้อย 1 ช่อง + กำหนดเวลาเปิด–ปิดรับ ก่อนกด "ถัดไป" (stepBlock)
 
 import { useState } from "react";
 import { Copy, Eye, GripVertical, Plus, Trash2, X } from "lucide-react";
@@ -17,6 +18,8 @@ import { DEFAULT_OPTIONS, FORM_KINDS, formKind } from "@/lib/form-types";
 import { cn } from "@/lib/utils";
 import { newId } from "@/lib/utils/id";
 import type { FieldKind, FormField } from "@/types/event";
+import { TimeWindowFields } from "./time-window-fields";
+import { WizardSection } from "./wizard-section";
 
 export function StepForm() {
   const fields = useWizardStore((s) => s.draft.form.fields);
@@ -27,12 +30,9 @@ export function StepForm() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null); // ช่องที่เพิ่งเพิ่ม → โฟกัสชื่อให้พิมพ์ต่อได้เลย
   const [previewOpen, setPreviewOpen] = useState(false);
-  const selected = fields.find((f) => f.id === (selectedId ?? fields[0]?.id)) ?? null;
-  const selectedIndex = selected ? fields.findIndex((f) => f.id === selected.id) : -1;
 
   const update = (id: string, v: Partial<FormField>) => setFields(fields.map((f) => (f.id === id ? { ...f, ...v } : f)));
   const select = (id: string) => setSelectedId(id);
-
   const add = (kind: FieldKind) => { // เพิ่มช่องใหม่: ประเภท + ชื่อตัวอย่าง + id ใหม่
     const k = formKind(kind);
     const id = newId("f");
@@ -63,26 +63,31 @@ export function StepForm() {
 
   const sort = useDragSort(fields, setFields); // ลากเรียงช่องในฟอร์ม
 
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-      {/* ===== การ์ดช่องในฟอร์ม ===== */}
-      <div className="min-w-0 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{fields.length} ช่อง · ลากที่ ⋮⋮ เพื่อเรียงลำดับ</p>
+    <>
+      <WizardSection title="เปิดรับลงทะเบียน" description="ผู้เข้าร่วมลงทะเบียนผ่าน QR และลิงก์ได้เฉพาะช่วงนี้">
+        <TimeWindowFields openKey="regOpen" closeKey="regClose" openLabel="เปิดรับ" closeLabel="ปิดรับ" />
+      </WizardSection>
+
+      <WizardSection
+        title="ช่องในฟอร์ม"
+        description={`${fields.length} ช่อง · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`}
+        action={
           <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
             <Eye className="size-4" /> Preview ฟอร์ม
           </Button>
-        </div>
-
+        }
+      >
         {fields.length === 0 && (
-          <p className="rounded-2xl border border-dashed bg-background py-12 text-center text-sm text-muted-foreground">
+          <p className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
             ยังไม่มีช่องในฟอร์ม เลือกประเภทจากแถบด้านล่างเพื่อเริ่มสร้าง
           </p>
         )}
 
-        {fields.map((f, i) => { // การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ทำสำเนา + ลบ
+        {fields.map((f, i) => { // การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ประเภท/Required + ทำสำเนา + ลบ
           const k = formKind(f.kind);
-          const isSel = selected?.id === f.id;
+          const isSel = selectedId === f.id;
           const options = f.options ?? [];
           return (
             <section
@@ -92,7 +97,7 @@ export function StepForm() {
               onFocusCapture={() => select(f.id)}
               className={cn(
                 "space-y-3 rounded-2xl border bg-background p-5 transition",
-                isSel && "border-2 border-primary",
+                isSel && "border-primary ring-1 ring-primary",
                 sort.stateOf(i).dragging && "opacity-40",
                 sort.stateOf(i).over && "ring-2 ring-primary/50"
               )}
@@ -174,12 +179,34 @@ export function StepForm() {
               ) : (
                 <FieldSample f={f} className="max-w-md" />
               )}
+
+              {/* ประเภท + Required (เดิมอยู่แผงตั้งค่าด้านขวา) */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">ประเภท</span>
+                  <select
+                    value={f.kind}
+                    onChange={(e) => changeKind(f, e.target.value as FieldKind)}
+                    className="h-8 rounded-lg border bg-background px-2 text-sm"
+                  >
+                    {FORM_KINDS.map((x) => (
+                      <option key={x.value} value={x.value}>
+                        {x.th}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  Required <span className="text-xs text-muted-foreground">(ต้องกรอกก่อนส่ง)</span>
+                  <Switch checked={f.required} onCheckedChange={(v) => update(f.id, { required: v })} />
+                </label>
+              </div>
             </section>
           );
         })}
 
         {/* ===== แถบเพิ่มช่อง: 12 ประเภท ===== */}
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed bg-background/60 p-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed p-4">
           <span className="mr-2 text-sm text-muted-foreground">เพิ่มช่อง</span>
           {FORM_KINDS.map((k) => (
             <button
@@ -193,52 +220,7 @@ export function StepForm() {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* ===== แผงตั้งค่า ===== */}
-      <aside className="h-fit space-y-6 rounded-2xl border bg-background p-6 lg:sticky lg:top-0">
-        {selected ? (
-          <>
-            <div>
-              <p className="text-xs text-primary">ช่องที่ {selectedIndex + 1}</p>
-              <h2 className="text-xl font-bold">ตั้งค่า</h2>
-            </div>
-
-            <div className="flex items-center justify-between border-b pb-5">
-              <div>
-                <p className="text-sm font-semibold">Required</p>
-                <p className="text-xs text-muted-foreground">ต้องกรอกก่อนส่ง</p>
-              </div>
-              <Switch checked={selected.required} onCheckedChange={(v) => update(selected.id, { required: v })} />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">ประเภทคำตอบ</p>
-              <div className="grid grid-cols-2 gap-2">
-                {FORM_KINDS.map((k) => (
-                  <button
-                    key={k.value}
-                    type="button"
-                    aria-pressed={selected.kind === k.value}
-                    onClick={() => changeKind(selected, k.value)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm",
-                      selected.kind === k.value && "border-primary bg-primary/5 font-semibold text-primary"
-                    )}
-                  >
-                    <k.icon className="size-4 shrink-0" /> {k.th}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {formKind(selected.kind).en} · ตัวอย่าง: {formKind(selected.kind).example}
-              </p>
-            </div>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">เลือกช่องเพื่อตั้งค่า</p>
-        )}
-      </aside>
+      </WizardSection>
 
       {/* ===== Preview ฟอร์ม (แบบ Google Form) ===== */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
@@ -249,6 +231,6 @@ export function StepForm() {
           <FormPreview fields={fields} primary={draft.theme.primary} eventName={draft.general.nameTh} />
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

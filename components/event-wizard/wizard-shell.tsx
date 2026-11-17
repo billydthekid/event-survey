@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Lock, X } from "lucide-react";
+import { Check, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LockedArea, PublishConfirm } from "./lock-dialogs";
 
+// ไม่มีเมนูขั้นตอนด้านบนแล้ว: เดินได้ทีละขั้นด้วยปุ่ม "ถัดไป" (ล็อกจนกว่าขั้นนั้นจะครบ) / "ย้อนกลับ"
+// ช่วงเวลาเปิด–ปิด ย้ายไปอยู่ในขั้นฟอร์มลงทะเบียน และขั้น Survey แล้ว
 export const STEPS = [
   { n: 1, label: "ข้อมูลทั่วไป" },
   { n: 2, label: "Branding" },
   { n: 3, label: "ฟอร์มลงทะเบียน" },
-  { n: 4, label: "ช่วงเวลา" },
-  { n: 5, label: "Survey" },
-  { n: 6, label: "Preview" },
+  { n: 4, label: "Survey" },
+  { n: 5, label: "Preview" },
 ] as const;
 
 interface Props {
@@ -25,6 +26,8 @@ interface Props {
   title: string;
   subtitle: string;
   locked: boolean;
+  /** มีค่า = ขั้นนี้ยังไม่ครบ ไปขั้นถัดไปไม่ได้ (แสดงเหตุผลข้างปุ่ม) */
+  nextBlock?: string;
   /** มีค่า = ยังเผยแพร่ไม่ได้ (แสดงเหตุผลข้างปุ่ม) */
   publishBlock?: string;
   onPublish: () => void;
@@ -64,48 +67,18 @@ export function WizardShell(p: Props) {
       </header>
 
       {/* Body */}
-      <main className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="mx-auto max-w-6xl space-y-5">
-          {/* Stepper */}
-          <nav className="flex items-center gap-2 overflow-x-auto rounded-2xl border bg-background p-3">
-            {STEPS.map((s, i) => {
-              const done = s.n < p.step;
-              const active = s.n === p.step;
-              return (
-                <div key={s.n} className="flex flex-1 items-center gap-2 last:flex-none">
-                  <button
-                    type="button"
-                    onClick={() => p.onStep(s.n)}
-                    className={cn(
-                      "flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-                      active ? "bg-primary/10 font-semibold text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex size-5 items-center justify-center rounded-full text-[11px]",
-                        active ? "bg-primary text-primary-foreground" : done ? "bg-primary/15 text-primary" : "bg-muted"
-                      )}
-                    >
-                      {done ? <Check className="size-3" /> : s.n}
-                    </span>
-                    {s.label}
-                  </button>
-                  {i < STEPS.length - 1 && (
-                    <div className="flex flex-1 items-center">
-                      <div className="h-px flex-1 bg-border" />
-                      <ChevronRight className="size-3.5 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Title */}
+      {/* key = step → เปลี่ยนขั้นแล้วกล่องเลื่อนสร้างใหม่ เริ่มที่บนสุดของหน้าเสมอ */}
+      <main key={p.step} className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="mx-auto max-w-3xl space-y-5">
+          {/* Title + แถบความคืบหน้า (ดูอย่างเดียว กดข้ามขั้นไม่ได้) */}
           <div>
-            <p className="text-xs text-muted-foreground">แก้ไข Event › ขั้นที่ {p.step} จาก {STEPS.length}</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">{p.title}</h1>
+            <p className="text-xs text-muted-foreground">ขั้นที่ {p.step} จาก {STEPS.length}</p>
+            <div className="mt-2 flex gap-1.5" aria-hidden>
+              {STEPS.map((s) => (
+                <span key={s.n} className={cn("h-1 flex-1 rounded-full", s.n <= p.step ? "bg-primary" : "bg-primary/15")} />
+              ))}
+            </div>
+            <h1 className="mt-4 text-3xl font-bold tracking-tight">{p.title}</h1>
             <p className="text-sm text-muted-foreground">{p.subtitle}</p>
           </div>
 
@@ -118,14 +91,16 @@ export function WizardShell(p: Props) {
           )}
 
           {/* ล็อกแล้ว: ทุกช่อง disabled + คลิกตรงไหนก็เด้งหน้าต่างแจ้งว่าแก้ไม่ได้ */}
+          {/* เนื้อหาทั้งขั้นอยู่ในแผ่นเดียว เรียงช่องลงมาทีละส่วน (ไม่แบ่งการ์ดซ้าย/ขวาแล้ว) */}
           <LockedArea locked={p.locked}>
-            <div className="min-w-0 space-y-5">{p.children}</div>
+            <div className="min-w-0 divide-y rounded-2xl border bg-background px-6 sm:px-8">{p.children}</div>
           </LockedArea>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="flex items-center justify-between border-t bg-background px-6 py-3">
+      {/* Footer: ปุ่มอยู่ตรงกลาง กว้างเท่าเนื้อหา (max-w-3xl เดียวกับด้านบน) */}
+      <footer className="border-t bg-background px-6 py-3">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
         {isFirst ? (
           <Button variant="secondary" nativeButton={false} render={<Link href="/admin/events" />}>
             ยกเลิก
@@ -143,8 +118,15 @@ export function WizardShell(p: Props) {
             </Button>
           </div>
         ) : (
-          <Button onClick={() => p.onStep(p.step + 1)}>ถัดไป: {next?.label}</Button>
+          <div className="flex items-center gap-3">
+            {p.nextBlock && !p.locked && <span className="text-sm text-destructive">{p.nextBlock}</span>}
+            {/* ล็อกแล้วเดินดูทุกขั้นได้ (แก้ไม่ได้อยู่แล้ว) · ยังไม่ล็อก = ต้องกรอกขั้นนี้ให้ครบก่อน */}
+            <Button onClick={() => p.onStep(p.step + 1)} disabled={!p.locked && !!p.nextBlock}>
+              ถัดไป: {next?.label}
+            </Button>
+          </div>
         )}
+        </div>
       </footer>
 
       <PublishConfirm
