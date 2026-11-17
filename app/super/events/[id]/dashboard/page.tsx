@@ -61,7 +61,7 @@ function EventDashboard() {
       <h1 className="mt-1 text-3xl font-bold">{event.name.th}</h1>
       <p className="mt-2 flex items-center gap-2 text-sm text-slate-500">
         <span className={`rounded-full px-3 py-1 text-xs ${s.color}`}>{s.text}</span>
-        {event.code} · คุณดูในฐานะ Super Admin
+        {event.code} · คุณดูในฐานะ Admin
       </p>
 
       {/* ---------- ปุ่มลัด ---------- */}
@@ -74,15 +74,11 @@ function EventDashboard() {
           <span className="rounded-lg bg-purple-50 p-2 text-purple-600"><TabletSmartphone size={18} /></span>
           <span className="text-sm font-semibold">เปิดหน้า Kiosk</span>
         </Link>
-        {/* ยังไม่ได้ตกลงว่า Export (CSV / PDF) เป็นงานใคร → ปิดไว้ก่อน */}
-        <button
-          disabled
-          title="ยังไม่เปิดใช้"
-          className="flex cursor-not-allowed items-center gap-3 rounded-xl bg-white p-3 text-left opacity-50 shadow-sm"
-        >
+        {/* Export → ไปหน้า Report ของ Event นี้ (มีปุ่ม CSV / PDF) แบบเดียวกับ Dashboard ฝั่งผู้จัดงาน */}
+        <Link href={`/super/events/${event.id}/report`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
           <span className="rounded-lg bg-pink-50 p-2 text-pink-600"><Download size={18} /></span>
           <span className="text-sm font-semibold">Export CSV / PDF</span>
-        </button>
+        </Link>
       </div>
 
       {/* ---------- KPI 3 ใบ ---------- */}

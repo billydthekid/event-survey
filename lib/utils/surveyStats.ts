@@ -19,6 +19,22 @@ export const QTYPE_LABEL: Record<QuestionType, string> = {
   yesno: "ใช่ / ไม่ใช่",
 };
 
+// ชื่อประเภทคำถามภาษาอังกฤษ (ใช้ตอน Export เป็น EN)
+export const QTYPE_LABEL_EN: Record<QuestionType, string> = {
+  short: "Short text",
+  long: "Long text",
+  single: "Single choice",
+  multi: "Multiple choice",
+  dropdown: "Dropdown",
+  rating: "Rating 1–5",
+  date: "Date",
+  linear: "Linear scale",
+  opinion: "Opinion scale",
+  mcgrid: "Multiple choice grid",
+  cbgrid: "Checkbox grid",
+  yesno: "Yes / No",
+};
+
 // ข้อความตามภาษา — ไม่มีภาษาอังกฤษ → ใช้ไทย
 export function textOf(t: BiText, lang: Lang): string {
   return (lang === "en" && t.en) || t.th;
@@ -66,6 +82,51 @@ export function summarizeQuestion(question: Question, responses: SurveyResponse[
   }
 
   return { kind: "text", answered: values.length, answers: values.map(String) };
+}
+
+// ============ ตารางสรุปผล Survey ทีละข้อ (ไฟล์ Export ของหน้า Report) ============
+// คอลัมน์ชุดเดียวกับไฟล์ CSV ของหน้า Report ฝั่งผู้จัดงาน (ธณัฐจักร) → ไฟล์จากสองฝั่งหน้าตาเหมือนกัน
+// แถวแรก = หัวตาราง · 1 แถวต่อ 1 ตัวเลือก / 1 คะแนน / 1 คำตอบ (คำตอบข้อความที่พิมพ์เหมือนกันรวมเป็นแถวเดียว)
+// 3 คอลัมน์แรกซ้ำทุกแถวของข้อเดียวกัน → กรอง / เรียงใน Excel ได้ง่าย
+// ตัวอย่าง:
+//   [1, "ความพึงพอใจต่อ Workshop", "Rating 1–5", "5 คะแนน", 14, 45, 31, 4.2]
+//   [2, "ทราบข่าวจากช่องทางไหน", "ตัวเลือกเดียว", "Facebook คณะ", 13, 42, 31, ""]
+const SUMMARY_TEXT = {
+  th: {
+    header: ["ข้อ", "คำถาม", "ชนิด", "ตัวเลือก / คะแนน / คำตอบ", "จำนวน", "%", "ตัวหาร (คน)", "ค่าเฉลี่ย"],
+    score: (n: number) => `${n} คะแนน`,
+    none: "ยังไม่มีคำตอบ",
+  },
+  en: {
+    header: ["No.", "Question", "Type", "Option / Score / Answer", "Count", "%", "Base (people)", "Average"],
+    score: (n: number) => `${n} points`,
+    none: "No answers yet",
+  },
+};
+
+export function surveySummaryRows(questions: Question[], responses: SurveyResponse[], lang: Lang): (string | number)[][] {
+  const t = SUMMARY_TEXT[lang];
+  const typeLabel = lang === "en" ? QTYPE_LABEL_EN : QTYPE_LABEL;
+  const rows: (string | number)[][] = [t.header];
+
+  questions.forEach((q, i) => {
+    const s = summarizeQuestion(q, responses);
+    const head = [i + 1, textOf(q.title, lang), typeLabel[q.type]];
+
+    if (s.kind === "rating") {
+      s.levels.forEach((l) => rows.push([...head, t.score(l.score), l.count, percent(l.count, s.answered), s.answered, s.average]));
+    } else if (s.kind === "choice") {
+      s.options.forEach((o) => rows.push([...head, textOf(o.label, lang), o.count, percent(o.count, s.answered), s.answered, ""]));
+    } else if (s.answered === 0) {
+      rows.push([...head, t.none, 0, 0, 0, ""]);
+    } else {
+      // นับคำตอบที่พิมพ์เหมือนกันทุกตัวอักษร เช่น "Design system เบื้องต้น" ตอบ 8 คน → 1 แถว จำนวน 8
+      const counts = new Map<string, number>();
+      s.answers.forEach((a) => counts.set(a, (counts.get(a) ?? 0) + 1));
+      counts.forEach((count, text) => rows.push([...head, text, count, percent(count, s.answered), s.answered, ""]));
+    }
+  });
+  return rows;
 }
 
 // สรุปสั้น 1 บรรทัด (ขวามือในรายการคำถามหน้า Survey)
