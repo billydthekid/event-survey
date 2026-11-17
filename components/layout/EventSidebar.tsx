@@ -11,7 +11,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  List, LayoutGrid, BarChart3, Smartphone,
+  List, LayoutGrid, BarChart3,
   SlidersHorizontal, LogOut, ChevronsUpDown, Check, Settings, type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -29,7 +29,6 @@ const TEXT = {
     dashboard: "Dashboard",
     info: "ตั้งค่า Event",
     report: "Report",
-    kiosk: "หน้า Kiosk",
     settings: "Settings",
     logout: "Logout",
     locked: "ล็อกแล้ว",
@@ -43,7 +42,6 @@ const TEXT = {
     dashboard: "Dashboard",
     info: "Event settings",
     report: "Report",
-    kiosk: "Kiosk",
     settings: "Settings",
     logout: "Logout",
     locked: "Locked",
@@ -220,7 +218,6 @@ export function EventSidebar() {
   const eventMenu: Menu[] = [
     eventItem("dashboard", t.dashboard, LayoutGrid, "", ""),
     eventItem("report", t.report, BarChart3, "/report", "report"),
-    eventItem("kiosk", t.kiosk, Smartphone, "/kiosk", "kiosk"),
   ];
 
   return (
