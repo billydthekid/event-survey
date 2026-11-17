@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { downloadCSV } from "@/lib/utils/csv";
+import { downloadPDF } from "@/lib/utils/pdf";
+import { ExportMenu } from "@/components/ExportMenu";
 import { ActionLog } from "@/types";
 
 const fmt = new Intl.DateTimeFormat("th-TH", {
@@ -81,8 +83,8 @@ export default function ActionLogPage() {
   };
 
   // ---------- Export log ----------
-  const handleExport = () => {
-    downloadCSV("action-log.csv", [
+  const handleExport = (type: "csv" | "pdf") => {
+    const rows = [
       ["เวลา", "ผู้ใช้", "Username", "Action", "สิ่งที่ถูกกระทำ", "รายละเอียด"],
       ...filtered.map((log) => [
         fmt.format(new Date(log.at)),
@@ -92,7 +94,9 @@ export default function ActionLogPage() {
         targetName(log),
         log.detail ?? "",
       ]),
-    ]);
+    ];
+    if (type === "csv") downloadCSV("action-log.csv", rows);
+    else downloadPDF("Action Log", rows);
   };
 
   // รายชื่อป้าย action ที่ไม่ซ้ำ (ใช้ทำ dropdown)
@@ -111,12 +115,7 @@ export default function ActionLogPage() {
             ตรวจสอบประวัติการใช้งานและการเปลี่ยนแปลงจากผู้ใช้ทุกคน
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          className="rounded-lg bg-slate-100 px-4 py-2 text-sm hover:bg-slate-200"
-        >
-          Export log
-        </button>
+        <ExportMenu onExport={handleExport} label="Export log" />
       </div>
 
       {/* ตัวกรอง */}

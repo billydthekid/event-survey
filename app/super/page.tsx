@@ -6,6 +6,8 @@ import { CalendarDays, ChevronDown, ClipboardCheck, Download, UserPlus, Users } 
 import { useStore } from "@/lib/store";
 import { countByEvent, responseRate, summarize, topByRegistrations, visibleEvents } from "@/lib/utils/stats";
 import { downloadCSV } from "@/lib/utils/csv";
+import { downloadPDF } from "@/lib/utils/pdf";
+import { ExportMenu } from "@/components/ExportMenu";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { formatThaiDate } from "@/lib/utils/date";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -31,8 +33,8 @@ export default function SuperDashboard() {
     count: t.registered,
   }));
 
-  // ---------- Export CSV (คอลัมน์ตามตาราง + รหัส + % ตอบ) ----------
-  const handleExport = () => {
+  // ---------- Export CSV / PDF (คอลัมน์ตามตาราง + รหัส + % ตอบ) ----------
+  const handleExport = (type: "csv" | "pdf") => {
     const header = ["ชื่อ Event", "รหัส", "วันที่จัด", "สถานะ", "ผู้ดูแล", "ลงทะเบียน", "ตอบ Survey", "% ตอบ"];
     const rows = list.map((e) => {
       const reg = registered[e.id] ?? 0;
@@ -50,7 +52,8 @@ export default function SuperDashboard() {
     });
     // วันนี้แบบ 2026-11-11 ตามเวลาไทย (รูปแบบวันที่ของ sv-SE คือ ปี-เดือน-วัน)
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
-    downloadCSV(`ภาพรวม-Event-${today}.csv`, [header, ...rows]);
+    if (type === "csv") downloadCSV(`ภาพรวม-Event-${today}.csv`, [header, ...rows]);
+    else downloadPDF(`ภาพรวม Event (${today})`, [header, ...rows]);
   };
 
   return (
@@ -79,13 +82,11 @@ export default function SuperDashboard() {
           <span className="rounded-lg bg-blue-50 p-2 text-blue-600"><Users size={18} /></span>
           <span className="text-sm font-semibold">จัดการผู้ใช้</span>
         </Link>
-        <button
-          onClick={handleExport}
-          className="flex items-center gap-3 rounded-xl bg-white p-3 text-left shadow-sm hover:bg-slate-50"
-        >
+        <div className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
           <span className="rounded-lg bg-green-50 p-2 text-green-600"><Download size={18} /></span>
           <span className="text-sm font-semibold">Export ภาพรวม</span>
-        </button>
+          <ExportMenu onExport={handleExport} className="ml-auto" />
+        </div>
       </div>
 
       {/* ---------- KPI 3 ใบ ---------- */}
