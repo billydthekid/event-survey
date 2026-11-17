@@ -8,6 +8,7 @@ import { mockRegistrations, mockResponses, withMockSurvey } from "@/lib/mock/res
 import { makeUsername } from "@/lib/utils/username";
 import { newId } from "@/lib/utils/id";
 import { KEEP_DAYS } from "@/lib/utils/status";
+import { organizerEventOf } from "@/lib/utils/organizer";
 
 interface NewUserInput {
   name: string;
@@ -153,6 +154,11 @@ export const useStore = create<StoreState>()(
       // adminId = null → ยังไม่เลือกผู้ดูแล (Admin จะไป assign ที่หน้า /super/events)
       createDraftEvent: (eventName, adminId) => {
         const me = get().currentUser;
+        // Organizer ดูแลได้ Event เดียว → ถ้ามีอยู่แล้ว ห้ามสร้างเพิ่ม
+        const owned = adminId ? organizerEventOf(adminId, get().events) : undefined;
+        if (owned) {
+          throw new Error(`คุณดูแล "${owned.name.th}" อยู่แล้ว Organizer ดูแลได้ Event เดียว`);
+        }
         const event = makeDraftEvent(
           "e-" + Date.now(),
           eventName.trim(),
@@ -176,6 +182,8 @@ export const useStore = create<StoreState>()(
       setEventAdmin: (eventId, newAdminId) => {
         const event = get().events.find((e) => e.id === eventId);
         if (!event) return;
+        // Organizer ดูแลได้ Event เดียว → ถ้าดูแลงานอื่นอยู่ ไม่มอบหมายซ้ำ (UI ปิดตัวเลือกไว้แล้ว นี่คือด่านสำรอง)
+        if (organizerEventOf(newAdminId, get().events, eventId)) return;
         const oldAdminIds = event.adminIds;
 
         set({
