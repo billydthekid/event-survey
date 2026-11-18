@@ -2,11 +2,19 @@
 // ประกอบ "ข้อมูลรายงาน" (ReportData) ของ Event หนึ่งงาน จากข้อมูลจริงใน store
 // - ฟังก์ชันล้วน ไม่มี React / ไม่อ่าน store เอง → ผู้เรียก (useEventAccess) ส่งข้อมูลเข้ามา
 // - รูปผลลัพธ์เหมือน getReportData() เดิมใน mockData.ts ทุกช่อง → Dashboard / Report ไม่ต้องแก้
-import { Event, Question, Registration, Survey, SurveyResponse } from "@/types";
+import { BiText, Event, Question, Registration, SurveyResponse } from "@/types";
 import { EventDraft, SurveyQuestion } from "@/types/event";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { registrationIdOf } from "@/lib/utils/surveyStats";
-import { RatingLabel, ReportData } from "./mockData";
+import { RatingLabel, ReportData, ReportSurvey } from "./mockData";
+
+// ============ คำถามที่หน้า Report ใช้ ============
+// Question ใน types/ ไม่มีช่องของตาราง / คะแนนเต็ม → ต่อขยายเฉพาะในหน้า Report (ไม่แก้ types/)
+// คำถามจาก event.survey (ข้อมูลตัวอย่าง) ไม่มีสองช่องนี้ → rating ได้คะแนนเต็ม 5 เหมือนเดิม
+export interface ReportQuestion extends Question {
+  rows?: BiText[];    // mcgrid / cbgrid: หัวข้อแถว (options = คอลัมน์) เช่น [{ th: "หัวข้อ 1" }]
+  ratingMax?: number; // rating / linear: คะแนนเต็ม 5 หรือ 10 (ไม่มี = 5)
+}
 
 // ============ คำถามจาก Wizard → Question (รูปแบบที่หน้า Report ใช้) ============
 // วิธี map เดียวกับ lib/public-event.ts (buildPublicEvent) → ผู้ตอบเห็นข้อไหน รายงานก็สรุปข้อนั้น
@@ -14,7 +22,8 @@ import { RatingLabel, ReportData } from "./mockData";
 //        → { id: "q2", type: "single", title: { th: "รู้จักงานจากไหน", en: undefined },
 //            options: [{ th: "เพื่อน" }], order: 2 }   (ตัวเลือกที่ว่างถูกตัดออก)
 // ข้อมูลเก่า: rating ที่ไม่ใช่ดาว → normalizeQuestion แปลงเป็น "linear"
-export function questionsFromWizard(questions: SurveyQuestion[]): Question[] {
+// ตาราง: rows ตัดแถวว่างออก เช่น ["หัวข้อ 1", ""] → [{ th: "หัวข้อ 1" }] (แบบเดียวกับหน้า /s)
+export function questionsFromWizard(questions: SurveyQuestion[]): ReportQuestion[] {
   return questions.map(normalizeQuestion).map((q, i) => ({
     id: q.id,
     type: q.type,
@@ -22,6 +31,8 @@ export function questionsFromWizard(questions: SurveyQuestion[]): Question[] {
     required: q.required,
     options: q.options.filter((o) => o.trim()).map((o) => ({ th: o })),
     order: i + 1, // Wizard เรียงตามตำแหน่งใน array อยู่แล้ว
+    rows: q.rows?.filter((r) => r.trim()).map((r) => ({ th: r })),
+    ratingMax: q.ratingMax,
   }));
 }
 
@@ -40,7 +51,7 @@ export function ratingLabelsFromWizard(questions: SurveyQuestion[]): Record<stri
 }
 
 // Survey ว่าง (ใช้เมื่อทั้ง Wizard และ event.survey ไม่มีคำถาม) → แท็บ Survey แสดง "ยังไม่มีคำถาม"
-const emptySurvey = (eventId: string): Survey => ({
+const emptySurvey = (eventId: string): ReportSurvey => ({
   id: `sv-${eventId}`,
   title: { th: "แบบประเมิน", en: "Survey" },
   enabled: false,

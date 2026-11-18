@@ -2,12 +2,15 @@
 // เนื้อหาแท็บ Overview: ตัวเลขสรุป, เพศ, กลุ่มอายุ, สรุปคำถาม 2 ข้อแรก
 "use client";
 import Link from "next/link";
-import { BiText, Lang, Question, SurveyResponse } from "@/types";
+import { BiText, Lang, SurveyResponse } from "@/types";
 import { Card } from "@/components/ui/card";
 import { useReport } from "./ReportShell";
 import { Donut, HBar } from "./charts";
 import { Gender } from "./mockData";
 import { responseCounts } from "./people";
+import type { ReportQuestion } from "./reportData";
+import { summarize } from "./summary";
+import { GridBody } from "./SurveyView";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
 const TEXT = {
@@ -24,9 +27,12 @@ const TEXT = {
     ages: ["ไม่เกิน 18", "19 – 22", "23 – 30", "31 ขึ้นไป"],
     qLabel: (n: number, type: string) => `ข้อ ${n} · ${type}`,
     types: { rating: "Rating", single: "ตัวเลือกเดียว", multi: "หลายตัวเลือก", dropdown: "Dropdown", short: "ข้อความสั้น", long: "ข้อความยาว", date: "วันที่", linear: "สเกลตัวเลข", opinion: "ระดับความเห็น", mcgrid: "ตารางเลือกข้อเดียว", cbgrid: "ตารางเลือกหลายข้อ", yesno: "ใช่ / ไม่ใช่" },
-    outOf: (n: number) => `/ 5 จาก ${n} คำตอบ`,
+    // max = คะแนนเต็ม เช่น outOf(5, 31) → "/ 5 จาก 31 คำตอบ"
+    outOf: (max: number, n: number) => `/ ${max} จาก ${n} คำตอบ`,
     answers: (n: number) => `${n} คำตอบ`,
     seeAll: "ดูสรุปทุกข้อในแท็บ Survey",
+    noAnswers: "ยังไม่มีคำตอบ",
+    cellTitle: (count: number, percent: number) => `${count} คน · ${percent}%`,
   },
   en: {
     registered: "Total registrations",
@@ -41,9 +47,11 @@ const TEXT = {
     ages: ["18 and under", "19 – 22", "23 – 30", "31 and over"],
     qLabel: (n: number, type: string) => `Q${n} · ${type}`,
     types: { rating: "Rating", single: "Single choice", multi: "Multiple choice", dropdown: "Dropdown", short: "Short text", long: "Long text", date: "Date", linear: "Linear scale", opinion: "Opinion scale", mcgrid: "Multiple choice grid", cbgrid: "Checkbox grid", yesno: "Yes / No" },
-    outOf: (n: number) => `/ 5 from ${n} responses`,
+    outOf: (max: number, n: number) => `/ ${max} from ${n} responses`,
     answers: (n: number) => `${n} responses`,
     seeAll: "See all questions in the Survey tab",
+    noAnswers: "No responses yet",
+    cellTitle: (count: number, percent: number) => `${count} people · ${percent}%`,
   },
 };
 type Text = (typeof TEXT)["th"];
@@ -187,34 +195,21 @@ function QuestionCard({
   t,
   seeAllHref,
 }: {
-  question: Question;
+  question: ReportQuestion;
   responses: SurveyResponse[];
   lang: Lang;
   t: Text;
   seeAllHref?: string;
 }) {
-  // คำตอบของข้อนี้ (ตัดคนที่ข้ามออก)
-  const answers = responses.map((r) => r.answers[question.id]).filter((a) => a !== undefined);
-  const n = answers.length;
-
-  // แถวของกราฟ: rating → คะแนน 5..1 | ตัวเลือก → ตามรายการ options | ข้อความ → ไม่มีกราฟ
-  let rows: { label: string; count: number }[] = [];
-  if (question.type === "rating") {
-    rows = [5, 4, 3, 2, 1].map((score) => ({ label: String(score), count: answers.filter((a) => a === score).length }));
-  } else if (question.options) {
-    rows = question.options.map((opt) => ({
-      label: tr(opt, lang),
-      // คำตอบเก็บเป็นข้อความไทย (ตัวเลือกเดียว = string, หลายตัวเลือก = string[])
-      count: answers.filter((a) => (Array.isArray(a) ? a.includes(opt.th) : a === opt.th)).length,
-    }));
-  }
+  // นับด้วย summarize() ตัวเดียวกับแท็บ Survey / CSV → ตัวเลขตรงกันทุกที่
+  // (ไม่ส่งคำกำกับสเกล → แถวคะแนนเป็นตัวเลขล้วน "5".."1" แบบ design ของ Overview)
+  const summary = summarize(question, responses, lang);
+  const n = summary.n;
+  const rows = summary.kind === "bars" ? summary.rows : [];
   const max = Math.max(0, ...rows.map((r) => r.count));
-
-  // ค่าเฉลี่ยของ rating เช่น (5×14 + 4×11 + 3×4 + 2×2) ÷ 31 = 4.2
-  const avg =
-    question.type === "rating" && n > 0
-      ? (answers.reduce<number>((s, a) => s + Number(a), 0) / n).toFixed(1)
-      : null;
+  // ค่าเฉลี่ย rating / linear เช่น (5×14 + 4×11 + 3×4 + 2×2) ÷ 31 = 4.2
+  const avg = summary.kind === "bars" ? summary.avg : null;
+  const scaleMax = summary.kind === "bars" ? summary.scaleMax : null;
 
   return (
     <Card className="gap-3 rounded-2xl px-5 ring-slate-200">
@@ -223,20 +218,24 @@ function QuestionCard({
         <p className="mt-1 font-semibold">{tr(question.title, lang)}</p>
       </div>
 
-      {avg ? (
+      {avg && scaleMax ? (
         <p>
           <span className="text-4xl font-bold">{avg}</span>{" "}
-          <span className="text-sm text-slate-500">{t.outOf(n)}</span>
+          <span className="text-sm text-slate-500">{t.outOf(scaleMax, n)}</span>
         </p>
       ) : (
         <p className="text-sm text-slate-500">{t.answers(n)}</p>
       )}
 
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <HBar key={row.label} label={row.label} value={row.count} max={max} right={`${row.count} · ${pct(row.count, n)}%`} />
-        ))}
-      </div>
+      {summary.kind === "grid" ? (
+        <GridBody summary={summary} t={t} />
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <HBar key={row.label} label={row.label} value={row.count} max={max} right={`${row.count} · ${pct(row.count, n)}%`} />
+          ))}
+        </div>
+      )}
 
       {seeAllHref && (
         <Link href={seeAllHref} className="text-sm text-blue-600 underline-offset-2 hover:underline">

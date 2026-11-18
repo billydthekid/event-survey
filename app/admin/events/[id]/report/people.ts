@@ -1,9 +1,10 @@
 // app/admin/events/[id]/report/people.ts
 // ตัวช่วยเรื่อง "ผู้ลงทะเบียนรายคน" (ไม่มี React / ไม่มี UI)
 // ใช้ร่วมกันระหว่าง Dashboard และแท็บ Report (ผู้เข้าร่วม / คำตอบรายคน)
-import { Lang, Question } from "@/types";
+import { BiText, Lang } from "@/types";
 import { ReportData } from "./mockData";
-import { tr } from "./summary";
+import type { ReportQuestion } from "./reportData";
+import { scaleMaxOf, tr } from "./summary";
 
 // ============ เวลา "12:38" จาก ISO (รูปแบบเดียวกับ Dashboard) ============
 // ตัวอย่าง: formatTime("2026-10-23T12:38:00+07:00", "th") → "12:38"
@@ -184,27 +185,71 @@ export function buildAnswerEntries(data: ReportData, lang: Lang): AnswerEntry[] 
 // คืน: ข้อความ หรือ null = "ไม่ได้ตอบ" (หน้าจอแสดงคำนี้เอง)
 // คำตอบตัวเลือกเก็บเป็น "ชื่อไทย" → หาชื่อตามภาษาจาก question.options (ไม่เจอ → แสดงค่าเดิม)
 // ตัวอย่าง:
-//   rating 4                                → "4 / 5"
-//   single "พอดี" (EN)                      → "Just right"
+//   rating 4 (คะแนนเต็ม 5)                   → "4 / 5"
+//   linear 9 (ratingMax 10)                  → "9 / 10"
+//   single "พอดี" (EN)                      → "Just right"   (opinion / yesno ใช้วิธีเดียวกัน)
 //   multi ["Auto layout", "Prototype"]      → "Auto layout, Prototype" (ทุกตัวที่เลือก คั่นด้วยจุลภาค)
+//   mcgrid ["ดี", "พอใช้"]                  → "หัวข้อ 1: ดี · หัวข้อ 2: พอใช้"
+//   cbgrid ["หัวข้อ 1::ดี", "หัวข้อ 1::พอใช้"] → "หัวข้อ 1: ดี, พอใช้"
 //   long "อธิบายเข้าใจง่าย …"                → ข้อความเดิม
 //   undefined หรือ []                       → null
-export function formatAnswer(question: Question, value: string | string[] | number | undefined, lang: Lang): string | null {
+export function formatAnswer(question: ReportQuestion, value: string | string[] | number | undefined, lang: Lang): string | null {
   if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return null;
 
-  const optionLabel = (th: string) => {
-    const opt = question.options?.find((o) => o.th === th);
-    return opt ? tr(opt, lang) : th;
+  // ชื่อตามภาษา จากรายการ BiText (ไม่เจอ → แสดงค่าเดิม)
+  const labelIn = (list: BiText[] | undefined, th: string) => {
+    const item = list?.find((o) => o.th === th);
+    return item ? tr(item, lang) : th;
   };
+  const optionLabel = (th: string) => labelIn(question.options, th);
 
   switch (question.type) {
     case "rating":
-      return `${value} / 5`;
+    case "linear":
+      return `${value} / ${scaleMaxOf(question)}`;
     case "single":
     case "dropdown":
+    case "opinion":
+    case "yesno":
     case "multi":
       return (Array.isArray(value) ? value : [String(value)]).map(optionLabel).join(", ");
+    case "mcgrid":
+    case "cbgrid":
+      return formatGridAnswer(question, value, labelIn) ?? null;
     default:
       return String(value);
   }
+}
+
+// ตารางเป็นข้อความ "แถว: คอลัมน์" คั่นแต่ละแถวด้วย " · " (แถวที่ไม่ได้ตอบไม่แสดง)
+// ค่าที่ไม่รู้จัก / รูปแบบผิด → ข้าม · ไม่เหลืออะไรเลย → null ("ไม่ได้ตอบ")
+function formatGridAnswer(
+  question: ReportQuestion,
+  value: string | string[] | number,
+  labelIn: (list: BiText[] | undefined, th: string) => string
+): string | null {
+  if (!Array.isArray(value)) return null;
+  const rows = question.rows ?? [];
+  const parts: string[] = [];
+  // คอลัมน์ที่ไม่มีในคำถาม → ข้าม (กติกาเดียวกับ summarize() ตัวเลขกับข้อความจึงตรงกัน)
+  const isColumn = (th: string) => (question.options ?? []).some((o) => o.th === th);
+
+  if (question.type === "mcgrid") {
+    // ช่องที่ i = คำตอบของแถว i
+    rows.forEach((row, i) => {
+      const picked = value[i];
+      if (picked && isColumn(picked)) parts.push(`${labelIn(rows, row.th)}: ${labelIn(question.options, picked)}`);
+    });
+  } else {
+    // "แถว::คอลัมน์" → รวมคอลัมน์ของแถวเดียวกัน เรียงตามลำดับแถวในคำถาม
+    rows.forEach((row) => {
+      const cols = value
+        .filter((cell) => typeof cell === "string" && cell.startsWith(`${row.th}::`))
+        .map((cell) => cell.slice(row.th.length + 2))
+        .filter(isColumn)
+        .map((col) => labelIn(question.options, col));
+      if (cols.length > 0) parts.push(`${labelIn(rows, row.th)}: ${cols.join(", ")}`);
+    });
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

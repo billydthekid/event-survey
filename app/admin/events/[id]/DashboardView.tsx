@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEventAccess } from "./eventAccess";
 import { ReportData } from "./report/mockData";
-import { pct, summarize, tr } from "./report/summary";
+import { pct, satisfactionQuestion, summarize, tr } from "./report/summary";
 import { respondedRegistrationIds, responseCounts } from "./report/people";
 import { Donut, HBar, VBars, type VBar } from "./report/charts";
 
@@ -59,7 +59,8 @@ const TEXT = {
     venueUnset: "ยังไม่ระบุสถานที่",
     left: (h: number, m: number) => (h > 0 ? `เหลือ ${h} ชม. ${m} น.` : `เหลือ ${m} น.`),
     satisfaction: "ความพึงพอใจ",
-    avgOf: (avg: string, n: number) => `เฉลี่ย ${avg} / 5 · ${n} คำตอบ`,
+    // max = คะแนนเต็ม เช่น avgOf("4.2", 5, 31) → "เฉลี่ย 4.2 / 5 · 31 คำตอบ"
+    avgOf: (avg: string, max: number, n: number) => `เฉลี่ย ${avg} / ${max} · ${n} คำตอบ`,
     statusTitle: "สถานะ Event",
     rows: { qr: "QR ลงทะเบียน", survey: "Survey", kiosk: "จอ Kiosk", team: "ทีมดูแล", edit: "แก้ไขข้อมูล Event" },
     regOpen: "เปิดรับอยู่",
@@ -111,7 +112,7 @@ const TEXT = {
     venueUnset: "Venue not set",
     left: (h: number, m: number) => (h > 0 ? `${h} h ${m} min left` : `${m} min left`),
     satisfaction: "Satisfaction",
-    avgOf: (avg: string, n: number) => `avg. ${avg} / 5 · ${n} responses`,
+    avgOf: (avg: string, max: number, n: number) => `avg. ${avg} / ${max} · ${n} responses`,
     statusTitle: "Event status",
     rows: { qr: "Registration QR", survey: "Survey", kiosk: "Kiosk screen", team: "Team", edit: "Edit event info" },
     regOpen: "Open",
@@ -571,24 +572,28 @@ function InfoRow({ icon: Icon, title, sub }: { icon: LucideIcon; title: string; 
 }
 
 // ============ การ์ด "ความพึงพอใจ" ============
-// ใช้คำถามแบบ Rating ข้อแรก (ตามลำดับ) + summarize() ตัวเดียวกับแท็บ Survey → ตัวเลขตรงกัน
-// ไม่มีคำถาม Rating → ไม่แสดงการ์ดนี้
+// คำถาม: Rating ข้อแรก ถ้าไม่มีใช้ Linear ข้อแรก (satisfactionQuestion ใน summary.ts)
+// + summarize() ตัวเดียวกับแท็บ Survey → ตัวเลขตรงกัน · ไม่มีทั้งสองแบบ → ไม่แสดงการ์ดนี้
 function Satisfaction({ data, lang, t }: { data: ReportData; lang: Lang; t: Text }) {
-  const question = [...data.survey.questions].sort((a, b) => a.order - b.order).find((q) => q.type === "rating");
+  const question = satisfactionQuestion(data.survey.questions);
   if (!question) return null;
 
   const summary = summarize(question, data.responses, lang); // ไม่ส่งคำกำกับสเกล → ป้าย "5".."1"
   if (summary.kind !== "bars") return null;
   const max = Math.max(0, ...summary.rows.map((r) => r.count));
+  // ดาวเฉพาะ Rating · Linear เป็นสเกลตัวเลข → ป้ายเป็นตัวเลขล้วน
+  const star = question.type === "rating" ? " ★" : "";
 
   return (
     <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
       <p className="font-semibold">{t.satisfaction}</p>
-      {summary.avg && <p className="mt-0.5 text-xs text-slate-500">{t.avgOf(summary.avg, summary.n)}</p>}
+      {summary.avg && summary.scaleMax && (
+        <p className="mt-0.5 text-xs text-slate-500">{t.avgOf(summary.avg, summary.scaleMax, summary.n)}</p>
+      )}
       <div className="mt-3 space-y-2">
         {summary.rows.map((r) => (
           // ใช้ HBar เดิม: ป้าย "5 ★", แท่งยาวตามค่ามากสุด, ขวาเป็นจำนวนคน (ตามต้นแบบ ไม่มี %)
-          <HBar key={r.label} label={`${r.label} ★`} value={r.count} max={max} right={String(r.count)} />
+          <HBar key={r.label} label={`${r.label}${star}`} value={r.count} max={max} right={String(r.count)} />
         ))}
       </div>
     </div>
