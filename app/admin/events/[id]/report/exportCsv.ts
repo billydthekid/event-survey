@@ -40,9 +40,17 @@ export function buildSummaryRows(data: ReportData, lang: Lang): Row[] {
     const head: Row = [question.order, tr(question.title, lang), t.types[question.type]];
 
     if (summary.kind === "bars") {
-      // rating / ตัวเลือก: 1 แถวต่อ 1 ตัวเลือก (หรือ 1 คะแนน)
+      // rating / linear / ตัวเลือก: 1 แถวต่อ 1 ตัวเลือก (หรือ 1 คะแนน)
       for (const r of summary.rows) {
         rows.push([...head, r.label, r.count, pct(r.count, summary.n), summary.n, summary.avg ?? ""]);
+      }
+    } else if (summary.kind === "grid") {
+      // ตาราง: 1 แถวต่อ 1 ช่อง "แถว › คอลัมน์" · ตัวหาร = จำนวนคนที่ตอบแถวนั้น (ตรงกับ % ในการ์ด)
+      // เช่น [9, "ประเมินแต่ละหัวข้อ", "ตารางเลือกข้อเดียว", "หัวข้อ 1 › ดีมาก", 7, 58, 12, ""]
+      for (const row of summary.rows) {
+        row.counts.forEach((count, c) => {
+          rows.push([...head, `${row.label} › ${summary.columns[c]}`, count, pct(count, row.answered), row.answered, ""]);
+        });
       }
     } else {
       // ข้อความ: จัดกลุ่มคำตอบที่พิมพ์เหมือนกันทุกตัวอักษร แล้วนับจำนวน (ไม่ตัดเหลือ 3 แบบบนจอ)
