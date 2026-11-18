@@ -2,7 +2,6 @@
 // ขั้นที่ 1: ข้อมูลทั่วไป — หน้าเดียวเรียงลงมา: ชื่อ/รายละเอียด/ประเภท → วัน เวลา สถานที่ → ผู้จัด → ผู้ที่ลงทะเบียนได้
 // ช่อง (*) + วันเวลา + รายชื่อ Event ปิด ต้องครบก่อนกด "ถัดไป" (stepBlock ใน lib/utils/wizard-rules.ts)
 
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -25,34 +24,19 @@ export function StepGeneral() {
   const now = useNow();
   const { today } = nowParts(now);
   const err = validateDates(draft, now);
-  const [lang, setLang] = useState<"th" | "en">("th");
   const set = (v: Partial<typeof g>) => patch("general", v);
 
   return (
     <>
-      <WizardSection
-        title="ชื่อและรายละเอียด"
-        action={
-          <ToggleGroup value={[lang]} onValueChange={(v) => v[0] && setLang(v[0] as "th" | "en")} variant="outline" size="sm">
-            <ToggleGroupItem value="th">ไทย</ToggleGroupItem>
-            <ToggleGroupItem value="en">English</ToggleGroupItem>
-          </ToggleGroup>
-        }
-      >
+      {/* กรอกภาษาไทยอย่างเดียว (ตัดปุ่มสลับ ไทย / English ออกแล้ว · nameEn / descEn เดิมยังเก็บไว้ แต่แก้จากหน้านี้ไม่ได้) */}
+      <WizardSection title="ชื่อและรายละเอียด">
         <div className="space-y-1.5">
-          <Label>ชื่อ Event ({lang === "th" ? "ไทย" : "English"}) {lang === "th" && <span className="text-destructive">*</span>}</Label>
-          <Input
-            value={lang === "th" ? g.nameTh : g.nameEn}
-            onChange={(e) => set(lang === "th" ? { nameTh: e.target.value } : { nameEn: e.target.value })}
-          />
+          <Label>ชื่อ Event <span className="text-destructive">*</span></Label>
+          <Input value={g.nameTh} onChange={(e) => set({ nameTh: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <Label>รายละเอียด ({lang === "th" ? "ไทย" : "English"}) {lang === "th" && <span className="text-destructive">*</span>}</Label>
-          <Textarea
-            rows={3}
-            value={lang === "th" ? g.descTh : g.descEn}
-            onChange={(e) => set(lang === "th" ? { descTh: e.target.value } : { descEn: e.target.value })}
-          />
+          <Label>รายละเอียด <span className="text-destructive">*</span></Label>
+          <Textarea rows={3} value={g.descTh} onChange={(e) => set({ descTh: e.target.value })} />
         </div>
         <div className="space-y-1.5">
           <Label>ประเภทงาน <span className="text-destructive">*</span></Label>
