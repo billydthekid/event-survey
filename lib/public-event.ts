@@ -9,7 +9,7 @@
 import type { BiText, Event, FieldType, QuestionType, Registration } from "@/types";
 import type { AllowListKind, BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
-import { normalizeContact } from "@/lib/allow-list";
+import { isActive, normalizeContact } from "@/lib/allow-list";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
 
@@ -51,11 +51,13 @@ export interface PublicEvent {
   organizer: string;
   contactEmail: string;
   date: string; // yyyy-MM-dd
+  endDate: string; // วันจบ (งานหลายวัน) "" = วันเดียวกับวันเริ่ม
   startTime: string;
   endTime: string;
   venue: string;
-  theme: { primary: string; mode: "light" | "dark" | "bold" };
+  theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground };
   logo?: string;
+  closed: boolean; // Event ปิด (รับเฉพาะรายชื่อที่ import) → แบบประเมินตอบได้เฉพาะผู้ที่ลงทะเบียน
   // ช่วงเวลา (yyyy-MM-ddTHH:mm หรือ ISO) "" = ไม่กำหนด
   regOpen: string;
   regClose: string;
@@ -115,6 +117,27 @@ const FIELD_TYPE: Record<FieldType, PublicFieldType> = {
   text: "text", email: "email", phone: "phone", age: "age", gender: "gender",
   studentId: "idno", dropdown: "dropdown", multi: "multi", longtext: "longtext", date: "date",
 };
+
+// ============ โลโก้ + พื้นหลัง (Wizard ขั้น Branding) ============
+// Wizard เก็บรูปไว้ใน wizard store เท่านั้น (ไม่ได้ส่งไป store หลัก) → อ่านจาก draft ก่อน แล้วค่อยใช้ค่าใน Event
+// custom = สีพื้นหลังที่ Event Admin เลือกเอง ("" = ไม่ได้เลือก → ใช้สีตั้งต้นของรูปแบบธีม)
+// base   = สีพื้นหลังเดิมใน store หลัก (ใช้กับธีม Light เท่านั้น เหมือนเดิม)
+// image  = รูปพื้นหลัง ("" = ไม่มี)
+export interface ThemeBackground {
+  custom: string;
+  base: string;
+  image: string;
+}
+export function themeBackground(event: Event, draft?: EventDraft): ThemeBackground {
+  const t = draft?.theme;
+  const b = event.theme.background;
+  return {
+    custom: (t?.bgType !== "image" && t?.bgColor) || "",
+    base: b.type === "color" ? b.value : "",
+    image: t ? (t.bgType === "image" ? t.bg?.dataUrl || "" : "") : b.type === "image" ? b.value : "",
+  };
+}
+export const themeLogo = (event: Event, draft?: EventDraft) => draft?.theme.logo?.dataUrl || event.theme.logo;
 
 // ============ แปลง Event → PublicEvent ============
 export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent {
@@ -181,11 +204,17 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
     organizer: g?.organizer || event.organizerName || "",
     contactEmail: (g ? g.showContact : event.showContact) ? g?.email || event.email || "" : "",
     date: g?.date || event.date,
+    endDate: g?.endDate || "", // มีเฉพาะใน Wizard (store หลักยังไม่มีช่องนี้)
     startTime: g?.startTime || event.startTime,
     endTime: g?.endTime || event.endTime,
     venue: [g?.venue || event.venue, g?.spot || event.meetingPoint].filter(Boolean).join(" · "),
-    theme: { primary: draft?.theme.primary || event.theme.primary, mode: draft?.theme.mode || event.theme.kind },
-    logo: event.theme.logo,
+    theme: {
+      primary: draft?.theme.primary || event.theme.primary,
+      mode: draft?.theme.mode || event.theme.kind,
+      background: themeBackground(event, draft),
+    },
+    logo: themeLogo(event, draft),
+    closed: isActive(draft?.allowList),
     regOpen: draft?.schedule.regOpen || event.registration.opensAt,
     regClose: draft?.schedule.regClose || event.registration.closesAt,
     maxAttendees: Number(draft?.schedule.maxAttendees || event.registration.maxAttendees || 0) || 0,
@@ -206,11 +235,12 @@ export function findPublicEvent(events: Event[], code: string): Event | undefine
 // กฎ:
 // - เวลาที่ Event Admin ตั้งใน Wizard มาก่อนเสมอ
 // - ไม่ได้ตั้ง → ลงทะเบียนและแบบประเมิน เปิดตอนงานเริ่ม และปิดตอนงานจบ
-//   ("งานเริ่ม/จบ" ดูจากสถานะ Event: scheduled = ยังไม่เริ่ม, active = กำลังจัด, ended = จบแล้ว
-//    ให้ตรงกับป้ายสถานะใน Dashboard ทุกหน้า)
+// "งานเริ่ม/จบ" ดูจากวัน-เวลาจัดงานจริง แบบเดียวกับฝั่ง Event Admin (lib/utils/event-phase.ts)
+// เพราะสถานะที่เก็บไว้ไม่ได้บอกช่วงงาน: กดเผยแพร่แล้วเป็น "active" ทันที และไม่มีอะไรเปลี่ยนเป็น "ended"
 export interface ScheduleInfo {
   status: Event["status"];
   date: string;
+  endDate: string; // วันจบ (งานหลายวัน) "" = วันเดียวกับวันเริ่ม
   startTime: string;
   endTime: string;
   regOpen: string;
@@ -223,8 +253,22 @@ export interface ScheduleInfo {
 
 const before = (iso: string, now: Date) => !!iso && now < new Date(iso);
 const after = (iso: string, now: Date) => !!iso && now > new Date(iso);
-const eventStart = (e: ScheduleInfo) => (e.date && e.startTime ? `${e.date}T${e.startTime}` : "");
-const eventEnd = (e: ScheduleInfo) => (e.date && e.endTime ? `${e.date}T${e.endTime}` : "");
+export const eventStart = (e: ScheduleInfo) => (e.date && e.startTime ? `${e.date}T${e.startTime}` : "");
+export const eventEnd = (e: ScheduleInfo) => (e.date && e.endTime ? `${e.endDate || e.date}T${e.endTime}` : "");
+
+// ช่วงของงาน: ยังไม่เริ่ม / กำลังจัด / จบแล้ว
+// มีวัน-เวลาครบ → ดูจากนาฬิกา · ไม่ครบ (ข้อมูลตัวอย่างเก่าบางงาน) → ใช้สถานะที่เก็บไว้แทน
+export type EventPhase = "upcoming" | "live" | "ended";
+export function getEventPhase(e: ScheduleInfo, now: Date): EventPhase {
+  const start = eventStart(e);
+  const end = eventEnd(e);
+  if (start && end) {
+    if (now > new Date(end)) return "ended";
+    if (now >= new Date(start)) return "live";
+    return "upcoming";
+  }
+  return e.status === "ended" ? "ended" : e.status === "active" ? "live" : "upcoming";
+}
 
 // เวลาที่ใช้แสดงบนจอ ("" = ไม่รู้เวลา → ไม่แสดงบรรทัดเวลา)
 export const regOpensAt = (e: ScheduleInfo) => e.regOpen || eventStart(e);
@@ -235,10 +279,11 @@ export const surveyClosesAt = (e: ScheduleInfo) => e.surveyClose || eventEnd(e);
 // หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
 export type RegisterPhase = "open" | "notOpen" | "closed" | "full";
 export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: number): RegisterPhase {
+  const phase = getEventPhase(e, now);
   // ยังไม่เปิด: ถึงเวลาเปิดที่ตั้งไว้หรือยัง / ไม่ได้ตั้ง → รองานเริ่ม
-  if (e.regOpen ? before(e.regOpen, now) : e.status === "scheduled") return "notOpen";
-  // ปิดแล้ว: งานจบ หรือเลยเวลาปิดที่ตั้งไว้ (ลงทะเบียนหลังจบงานไม่มีความหมาย)
-  if (e.status === "ended" || after(e.regClose, now)) return "closed";
+  if (e.regOpen ? before(e.regOpen, now) : phase === "upcoming") return "notOpen";
+  // ปิดแล้ว: เลยเวลาปิดที่ตั้งไว้ / ไม่ได้ตั้ง → ปิดพร้อมงานจบ
+  if (e.regClose ? after(e.regClose, now) : phase === "ended") return "closed";
   if (e.maxAttendees > 0 && registeredCount >= e.maxAttendees) return "full";
   return "open";
 }
@@ -247,9 +292,10 @@ export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: nu
 export type SurveyPhase = "open" | "notOpen" | "closed" | "none";
 export function getSurveyPhase(e: ScheduleInfo, now: Date): SurveyPhase {
   if (!e.survey.enabled) return "none";
-  if (e.surveyOpen ? before(e.surveyOpen, now) : e.status === "scheduled") return "notOpen";
+  const phase = getEventPhase(e, now);
+  if (e.surveyOpen ? before(e.surveyOpen, now) : phase === "upcoming") return "notOpen";
   // ปิด: เลยเวลาที่ตั้งไว้ (เช่น หลังจบงาน 1 ชม.) / ไม่ได้ตั้ง → ปิดพร้อมงานจบ
-  if (e.surveyClose ? after(e.surveyClose, now) : e.status === "ended") return "closed";
+  if (e.surveyClose ? after(e.surveyClose, now) : phase === "ended") return "closed";
   return "open";
 }
 

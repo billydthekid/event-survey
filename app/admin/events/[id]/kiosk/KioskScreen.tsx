@@ -26,7 +26,8 @@ export const KIOSK_TEXT = {
     registerSub: "ใช้เวลา 1 นาที · ไม่ต้องสมัครสมาชิก",
     scanSurvey: "สแกนเพื่อประเมินงาน",
     survey: "แบบประเมิน",
-    surveySub: "ใช้เวลา 2 นาที · สำหรับผู้ที่ลงทะเบียนแล้ว",
+    surveySub: "ใช้เวลา 2 นาที",
+    surveySubClosed: "ใช้เวลา 2 นาที · สำหรับผู้ที่ลงทะเบียนแล้ว", // Event ปิด
     scanWithPhone: "สแกนด้วยกล้องมือถือ",
     regUntil: "ลงทะเบียนเปิดถึง",
     surveyUntil: "เปิดประเมินถึง",
@@ -54,7 +55,8 @@ export const KIOSK_TEXT = {
     registerSub: "Takes 1 min · No sign-up needed",
     scanSurvey: "Scan to rate this event",
     survey: "Survey",
-    surveySub: "Takes 2 min · For registered attendees",
+    surveySub: "Takes 2 min",
+    surveySubClosed: "Takes 2 min · For registered attendees",
     scanWithPhone: "Scan with your phone camera",
     regUntil: "Registration open until",
     surveyUntil: "Survey open until",
@@ -93,9 +95,11 @@ interface Palette {
 
 function palette(m: KioskModel): Palette {
   const p = m.theme.primary;
+  // พื้นหลังจาก Wizard: สีที่ Event Admin เลือกเอง (ทุกธีม เหมือนตัวอย่างใน Wizard) / สีเดิมใน Event (เฉพาะ Light)
+  const bg = m.theme.background;
   if (m.theme.mode === "dark") {
     return {
-      page: "#0B1220",
+      page: bg.custom || "#0B1220",
       text: "#F8FAFC",
       muted: "#94A3B8",
       line: "rgba(255,255,255,0.10)",
@@ -110,7 +114,7 @@ function palette(m: KioskModel): Palette {
   }
   if (m.theme.mode === "bold") {
     return {
-      page: p,
+      page: bg.custom || p,
       text: "#FFFFFF",
       muted: "rgba(255,255,255,0.8)",
       line: "rgba(255,255,255,0.22)",
@@ -124,7 +128,7 @@ function palette(m: KioskModel): Palette {
     };
   }
   return {
-    page: m.theme.background,
+    page: bg.custom || bg.base || "#FFFFFF",
     text: "#0F172A",
     muted: "#64748B",
     line: "#E2E8F0",
@@ -155,11 +159,17 @@ const toDate = (date: string, time = "00:00") => new Date(`${date}T${time}`);
 function fmtDay(d: Date, lang: Lang) {
   return lang === "th" ? format(d, "EEE d MMM", { locale: thLocale }) : format(d, "EEE, d MMM");
 }
-// "ศ. 30 ต.ค. · 09:00–16:00 น."
+// วันเดียว: "ศ. 30 ต.ค. · 09:00–16:00 น."
+// หลายวัน:  "ศ. 30 ต.ค. 09:00 – ส. 31 ต.ค. 16:00 น." (แบบเดียวกับตัวอย่างใน Wizard)
 function fmtEventWhen(m: KioskModel, lang: Lang, t: Text) {
   if (!m.date) return t.noDate;
+  const start = fmtDay(toDate(m.date), lang);
+  if (m.endDate && m.endDate !== m.date) {
+    const end = fmtDay(toDate(m.endDate), lang);
+    return m.startTime ? `${start} ${m.startTime} – ${end} ${m.endTime}${t.hrs}` : `${start} – ${end}`;
+  }
   const time = m.startTime ? ` · ${m.startTime}–${m.endTime}${t.hrs}` : "";
-  return fmtDay(toDate(m.date), lang) + time;
+  return start + time;
 }
 // "ศ. 30 ต.ค. · 09:00 น."
 function fmtDateTime(iso: string, lang: Lang, t: Text) {
@@ -212,8 +222,18 @@ export function KioskScreen({
   const surveyClose = surveyClosesAt(m);
 
   return (
-    // overflow-hidden: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
-    <div className="flex h-full flex-col overflow-clip" style={{ background: pal.page, color: pal.text }}>
+    // overflow-clip: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
+    // รูปพื้นหลังจาก Wizard (ถ้ามี) วางเต็มจอใต้เนื้อหา · การ์ด QR พื้นทึบ → สแกนได้เสมอ
+    <div
+      className="flex h-full flex-col overflow-clip"
+      style={{
+        backgroundColor: pal.page,
+        color: pal.text,
+        ...(m.theme.background.image
+          ? { backgroundImage: `url("${m.theme.background.image}")`, backgroundSize: "cover", backgroundPosition: "center" }
+          : {}),
+      }}
+    >
       <Header m={m} pal={pal} lang={lang} setLang={setLang} admin={admin} />
 
       {scene === "closed" ? (
@@ -303,7 +323,7 @@ export function KioskScreen({
                 <QrWideCard
                   scan={t.scanSurvey}
                   title={t.survey}
-                  sub={t.surveySub}
+                  sub={m.closed ? t.surveySubClosed : t.surveySub}
                   url={surveyUrl}
                   colors={pal.survey}
                   qrSize={qrWide}
