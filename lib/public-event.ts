@@ -6,9 +6,10 @@
 // - wizard store (EventDraft) → ฟอร์มลงทะเบียน / Survey / ช่วงเวลา ที่ Event Admin ตั้งใน Wizard
 // - mock ของหน้า Report      → Survey ของงานตัวอย่าง (store หลักยังไม่เก็บ event.survey)
 // ทุกอย่างถูกแปลงเป็นรูปแบบเดียว (PublicEvent) หน้าจอจึงไม่ต้องรู้ว่ามาจากไหน
-import type { BiText, Event, FieldType, QuestionType } from "@/types";
-import type { BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
+import type { BiText, Event, FieldType, QuestionType, Registration } from "@/types";
+import type { AllowListKind, BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
+import { normalizeContact } from "@/lib/allow-list";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
 
@@ -250,6 +251,25 @@ export function getSurveyPhase(e: ScheduleInfo, now: Date): SurveyPhase {
   // ปิด: เลยเวลาที่ตั้งไว้ (เช่น หลังจบงาน 1 ชม.) / ไม่ได้ตั้ง → ปิดพร้อมงานจบ
   if (e.surveyClose ? after(e.surveyClose, now) : e.status === "ended") return "closed";
   return "open";
+}
+
+// ============ Event ปิด: แบบประเมินตอบได้เฉพาะผู้ที่ลงทะเบียนแล้ว ============
+// หาการลงทะเบียนของงานนี้จากอีเมล/เบอร์ (ช่องเดียวกับที่ Event ปิดใช้ตรวจรายชื่อ)
+// หน้า /r เก็บช่องอีเมล/เบอร์ช่องแรกไว้ที่ key "email" / "phone" (answerKeys ใน lib/form-types.ts)
+// ข้อมูลอยู่ใน localStorage → ตรวจได้เมื่อลงทะเบียนและตอบแบบประเมินบนเครื่องเดียวกัน
+export function findRegistration(
+  registrations: Registration[],
+  eventId: string,
+  kind: AllowListKind,
+  raw: string
+): Registration | undefined {
+  const want = normalizeContact(kind, raw);
+  if (!want) return undefined;
+  return registrations.find((r) => {
+    if (r.eventId !== eventId) return false;
+    const v = r.answers[kind];
+    return typeof v === "string" && normalizeContact(kind, v) === want;
+  });
 }
 
 // ============ ตัวช่วยแสดงผล ============

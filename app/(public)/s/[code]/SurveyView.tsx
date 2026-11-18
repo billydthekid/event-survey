@@ -5,8 +5,10 @@
 // ตอบซ้ำได้ ไม่ดักข้อมูลซ้ำ (ตาม scope)
 "use client";
 import { use, useState } from "react";
-import { CircleCheck, Clock, FileQuestion, Lock, Search } from "lucide-react";
+import { CircleCheck, Clock, FileQuestion, Lock, Search, ShieldCheck } from "lucide-react";
 import type { Lang } from "@/types";
+import type { AllowListKind } from "@/types/event";
+import { isActive } from "@/lib/allow-list";
 import { useStore } from "@/lib/store";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useNow } from "@/lib/hooks/useNow";
@@ -14,6 +16,7 @@ import {
   PublicQuestion,
   buildPublicEvent,
   findPublicEvent,
+  findRegistration,
   getSurveyPhase,
   pick,
   surveyClosesAt,
@@ -73,6 +76,17 @@ const TEXT = {
     notFoundTitle: "ไม่พบ Event นี้",
     notFoundSub: "QR หรือลิงก์อาจไม่ถูกต้อง หรือ Event ถูกยกเลิก",
     notFoundSub2: "ลองสแกน QR ที่จอ Kiosk อีกครั้ง",
+    // Event ปิด: ยืนยันว่าลงทะเบียนแล้วก่อนตอบ
+    verifyTitle: "ยืนยันการลงทะเบียน",
+    verifySub: "แบบประเมินนี้สำหรับผู้ที่ลงทะเบียนแล้วเท่านั้น",
+    verifyLabel: { email: "อีเมลที่ใช้ลงทะเบียน", phone: "เบอร์มือถือที่ใช้ลงทะเบียน" },
+    verifyPh: { email: "name@email.com", phone: "0X-XXX-XXXX" },
+    verifyBtn: "ยืนยัน",
+    verifyErr: {
+      required: { email: "กรอกอีเมลที่ใช้ลงทะเบียน", phone: "กรอกเบอร์มือถือที่ใช้ลงทะเบียน" },
+      notFound: "ไม่พบการลงทะเบียนด้วยข้อมูลนี้ · ใช้ข้อมูลเดียวกับตอนลงทะเบียน",
+    },
+    verifyHint: "ยังไม่ได้ลงทะเบียน? สแกน QR ลงทะเบียนที่จอ Kiosk ก่อน",
   },
   en: {
     chip: "Survey",
@@ -100,6 +114,16 @@ const TEXT = {
     notFoundTitle: "Event not found",
     notFoundSub: "The QR or link may be wrong, or the event was cancelled",
     notFoundSub2: "Try scanning the QR on the Kiosk again",
+    verifyTitle: "Confirm your registration",
+    verifySub: "This survey is for registered attendees only",
+    verifyLabel: { email: "Email you registered with", phone: "Mobile number you registered with" },
+    verifyPh: { email: "name@email.com", phone: "0X-XXX-XXXX" },
+    verifyBtn: "Continue",
+    verifyErr: {
+      required: { email: "Please enter the email you registered with", phone: "Please enter the mobile number you registered with" },
+      notFound: "No registration found · Use the same details you registered with",
+    },
+    verifyHint: "Not registered yet? Scan the registration QR on the Kiosk first",
   },
 };
 type Text = (typeof TEXT)["th"];
@@ -119,11 +143,13 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
   const event = useStore((s) => findPublicEvent(s.events, code));
   const draft = useWizardStore((s) => (event ? s.drafts[event.id] : undefined));
   const submitSurveyResponse = useStore((s) => s.submitSurveyResponse);
+  const registrations = useStore((s) => s.registrations); // ทั้งก้อน (filter ใน selector = array ใหม่ทุกครั้ง → render วน)
   const now = useNow(30_000);
 
   const [answers, setAnswers] = useState<Answers>({});
   const [tried, setTried] = useState(false); // กดส่งแล้ว → แสดง error ของข้อที่ยังไม่ตอบ
   const [done, setDone] = useState(false);
+  const [verified, setVerified] = useState(false); // Event ปิด: ยืนยันการลงทะเบียนแล้ว
 
   if (!hydrated) return <PublicLoading />;
 
@@ -207,6 +233,24 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
     );
   }
 
+  // ---------- Event ปิด: ต้องยืนยันว่าลงทะเบียนแล้ว ก่อนเห็นคำถาม ----------
+  // (ใช้ช่องเดียวกับที่ Event Admin ตั้งให้ตรวจรายชื่อ: อีเมล หรือ เบอร์มือถือ)
+  const allow = draft?.allowList;
+  if (isActive(allow) && !verified) {
+    return shell(
+      <>
+        {info}
+        <VerifyForm
+          kind={allow.kind}
+          pal={pal}
+          t={t}
+          check={(raw) => !!findRegistration(registrations, e.id, allow.kind, raw)}
+          onPass={() => setVerified(true)}
+        />
+      </>
+    );
+  }
+
   // ---------- แบบประเมิน (B1) ----------
   const missing = tried ? required.filter((q) => !answered(q, answers[q.id])) : [];
   const minutes = Math.max(1, Math.round(qs.length * 0.7)); // สูตรเดียวกับหน้า Survey Builder
@@ -269,6 +313,74 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
       </form>
     </>,
     true
+  );
+}
+
+// ============ Event ปิด: กรอกอีเมล/เบอร์ที่ใช้ลงทะเบียน ============
+// เก็บแค่ "ชนิดของ error" แล้วค่อยแปลตอนแสดง → สลับ TH/EN แล้วข้อความเปลี่ยนตามทันที
+function VerifyForm({
+  kind,
+  pal,
+  t,
+  check,
+  onPass,
+}: {
+  kind: AllowListKind;
+  pal: Palette;
+  t: Text;
+  check: (raw: string) => boolean;
+  onPass: () => void;
+}) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<"required" | "notFound" | null>(null);
+  const message = error === "required" ? t.verifyErr.required[kind] : error === "notFound" ? t.verifyErr.notFound : undefined;
+
+  const handleSubmit = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!value.trim()) return setError("required");
+    if (!check(value)) return setError("notFound");
+    onPass();
+  };
+
+  return (
+    <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col px-5 pt-8 pb-8">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full" style={{ background: pal.soft, color: pal.primary }}>
+          <ShieldCheck className="size-5" />
+        </span>
+        <div>
+          <h2 className="font-bold">{t.verifyTitle}</h2>
+          <p className="text-sm" style={{ color: pal.muted }}>
+            {t.verifySub}
+          </p>
+        </div>
+      </div>
+      <div className="mt-6">
+        <FieldLabel htmlFor="verify-contact" label={t.verifyLabel[kind]} required pal={pal} />
+        <TextInput
+          id="verify-contact"
+          pal={pal}
+          type={kind === "email" ? "email" : "tel"}
+          inputMode={kind === "email" ? "email" : "tel"}
+          autoComplete={kind === "email" ? "email" : "tel"}
+          placeholder={t.verifyPh[kind]}
+          value={value}
+          onChange={(ev) => {
+            setValue(ev.target.value);
+            if (error) setError(null);
+          }}
+          error={message}
+          aria-describedby={message ? "verify-error" : undefined}
+        />
+        <ErrorText id="verify-error" error={message} />
+      </div>
+      <PrimaryButton pal={pal} type="submit" className="mt-6 w-full">
+        {t.verifyBtn}
+      </PrimaryButton>
+      <p className="mt-4 text-center text-xs" style={{ color: pal.muted }}>
+        {t.verifyHint}
+      </p>
+    </form>
   );
 }
 
