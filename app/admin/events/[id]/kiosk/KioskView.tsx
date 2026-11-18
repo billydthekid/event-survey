@@ -68,7 +68,9 @@ function useIsFullscreen() {
   return useSyncExternalStore(subscribeFullscreen, () => document.fullscreenElement !== null, () => false);
 }
 
-// ขนาดหน้าต่าง "กว้างxสูง" (string เพื่อให้ useSyncExternalStore เทียบค่าได้)
+// ขนาดพื้นที่ที่มองเห็น "กว้างxสูง" (string เพื่อให้ useSyncExternalStore เทียบค่าได้)
+// ใช้ documentElement.clientWidth/Height ไม่ใช้ window.innerWidth:
+// บนมือถือ ถ้าหน้าข้างใต้กว้างเกินจอ innerWidth จะใหญ่กว่าจอจริง (เช่น 438 แทน 412) → จอ Kiosk ล้นขอบขวา/ล่าง
 function subscribeResize(onChange: () => void) {
   window.addEventListener("resize", onChange);
   return () => window.removeEventListener("resize", onChange);
@@ -76,7 +78,7 @@ function subscribeResize(onChange: () => void) {
 function useViewport() {
   const raw = useSyncExternalStore(
     subscribeResize,
-    () => `${window.innerWidth}x${window.innerHeight}`,
+    () => `${document.documentElement.clientWidth}x${document.documentElement.clientHeight}`,
     () => `${CANVAS_W}x${CANVAS_H}`
   );
   const [w, h] = raw.split("x").map(Number);
