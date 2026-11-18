@@ -2,17 +2,15 @@
 // ขั้นที่ 1: ข้อมูลทั่วไป — หน้าเดียวเรียงลงมา: ชื่อ/รายละเอียด/ประเภท → วัน เวลา สถานที่ → ผู้จัด → ผู้ที่ลงทะเบียนได้
 // ช่อง (*) + วันเวลา + รายชื่อ Event ปิด ต้องครบก่อนกด "ถัดไป" (stepBlock ใน lib/utils/wizard-rules.ts)
 
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { formatThaiDate } from "@/lib/utils/date";
 import { useNow } from "@/lib/hooks/useNow";
 import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
-import { FieldError } from "./field-error";
+import { DateTimeRange } from "./date-time-range";
 import { AllowListCard } from "./allow-list-card";
 import { WizardSection } from "./wizard-section";
 import { EVENT_TYPES } from "@/lib/event-types";
@@ -25,34 +23,19 @@ export function StepGeneral() {
   const now = useNow();
   const { today } = nowParts(now);
   const err = validateDates(draft, now);
-  const [lang, setLang] = useState<"th" | "en">("th");
   const set = (v: Partial<typeof g>) => patch("general", v);
 
   return (
     <>
-      <WizardSection
-        title="ชื่อและรายละเอียด"
-        action={
-          <ToggleGroup value={[lang]} onValueChange={(v) => v[0] && setLang(v[0] as "th" | "en")} variant="outline" size="sm">
-            <ToggleGroupItem value="th">ไทย</ToggleGroupItem>
-            <ToggleGroupItem value="en">English</ToggleGroupItem>
-          </ToggleGroup>
-        }
-      >
+      {/* กรอกภาษาไทยอย่างเดียว (ตัดปุ่มสลับ ไทย / English ออกแล้ว · nameEn / descEn เดิมยังเก็บไว้ แต่แก้จากหน้านี้ไม่ได้) */}
+      <WizardSection title="ชื่อและรายละเอียด">
         <div className="space-y-1.5">
-          <Label>ชื่อ Event ({lang === "th" ? "ไทย" : "English"}) {lang === "th" && <span className="text-destructive">*</span>}</Label>
-          <Input
-            value={lang === "th" ? g.nameTh : g.nameEn}
-            onChange={(e) => set(lang === "th" ? { nameTh: e.target.value } : { nameEn: e.target.value })}
-          />
+          <Label>ชื่อ Event <span className="text-destructive">*</span></Label>
+          <Input value={g.nameTh} onChange={(e) => set({ nameTh: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <Label>รายละเอียด ({lang === "th" ? "ไทย" : "English"}) {lang === "th" && <span className="text-destructive">*</span>}</Label>
-          <Textarea
-            rows={3}
-            value={lang === "th" ? g.descTh : g.descEn}
-            onChange={(e) => set(lang === "th" ? { descTh: e.target.value } : { descEn: e.target.value })}
-          />
+          <Label>รายละเอียด <span className="text-destructive">*</span></Label>
+          <Textarea rows={3} value={g.descTh} onChange={(e) => set({ descTh: e.target.value })} />
         </div>
         <div className="space-y-1.5">
           <Label>ประเภทงาน <span className="text-destructive">*</span></Label>
@@ -83,29 +66,20 @@ export function StepGeneral() {
           </ToggleGroup>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label>วันที่จัด <span className="text-destructive">*</span></Label>
-            <Input type="date" min={today} value={g.date} aria-invalid={!!err.date} onChange={(e) => set({ date: e.target.value })} />
-            {err.date ? <FieldError text={err.date} /> : <p className="text-xs text-muted-foreground">{formatThaiDate(g.date)}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label>เวลาเริ่ม <span className="text-destructive">*</span></Label>
-            <Input type="time" value={g.startTime} aria-invalid={!!err.startTime} onChange={(e) => set({ startTime: e.target.value })} />
-            <FieldError text={err.startTime} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>เวลาสิ้นสุด <span className="text-destructive">*</span></Label>
-            <Input
-              type="time"
-              min={g.startTime || undefined}
-              value={g.endTime}
-              aria-invalid={!!err.endTime}
-              onChange={(e) => set({ endTime: e.target.value })}
-            />
-            <FieldError text={err.endTime} />
-          </div>
-        </div>
+        {/* เริ่ม / จบ (งานข้ามวันได้ · วันจบว่าง = วันเดียวกับวันเริ่ม) */}
+        <DateTimeRange
+          required
+          minDate={today}
+          start={{ date: g.date, time: g.startTime }}
+          end={{ date: g.endDate || g.date, time: g.endTime }}
+          onStart={(v) =>
+            // เลื่อนวันเริ่มไปหลังวันจบเดิม → ล้างวันจบ (กลับเป็นวันเดียวกัน)
+            set({ date: v.date, startTime: v.time, ...(g.endDate && v.date > g.endDate ? { endDate: "" } : {}) })
+          }
+          onEnd={(v) => set({ endDate: v.date === g.date ? "" : v.date, endTime: v.time })}
+          startError={err.date || err.startTime}
+          endError={err.endTime}
+        />
         <div className="space-y-1.5">
           <Label>{g.mode === "onsite" ? "สถานที่" : "ลิงก์เข้าร่วม"} <span className="text-destructive">*</span></Label>
           <Input value={g.venue} onChange={(e) => set({ venue: e.target.value })} />

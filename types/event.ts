@@ -72,8 +72,10 @@ export interface EventDraft {
     email: string;
     showContact: boolean;
     mode: "onsite" | "online";
-    date: string; // yyyy-MM-dd
+    date: string; // yyyy-MM-dd (วันเริ่ม)
     startTime: string; // HH:mm
+    /** วันจบ (yyyy-MM-dd) · ไม่มี / ว่าง = วันเดียวกับวันเริ่ม · อยู่แค่ใน wizard store (store หลักยังไม่มีช่องนี้) */
+    endDate?: string;
     endTime: string;
     venue: string;
     spot: string;

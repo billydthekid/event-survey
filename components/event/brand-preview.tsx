@@ -59,7 +59,10 @@ export function PhonePreview({ d }: { d: EventDraft }) {
         </span>
         <p className="text-base font-bold">{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>
         <p className="text-xs" style={{ color: c.muted }}>
-          {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} – {g.endTime || "--:--"}
+          {/* งานข้ามวัน → แสดงวันจบด้วย */}
+          {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} –{" "}
+          {g.endDate && g.endDate !== g.date ? `${formatThaiDate(g.endDate, false)} · ` : ""}
+          {g.endTime || "--:--"}
         </p>
         {g.venue && <p className="text-xs" style={{ color: c.muted }}>{g.venue}</p>}
         <div className="mt-3 rounded-lg py-2.5 text-center text-sm font-semibold" style={{ background: c.button.bg, color: c.button.text }}>
