@@ -1,19 +1,16 @@
 // app/super/settings/page.tsx
 // หน้า Settings ของ Super Admin
-// ใช้การ์ดภาษา / เปลี่ยน password และฟังก์ชันบันทึกชุดเดียวกับหน้า Settings ของ Event Admin (app/admin/settings)
-// ต่างกันที่: การ์ดโปรไฟล์ (Role = Super Admin, ดูแลทุก Event) + การ์ดข้อมูลระบบ
+// การ์ดภาษา / เปลี่ยน password ใช้ชุดเดียวกับหน้า Settings ของ Event Admin (app/admin/settings)
+// ต่างกันที่การ์ดโปรไฟล์: Super Admin แก้ชื่อ, Username และหน่วยงานของตัวเองได้
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { KEEP_DAYS } from "@/lib/utils/status";
-import { visibleEvents } from "@/lib/utils/stats";
+import { makeUsername } from "@/lib/utils/username";
 import { User } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, toast } from "@/components/ui/toast";
-import { updateDisplayName } from "@/app/admin/settings/accountActions";
 import { Field, LanguageCard, READONLY, SettingsSection } from "@/app/admin/settings/LanguageCard";
 import { PasswordCard } from "@/app/admin/settings/PasswordCard";
 import { SettingsText, TEXT } from "@/app/admin/settings/text";
@@ -22,7 +19,8 @@ export default function SuperSettingsPage() {
   const user = useStore((s) => s.currentUser);
   // ยังไม่ login → super layout พาไป /login เอง
   if (!user) return null;
-  return <SettingsContent user={user} />;
+  // key = id → สลับบัญชีแล้วฟอร์มเริ่มใหม่จากข้อมูลของคนนั้น
+  return <SettingsContent key={user.id} user={user} />;
 }
 
 // ข้อความที่ต่างจากหน้า Event Admin (ที่เหลือใช้ของเดิม)
@@ -40,8 +38,8 @@ function superText(lang: User["lang"]): SettingsText {
       hint: th ? "ข้อมูลบัญชีผู้ดูแลระบบ" : "Administrator account details",
       role: "Super Admin",
       lockedHint: th
-        ? "Username และหน่วยงานแก้ไขได้ที่หน้าจัดการผู้ใช้"
-        : "Username and organization can be changed on the User management page",
+        ? "แก้ชื่อ, Username และหน่วยงานได้ · ถ้าเปลี่ยน Username ครั้งถัดไปให้ล็อกอินด้วยชื่อใหม่"
+        : "You can edit your name, username and organization · Sign in with the new username next time",
     },
     password: {
       ...base.password,
@@ -52,40 +50,59 @@ function superText(lang: User["lang"]): SettingsText {
   };
 }
 
+// ส่วนหน้าของ Username (ตัด .admin ท้ายออก) เช่น "thanaphat.admin" → "thanaphat"
+const baseOf = (username: string) => username.replace(/\.(admin|organizer|super|event)$/, "");
+
+type Errors = { name?: string; username?: string; org?: string };
+
 function SettingsContent({ user }: { user: User }) {
   const t = superText(user.lang);
   const th = user.lang === "th";
   const users = useStore((s) => s.users);
-  const events = useStore((s) => s.events);
-  const logs = useStore((s) => s.logs);
+  const addLog = useStore((s) => s.addLog);
 
-  // ----- ฟอร์มชื่อ (บันทึกเมื่อกดปุ่ม) -----
+  // ----- ฟอร์ม (บันทึกเมื่อกดปุ่ม) -----
   const [name, setName] = useState(user.name);
-  const [nameError, setNameError] = useState(false);
+  const [base, setBase] = useState(baseOf(user.username));
+  const [org, setOrg] = useState(user.org);
+  const [errors, setErrors] = useState<Errors>({});
+
+  const newUsername = makeUsername(base, user.role);
+  const changed =
+    name.trim() !== user.name || newUsername !== user.username || org.trim() !== user.org;
 
   const handleSave = () => {
-    const result = updateDisplayName(name);
-    if (!result.ok) {
-      setNameError(result.error === "empty");
-      return;
-    }
-    setName(name.trim());
+    const e: Errors = {};
+    if (name.trim() === "") e.name = t.profile.nameEmpty;
+    if (base.trim() === "") e.username = th ? "กรุณากรอก Username" : "Please enter a username";
+    else if (!/^[a-zA-Z0-9._-]+$/.test(base.trim()))
+      e.username = th ? "ใช้ได้เฉพาะ a-z, 0-9, จุด, ขีด" : "Use only a-z, 0-9, dot, dash";
+    else if (users.some((u) => u.id !== user.id && u.username === newUsername))
+      e.username = th ? "Username นี้มีคนใช้แล้ว" : "This username is already taken";
+    if (org.trim() === "") e.org = th ? "กรุณากรอกหน่วยงาน" : "Please enter an organization";
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
+
+    // อัปเดตทั้ง currentUser และ users[] ให้ตรงกัน (login ตรวจจาก users[])
+    const patch = { name: name.trim(), username: newUsername, org: org.trim() };
+    useStore.setState((s) => ({
+      currentUser: s.currentUser ? { ...s.currentUser, ...patch } : s.currentUser,
+      users: s.users.map((u) => (u.id === user.id ? { ...u, ...patch } : u)),
+    }));
+    addLog("update_profile", "user", user.id, "แก้ไขโปรไฟล์ของตัวเอง");
+    setName(patch.name);
+    setOrg(patch.org);
     toast.add({ type: "success", title: t.actions.saved });
   };
 
   const handleCancel = () => {
     setName(user.name);
-    setNameError(false);
+    setBase(baseOf(user.username));
+    setOrg(user.org);
+    setErrors({});
   };
 
-  // ----- ข้อมูลระบบ (อ่านอย่างเดียว) -----
-  const deletedCount = events.filter((e) => e.status === "deleted").length;
-  const stats = [
-    { label: th ? "บัญชีผู้ใช้" : "User accounts", value: users.length, href: "/super/users" },
-    { label: th ? "Event ที่ใช้งาน" : "Active events", value: visibleEvents(events).length, href: "/super/events" },
-    { label: th ? "รายการที่ถูกลบ" : "Deleted events", value: deletedCount, href: "/super/deleted" },
-    { label: th ? "Action Log" : "Action log entries", value: logs.length, href: "/super/action-log" },
-  ];
+  const err = (msg?: string) => msg && <p className="mt-1 text-xs text-red-500">{msg}</p>;
 
   return (
     <div>
@@ -104,33 +121,50 @@ function SettingsContent({ user }: { user: User }) {
             <Field label={<>{t.profile.nameLabel} <span className="text-red-500">*</span></>}>
               <Input
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setNameError(false);
-                }}
+                onChange={(e) => { setName(e.target.value); setErrors((x) => ({ ...x, name: undefined })); }}
                 placeholder={t.profile.namePlaceholder}
-                aria-invalid={nameError || undefined}
+                aria-invalid={!!errors.name || undefined}
                 className="h-10 bg-white"
               />
-              {nameError && <p className="mt-1 text-xs text-red-500">{t.profile.nameEmpty}</p>}
+              {err(errors.name)}
             </Field>
-            <Field label={t.profile.usernameLabel}>
-              <ReadonlyBox value={user.username} />
+
+            <Field label={<>{t.profile.usernameLabel} <span className="text-red-500">*</span></>}>
+              <div className="flex h-10 items-center rounded-lg border border-input bg-white pr-3 focus-within:ring-2 focus-within:ring-blue-500">
+                <input
+                  value={base}
+                  onChange={(e) => { setBase(e.target.value); setErrors((x) => ({ ...x, username: undefined })); }}
+                  aria-invalid={!!errors.username || undefined}
+                  className="h-full w-full bg-transparent px-2.5 text-sm outline-none"
+                />
+                <span className="text-sm text-slate-400">.admin</span>
+              </div>
+              {err(errors.username)}
             </Field>
-            <Field label={t.profile.orgLabel}>
-              <ReadonlyBox value={user.org} />
+
+            <Field label={<>{t.profile.orgLabel} <span className="text-red-500">*</span></>}>
+              <Input
+                value={org}
+                onChange={(e) => { setOrg(e.target.value); setErrors((x) => ({ ...x, org: undefined })); }}
+                aria-invalid={!!errors.org || undefined}
+                className="h-10 bg-white"
+              />
+              {err(errors.org)}
             </Field>
+
             <Field label={th ? "สิทธิ์การดูแล" : "Access"}>
-              <ReadonlyBox value={th ? "ทุก Event และทุกบัญชีผู้ใช้" : "All events and all user accounts"} />
+              <div className={`flex w-full items-center rounded-lg border px-2.5 text-sm ${READONLY}`}>
+                {th ? "ทุก Event และทุกบัญชีผู้ใช้" : "All events and all user accounts"}
+              </div>
             </Field>
           </div>
           <p className="mt-4 text-xs text-slate-500">{t.profile.lockedHint}</p>
 
           <div className="mt-5 flex justify-end gap-3">
-            <Button variant="secondary" onClick={handleCancel} className="h-10 px-4">
+            <Button variant="secondary" onClick={handleCancel} disabled={!changed} className="h-10 px-4">
               {t.actions.cancel}
             </Button>
-            <Button onClick={handleSave} className="h-10 bg-blue-600 px-4 text-white hover:bg-blue-700">
+            <Button onClick={handleSave} disabled={!changed} className="h-10 bg-blue-600 px-4 text-white hover:bg-blue-700">
               {t.actions.save}
             </Button>
           </div>
@@ -139,38 +173,9 @@ function SettingsContent({ user }: { user: User }) {
         {/* ===== ภาษา / password (การ์ดเดียวกับ Event Admin) ===== */}
         <LanguageCard lang={user.lang} t={t} />
         <PasswordCard t={t} />
-
-        {/* ===== ข้อมูลระบบ ===== */}
-        <SettingsSection
-          title={th ? "ข้อมูลระบบ" : "System"}
-          hint={th ? "ภาพรวมของระบบ กดเพื่อไปหน้าที่เกี่ยวข้อง" : "System overview, click to open the related page"}
-        >
-          <div className="grid gap-3 md:grid-cols-4">
-            {stats.map((s) => (
-              <Link key={s.href} href={s.href} className="rounded-xl bg-slate-50 p-4 hover:bg-slate-100">
-                <p className="text-xs text-slate-500">{s.label}</p>
-                <p className="mt-1 text-2xl font-bold">{s.value.toLocaleString("th-TH")}</p>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            {th
-              ? `Event ที่ถูกลบจะเก็บไว้ ${KEEP_DAYS} วัน แล้วลบถาวร · Organizer 1 คนดูแลได้ Event เดียว`
-              : `Deleted events are kept for ${KEEP_DAYS} days, then removed permanently · Each organizer manages one event`}
-          </div>
-        </SettingsSection>
       </div>
 
       <Toaster />
-    </div>
-  );
-}
-
-// กล่องแสดงค่าอ่านอย่างเดียว (แบบเดียวกับหน้า Settings ของ Event Admin)
-function ReadonlyBox({ value }: { value: string }) {
-  return (
-    <div className={`flex w-full items-center rounded-lg border px-2.5 text-base md:text-sm ${READONLY}`}>
-      <span className="truncate">{value}</span>
     </div>
   );
 }

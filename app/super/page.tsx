@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronDown, ClipboardCheck, Download, UserPlus, Users } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Download, UserPlus, Users } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { countByEvent, responseRate, summarize, topByRegistrations, visibleEvents } from "@/lib/utils/stats";
 import { downloadCSV } from "@/lib/utils/csv";
@@ -59,18 +59,12 @@ export default function SuperDashboard() {
   return (
     <div>
       {/* ---------- หัวข้อ ---------- */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-slate-400">ผู้ดูแลระบบ / ภาพรวมทุก Event</p>
-          <h1 className="mt-1 text-3xl font-bold">ภาพรวมทุก Event</h1>
-          <p className="mt-1 text-slate-500">
-            ติดตามกิจกรรม ผู้ลงทะเบียน และผลตอบรับทั้งระบบในฐานะ Super Admin
-          </p>
-        </div>
-        {/* ตอนนี้แสดงอย่างเดียว ยังเลือกช่วงเวลาไม่ได้ */}
-        <button className="flex items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm shadow-sm">
-          ทุกช่วงเวลา <ChevronDown size={16} />
-        </button>
+      <div>
+        <p className="text-sm text-slate-400">ผู้ดูแลระบบ / ภาพรวมทุก Event</p>
+        <h1 className="mt-1 text-3xl font-bold">ภาพรวมทุก Event</h1>
+        <p className="mt-1 text-slate-500">
+          ติดตามกิจกรรม ผู้ลงทะเบียน และผลตอบรับทั้งระบบในฐานะ Super Admin
+        </p>
       </div>
 
       {/* ---------- ปุ่มลัด ---------- */}
