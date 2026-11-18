@@ -19,6 +19,8 @@ import {
   findPublicEvent,
   getRegisterPhase,
   pick,
+  regClosesAt,
+  regOpensAt,
 } from "@/lib/public-event";
 import {
   Countdown,
@@ -210,16 +212,24 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
   const info = <EventInfo event={e} pal={pal} lang={lang} chip={t.chip} />;
 
   if (phase === "notOpen") {
+    const opens = regOpensAt(e); // ไม่ได้ตั้งเวลาเปิด → เวลาเริ่มงาน
     return shell(
       <>
         {info}
-        <StateMessage icon={Clock} tone="amber" pal={pal} title={t.notOpenTitle} lines={[t.notOpenAt(fmtDateTime(e.regOpen, lang)), t.notOpenSub]}>
-          <Countdown to={e.regOpen} lang={lang} pal={pal} />
+        <StateMessage
+          icon={Clock}
+          tone="amber"
+          pal={pal}
+          title={t.notOpenTitle}
+          lines={[opens ? t.notOpenAt(fmtDateTime(opens, lang)) : "", t.notOpenSub]}
+        >
+          <Countdown to={opens} lang={lang} pal={pal} />
         </StateMessage>
       </>
     );
   }
   if (phase === "closed") {
+    const closed = regClosesAt(e); // ไม่ได้ตั้งเวลาปิด → เวลาจบงาน
     return shell(
       <>
         {info}
@@ -228,7 +238,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
           tone="slate"
           pal={pal}
           title={t.closedTitle}
-          lines={[e.regClose ? t.closedAt(fmtDateTime(e.regClose, lang)) : "", t.closedSub]}
+          lines={[closed ? t.closedAt(fmtDateTime(closed, lang)) : "", t.closedSub]}
         />
       </>
     );

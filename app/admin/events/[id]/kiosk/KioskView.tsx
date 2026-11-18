@@ -25,6 +25,7 @@ const TEXT = {
     exitFullscreen: "ออกจากเต็มจอ",
     exit: "ออกจาก Kiosk",
     back: "ไปที่ Event ที่ได้รับมอบหมาย",
+    backHome: "กลับภาพรวมทุก Event",
     backDashboard: "กลับไป Dashboard",
     draft: "เผยแพร่ก่อนจึงเปิด Kiosk ได้",
     draftHint: "Event นี้ยังเป็นฉบับร่าง",
@@ -36,6 +37,7 @@ const TEXT = {
     exitFullscreen: "Exit fullscreen",
     exit: "Exit Kiosk",
     back: "Go to assigned event",
+    backHome: "Back to all events",
     backDashboard: "Back to Dashboard",
     draft: "Publish the event before opening Kiosk",
     draftHint: "This event is still a draft",
@@ -103,6 +105,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const user = useStore((s) => s.currentUser);
   const hydrated = useStore((s) => s.hydrated);
   const event = useStore((s) => s.events.find((e) => e.id === id));
+  const registeredCount = useStore((s) => s.registrations.filter((r) => r.eventId === id).length); // ใช้ตัดสิน "ที่นั่งเต็ม"
   const draft = useWizardStore((s) => s.drafts[id]); // ข้อมูลจาก Wizard (ถ้า Event Admin เคยแก้)
   const origin = useOrigin();
   const isFullscreen = useIsFullscreen();
@@ -128,15 +131,25 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
     }
   };
 
+  // จอนี้เปิดได้ 2 ทาง: Event Admin (/admin/events/<id>/kiosk) และ Super Admin (/super/events/<id>/kiosk)
+  // ปุ่มกลับ/ออก พากลับฝั่งของตัวเอง
+  const isSuper = user?.role === "admin";
+  const dashboardHref = isSuper ? `/super/events/${id}/dashboard` : `/admin/events/${id}`;
+  const homeHref = isSuper ? "/super" : "/admin";
+
   const handleExit = async () => {
     if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
-    router.push(`/admin/events/${id}`); // ออกจาก Kiosk → กลับ Dashboard ของ Event นี้
+    router.push(dashboardHref); // ออกจาก Kiosk → กลับ Dashboard ของ Event นี้
   };
 
   if (!hydrated) return null;
 
+  // Super Admin เปิดได้ทุก Event (ไม่ต้องเป็นผู้ดูแล) / Event Admin เปิดได้เฉพาะงานที่ได้รับมอบหมาย
   const allowed =
-    event !== undefined && event.status !== "deleted" && user !== null && event.adminIds.includes(user.id);
+    event !== undefined &&
+    event.status !== "deleted" &&
+    user !== null &&
+    (isSuper || event.adminIds.includes(user.id));
 
   // ---- กรณีเปิดจอไม่ได้: แสดงการ์ดแจ้ง admin (ไม่ใช่โปสเตอร์) ----
   if (!allowed || event.status === "draft") {
@@ -146,14 +159,14 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
           {!allowed && <ShieldAlert size={40} className="text-slate-400" />}
           <p className="text-2xl font-semibold">{allowed ? t.draft : t.notFound}</p>
           <p className="text-slate-500">{allowed ? t.draftHint : t.notFoundHint}</p>
-          {/* ไม่มีสิทธิ์ → /admin (พาไป Event ที่ได้รับมอบหมาย) | ยังเป็น Draft → Dashboard ของ Event นี้ */}
+          {/* ไม่มีสิทธิ์ → หน้าแรกของฝั่งตัวเอง | ยังเป็น Draft → Dashboard ของ Event นี้ */}
           <Button
             variant="ghost"
             nativeButton={false}
-            render={<Link href={allowed ? `/admin/events/${id}` : "/admin"} />}
+            render={<Link href={allowed ? dashboardHref : homeHref} />}
             className="mt-3 text-blue-600"
           >
-            <ArrowLeft /> {allowed ? t.backDashboard : t.back}
+            <ArrowLeft /> {allowed ? t.backDashboard : isSuper ? t.backHome : t.back}
           </Button>
         </Card>
       </div>
@@ -161,7 +174,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   }
 
   const model = buildKioskModel(event, draft);
-  const { scene, showRegister, showSurvey } = getKioskScene(model, now);
+  const sceneInfo = getKioskScene(model, now, registeredCount);
 
   // ย่อ/ขยายผืนผ้าใบให้พอดีจอ:
   // - จอแนวตั้งที่สูงกว่า 9:16 → กว้างเต็มจอ และผืนผ้าใบยืดสูงขึ้น (ไม่มีขอบ)
@@ -183,9 +196,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
         >
           <KioskScreen
             model={model}
-            scene={scene}
-            showRegister={showRegister}
-            showSurvey={showSurvey}
+            info={sceneInfo}
             lang={lang}
             setLang={setOverride}
             now={now}

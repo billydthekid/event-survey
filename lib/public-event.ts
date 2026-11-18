@@ -201,14 +201,42 @@ export function findPublicEvent(events: Event[], code: string): Event | undefine
   return events.find((e) => e.code.toLowerCase() === c && e.status !== "draft" && e.status !== "deleted");
 }
 
-// ============ สถานะของหน้า ============
+// ============ ช่วงเวลาเปิด-ปิด (ใช้ร่วมกัน: หน้า /r, หน้า /s และจอ Kiosk) ============
+// กฎ:
+// - เวลาที่ Event Admin ตั้งใน Wizard มาก่อนเสมอ
+// - ไม่ได้ตั้ง → ลงทะเบียนและแบบประเมิน เปิดตอนงานเริ่ม และปิดตอนงานจบ
+//   ("งานเริ่ม/จบ" ดูจากสถานะ Event: scheduled = ยังไม่เริ่ม, active = กำลังจัด, ended = จบแล้ว
+//    ให้ตรงกับป้ายสถานะใน Dashboard ทุกหน้า)
+export interface ScheduleInfo {
+  status: Event["status"];
+  date: string;
+  startTime: string;
+  endTime: string;
+  regOpen: string;
+  regClose: string;
+  maxAttendees: number;
+  surveyOpen: string;
+  surveyClose: string;
+  survey: { enabled: boolean };
+}
+
 const before = (iso: string, now: Date) => !!iso && now < new Date(iso);
 const after = (iso: string, now: Date) => !!iso && now > new Date(iso);
+const eventStart = (e: ScheduleInfo) => (e.date && e.startTime ? `${e.date}T${e.startTime}` : "");
+const eventEnd = (e: ScheduleInfo) => (e.date && e.endTime ? `${e.date}T${e.endTime}` : "");
+
+// เวลาที่ใช้แสดงบนจอ ("" = ไม่รู้เวลา → ไม่แสดงบรรทัดเวลา)
+export const regOpensAt = (e: ScheduleInfo) => e.regOpen || eventStart(e);
+export const regClosesAt = (e: ScheduleInfo) => e.regClose || eventEnd(e);
+export const surveyOpensAt = (e: ScheduleInfo) => e.surveyOpen || eventStart(e);
+export const surveyClosesAt = (e: ScheduleInfo) => e.surveyClose || eventEnd(e);
 
 // หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
 export type RegisterPhase = "open" | "notOpen" | "closed" | "full";
-export function getRegisterPhase(e: PublicEvent, now: Date, registeredCount: number): RegisterPhase {
-  if (before(e.regOpen, now)) return "notOpen";
+export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: number): RegisterPhase {
+  // ยังไม่เปิด: ถึงเวลาเปิดที่ตั้งไว้หรือยัง / ไม่ได้ตั้ง → รองานเริ่ม
+  if (e.regOpen ? before(e.regOpen, now) : e.status === "scheduled") return "notOpen";
+  // ปิดแล้ว: งานจบ หรือเลยเวลาปิดที่ตั้งไว้ (ลงทะเบียนหลังจบงานไม่มีความหมาย)
   if (e.status === "ended" || after(e.regClose, now)) return "closed";
   if (e.maxAttendees > 0 && registeredCount >= e.maxAttendees) return "full";
   return "open";
@@ -216,19 +244,12 @@ export function getRegisterPhase(e: PublicEvent, now: Date, registeredCount: num
 
 // หน้าแบบประเมิน: เปิด / ยังไม่เปิด / ปิดแล้ว / งานนี้ไม่มีแบบประเมิน
 export type SurveyPhase = "open" | "notOpen" | "closed" | "none";
-export function getSurveyPhase(e: PublicEvent, now: Date): SurveyPhase {
+export function getSurveyPhase(e: ScheduleInfo, now: Date): SurveyPhase {
   if (!e.survey.enabled) return "none";
-  if (before(e.surveyOpen, now)) return "notOpen";
-  // ไม่ได้ตั้งเวลาเปิด และงานยังไม่เริ่ม → ยังไม่เปิด (นับถอยหลังถึงเวลาเริ่มงาน)
-  if (!e.surveyOpen && e.status === "scheduled") return "notOpen";
-  if (after(e.surveyClose, now)) return "closed";
+  if (e.surveyOpen ? before(e.surveyOpen, now) : e.status === "scheduled") return "notOpen";
+  // ปิด: เลยเวลาที่ตั้งไว้ (เช่น หลังจบงาน 1 ชม.) / ไม่ได้ตั้ง → ปิดพร้อมงานจบ
+  if (e.surveyClose ? after(e.surveyClose, now) : e.status === "ended") return "closed";
   return "open";
-}
-
-// เวลาเริ่มของ Survey ที่ยังไม่เปิด (ใช้นับถอยหลัง)
-export function surveyOpensAt(e: PublicEvent): string {
-  if (e.surveyOpen) return e.surveyOpen;
-  return e.date && e.startTime ? `${e.date}T${e.startTime}` : "";
 }
 
 // ============ ตัวช่วยแสดงผล ============

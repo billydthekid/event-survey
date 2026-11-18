@@ -70,7 +70,7 @@ function EventDashboard() {
           <span className="rounded-lg bg-blue-50 p-2 text-blue-600"><QrCode size={18} /></span>
           <span className="text-sm font-semibold">QR ลงทะเบียน / Survey</span>
         </Link>
-        <Link href={eventPage} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
+        <Link href={`/super/events/${event.id}/kiosk`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
           <span className="rounded-lg bg-purple-50 p-2 text-purple-600"><TabletSmartphone size={18} /></span>
           <span className="text-sm font-semibold">เปิดหน้า Kiosk</span>
         </Link>

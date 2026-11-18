@@ -16,6 +16,7 @@ import {
   findPublicEvent,
   getSurveyPhase,
   pick,
+  surveyClosesAt,
   surveyOpensAt,
 } from "@/lib/public-event";
 import {
@@ -191,10 +192,17 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
     );
   }
   if (phase === "closed") {
+    const closed = surveyClosesAt(e); // ไม่ได้ตั้งเวลาปิด → เวลาจบงาน
     return shell(
       <>
         {info}
-        <StateMessage icon={Lock} tone="slate" pal={pal} title={t.closedTitle} lines={[t.closedAt(fmtDateTime(e.surveyClose, lang)), t.closedSub]} />
+        <StateMessage
+          icon={Lock}
+          tone="slate"
+          pal={pal}
+          title={t.closedTitle}
+          lines={[closed ? t.closedAt(fmtDateTime(closed, lang)) : "", t.closedSub]}
+        />
       </>
     );
   }

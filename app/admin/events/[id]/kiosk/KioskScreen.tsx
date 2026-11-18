@@ -11,7 +11,8 @@ import { th as thLocale } from "date-fns/locale";
 import { CalendarDays, Check, Clock, Lock, LogOut, MapPin, Maximize, Minimize, ScanLine } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { Lang } from "@/types";
-import { KioskModel, KioskScene } from "./kioskModel";
+import { regClosesAt, regOpensAt, surveyClosesAt, surveyOpensAt } from "@/lib/public-event";
+import { KioskModel, KioskScene, KioskSceneResult } from "./kioskModel";
 
 // ============ ข้อความ 2 ภาษา ============
 export const KIOSK_TEXT = {
@@ -34,7 +35,12 @@ export const KIOSK_TEXT = {
     closedDesc: "ปิดรับลงทะเบียนและแบบประเมินแล้ว · ขอบคุณทุกท่าน",
     regClosed: "ปิดรับลงทะเบียนแล้ว",
     regClosedHint: "ขอบคุณที่ให้ความสนใจ",
-    surveyLater: "แบบประเมินจะเปิดให้สแกนเมื่องานเริ่ม",
+    regNotOpen: "ยังไม่เปิดรับลงทะเบียน",
+    regOpensAt: (d: string) => `เปิดลงทะเบียน ${d}`,
+    regFull: "ที่นั่งเต็มแล้ว",
+    surveyLater: "แบบประเมินยังไม่เปิด",
+    surveyOpensAt: (d: string) => `เปิดให้ประเมิน ${d}`,
+    surveyClosed: "ปิดรับแบบประเมินแล้ว",
     noDate: "ยังไม่กำหนดวัน",
     hrs: " น.",
   },
@@ -57,7 +63,12 @@ export const KIOSK_TEXT = {
     closedDesc: "Registration and survey are closed · Thank you all",
     regClosed: "Registration is closed",
     regClosedHint: "Thank you for your interest",
-    surveyLater: "The survey QR will appear when the event starts",
+    regNotOpen: "Registration isn't open yet",
+    regOpensAt: (d: string) => `Registration opens ${d}`,
+    regFull: "This event is full",
+    surveyLater: "The survey isn't open yet",
+    surveyOpensAt: (d: string) => `Survey opens ${d}`,
+    surveyClosed: "The survey is closed",
     noDate: "Date not set",
     hrs: "",
   },
@@ -165,9 +176,7 @@ function titleSize(text: string) {
 // ============ จอ Kiosk หลัก ============
 export function KioskScreen({
   model: m,
-  scene,
-  showRegister,
-  showSurvey,
+  info,
   lang,
   setLang,
   now,
@@ -176,21 +185,21 @@ export function KioskScreen({
 }: {
   admin: KioskAdminControls;
   model: KioskModel;
-  scene: KioskScene;
-  showRegister: boolean;
-  showSurvey: boolean;
+  info: KioskSceneResult;
   lang: Lang;
   setLang: (l: Lang) => void;
   now: Date;
   origin: string;
 }) {
+  const { scene, showRegister, showSurvey } = info;
   const t = KIOSK_TEXT[lang];
   const pal = palette(m);
   const name = (lang === "en" && m.name.en) || m.name.th;
   const desc = (lang === "en" && m.desc.en) || m.desc.th;
   const registerUrl = origin ? `${origin}/r/${m.code}` : "";
   const surveyUrl = origin ? `${origin}/s/${m.code}` : "";
-  const regClosedByTime = !!m.regClose && now > new Date(m.regClose);
+  const regClose = regClosesAt(m);
+  const surveyClose = surveyClosesAt(m);
 
   return (
     // overflow-hidden: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
@@ -285,23 +294,19 @@ export function KioskScreen({
                 colors={pal.survey}
               />
             ) : (
-              // ไม่มี QR ให้แสดง (เช่น ปิดรับลงทะเบียนแล้ว)
-              <InfoCard
-                pal={pal}
-                title={regClosedByTime ? t.regClosed : t.surveyLater}
-                hint={regClosedByTime ? t.regClosedHint : ""}
-              />
+              // ไม่มี QR ให้แสดง → บอกเหตุผล (ยังไม่เปิด / ปิดแล้ว / เต็ม)
+              <InfoCard pal={pal} {...noQrMessage(m, info, lang, t)} />
             )}
 
-            {/* บรรทัดบอกเวลาปิด */}
-            {showRegister && !showSurvey && m.regClose && (
+            {/* บรรทัดบอกเวลาปิด (ไม่ได้ตั้ง = เวลาจบงาน) */}
+            {showRegister && !showSurvey && regClose && (
               <Hint pal={pal}>
-                {t.regUntil} {fmtDateTime(m.regClose, lang, t)}
+                {t.regUntil} {fmtDateTime(regClose, lang, t)}
               </Hint>
             )}
-            {showSurvey && !showRegister && m.surveyClose && (
+            {showSurvey && !showRegister && surveyClose && (
               <Hint pal={pal}>
-                {t.surveyUntil} {fmtDateTime(m.surveyClose, lang, t)}
+                {t.surveyUntil} {fmtDateTime(surveyClose, lang, t)}
               </Hint>
             )}
           </section>
@@ -562,15 +567,34 @@ function QrLink({ url, color }: { url: string; color: string }) {
   );
 }
 
+// ข้อความเมื่อไม่มี QR ให้สแกน — ดูจากสิ่งที่จอตั้งให้แสดง (ลงทะเบียนมาก่อน) แล้วบอกเหตุผล
+function noQrMessage(m: KioskModel, info: KioskSceneResult, lang: Lang, t: Text) {
+  const at = (iso: string, line: (d: string) => string) => (iso ? line(fmtDateTime(iso, lang, t)) : "");
+  const wantsRegister = m.screen !== "survey";
+  if (wantsRegister) {
+    if (info.reg === "notOpen") {
+      // K1: ยังไม่ถึงเวลาเปิดรับ (ไม่ได้ตั้ง = เปิดเมื่องานเริ่ม)
+      return { icon: "clock" as const, title: t.regNotOpen, hint: at(regOpensAt(m), t.regOpensAt) };
+    }
+    if (info.reg === "full") return { icon: "lock" as const, title: t.regFull, hint: t.regClosedHint };
+    if (info.reg === "closed") return { icon: "lock" as const, title: t.regClosed, hint: t.regClosedHint };
+  }
+  if (info.survey === "notOpen") {
+    return { icon: "clock" as const, title: t.surveyLater, hint: at(surveyOpensAt(m), t.surveyOpensAt) };
+  }
+  return { icon: "lock" as const, title: t.surveyClosed, hint: t.regClosedHint };
+}
+
 // ============ การ์ดข้อความ (ไม่มี QR ให้สแกน) ============
-function InfoCard({ pal, title, hint }: { pal: Palette; title: string; hint: string }) {
+function InfoCard({ pal, icon, title, hint }: { pal: Palette; icon: "clock" | "lock"; title: string; hint: string }) {
+  const Icon = icon === "clock" ? Clock : Lock;
   return (
     <div
       className="flex items-center gap-8 rounded-[36px] border px-12 py-12"
       style={{ background: pal.card, color: pal.cardText, borderColor: pal.cardBorder }}
     >
       <div className="flex size-[88px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-        <Lock size={40} />
+        <Icon size={40} />
       </div>
       <div>
         <p className="text-[40px] font-bold">{title}</p>
