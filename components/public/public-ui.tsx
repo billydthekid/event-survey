@@ -47,7 +47,8 @@ export function usePublicLang(): [Lang, (l: Lang) => void] {
 export interface Palette {
   mode: "light" | "dark" | "bold";
   primary: string;
-  page: string; // พื้นหลังส่วนเนื้อหา
+  page: string; // พื้นหลังส่วนเนื้อหา (สีพื้นหลังที่ Event Admin เลือกใน Wizard ถ้ามี)
+  pageImage: string; // รูปพื้นหลังจาก Wizard ("" = ไม่มี) แสดงรอบกรอบเนื้อหา
   text: string;
   muted: string;
   line: string;
@@ -61,10 +62,13 @@ export interface Palette {
 export function palette(e: Pick<PublicEvent, "theme"> | null): Palette {
   const primary = e?.theme.primary ?? "#2563EB";
   const mode = e?.theme.mode ?? "light";
+  // พื้นหลังจาก Wizard: สีที่เลือกเอง (ทุกธีม เหมือนตัวอย่างใน Wizard) / สีเดิมใน Event (เฉพาะ Light)
+  const bg = e?.theme.background;
+  const pageImage = bg?.image ?? "";
   if (mode === "dark") {
     return {
-      mode, primary,
-      page: "#0F172A", text: "#F8FAFC", muted: "#94A3B8", line: "rgba(255,255,255,0.10)",
+      mode, primary, pageImage,
+      page: bg?.custom || "#0F172A", text: "#F8FAFC", muted: "#94A3B8", line: "rgba(255,255,255,0.10)",
       input: "#1E293B", inputText: "#F8FAFC",
       head: { bg: "#0F172A", text: "#F8FAFC", muted: "#94A3B8", line: "rgba(255,255,255,0.10)" },
       chip: { bg: `${primary}40`, text: "#E0E7FF" },
@@ -73,17 +77,19 @@ export function palette(e: Pick<PublicEvent, "theme"> | null): Palette {
   }
   const light = {
     page: "#FFFFFF", text: "#0F172A", muted: "#64748B", line: "#E2E8F0",
-    input: "#F1F5F9", inputText: "#0F172A", soft: `${primary}14`,
+    input: "#F1F5F9", inputText: "#0F172A", soft: `${primary}14`, pageImage,
   };
   if (mode === "bold") {
     return {
       mode, primary, ...light,
+      page: bg?.custom || light.page,
       head: { bg: primary, text: "#FFFFFF", muted: "rgba(255,255,255,0.8)", line: "rgba(255,255,255,0.2)" },
       chip: { bg: "rgba(255,255,255,0.2)", text: "#FFFFFF" },
     };
   }
   return {
     mode, primary, ...light,
+    page: bg?.custom || bg?.base || light.page,
     head: { bg: "#FFFFFF", text: "#0F172A", muted: "#64748B", line: "#E2E8F0" },
     chip: { bg: `${primary}1A`, text: primary },
   };
@@ -93,11 +99,18 @@ export function palette(e: Pick<PublicEvent, "theme"> | null): Palette {
 export function fmtDay(d: Date, lang: Lang) {
   return lang === "th" ? format(d, "EEE d MMM", { locale: thLocale }) : format(d, "EEE, d MMM");
 }
-// "ศ. 30 ต.ค. · 09:00–16:00 น."
-export function fmtEventWhen(e: PublicEvent, lang: Lang) {
+// วันเดียว: "ศ. 30 ต.ค. · 09:00–16:00 น."
+// หลายวัน:  "ศ. 30 ต.ค. 09:00 – ส. 31 ต.ค. 16:00 น." (แบบเดียวกับตัวอย่างใน Wizard)
+export function fmtEventWhen(e: Pick<PublicEvent, "date" | "endDate" | "startTime" | "endTime">, lang: Lang) {
   if (!e.date) return lang === "th" ? "ยังไม่กำหนดวัน" : "Date not set";
-  const time = e.startTime ? ` · ${e.startTime}–${e.endTime}${lang === "th" ? " น." : ""}` : "";
-  return fmtDay(new Date(`${e.date}T00:00`), lang) + time;
+  const hrs = lang === "th" ? " น." : "";
+  const start = fmtDay(new Date(`${e.date}T00:00`), lang);
+  if (e.endDate && e.endDate !== e.date) {
+    const end = fmtDay(new Date(`${e.endDate}T00:00`), lang);
+    return e.startTime ? `${start} ${e.startTime} – ${end} ${e.endTime}${hrs}` : `${start} – ${end}`;
+  }
+  const time = e.startTime ? ` · ${e.startTime}–${e.endTime}${hrs}` : "";
+  return start + time;
 }
 // "ศ. 30 ต.ค. · 09:12 น."
 export function fmtDateTime(input: string | Date, lang: Lang) {
@@ -130,9 +143,13 @@ export function PublicShell({
     };
   }, [pal.page]);
 
+  // รูปพื้นหลังจาก Wizard: แสดงรอบกรอบเนื้อหา (เห็นบนแท็บเล็ต/คอม) · ตัวเนื้อหาใช้สีพื้นทึบ → ฟอร์มอ่านง่ายเสมอ
+  const outer: React.CSSProperties = pal.pageImage
+    ? { backgroundColor: pal.page, backgroundImage: `url("${pal.pageImage}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }
+    : { background: pal.page };
   return (
-    <div className="min-h-dvh" style={{ background: pal.page, color: pal.text }}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
+    <div className="min-h-dvh" style={{ ...outer, color: pal.text }}>
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col" style={pal.pageImage ? { background: pal.page } : undefined}>
         <header style={{ background: pal.head.bg, color: pal.head.text }}>
           <div className="flex items-center justify-between gap-3 px-5 py-3.5">
             <div className="flex min-w-0 items-center gap-2.5">

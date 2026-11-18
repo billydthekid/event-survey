@@ -2,16 +2,26 @@
 // รวมข้อมูลที่จอ Kiosk ต้องใช้ให้อยู่ในก้อนเดียว + ตัดสินว่าต้องแสดงหน้าจอแบบไหน
 //
 // แหล่งข้อมูล 2 ที่:
-// - store หลัก (Event)      → สถานะ, kiosk.screen, รูปโฆษณา (adImage), โลโก้, สิทธิ์
-// - wizard store (EventDraft) → ข้อมูลที่ Event Admin กรอกใน Wizard (ชื่อ/รายละเอียด TH-EN, Theme, ช่วงเวลา, Survey)
-//   ถ้ามี draft ของ id นี้ ใช้ draft ก่อน (ใหม่กว่า) ถ้าไม่มีใช้ค่าจาก Event
+// - store หลัก (Event)      → สถานะ, kiosk.screen, รูปโฆษณา (adImage), สิทธิ์
+// - wizard store (EventDraft) → ข้อมูลที่ Event Admin กรอกใน Wizard (ชื่อ/รายละเอียด TH-EN, วันจบ, Theme,
+//   โลโก้, พื้นหลัง, ช่วงเวลา, Survey, Event ปิด) · ถ้ามี draft ของ id นี้ ใช้ draft ก่อน ไม่มีใช้ค่าจาก Event
 import type { Event } from "@/types";
 import type { EventDraft } from "@/types/event";
-import { getReportData } from "../report/mockData";
+import {
+  buildPublicEvent,
+  getEventPhase,
+  getRegisterPhase,
+  getSurveyPhase,
+  type RegisterPhase,
+  type ScheduleInfo,
+  type SurveyPhase,
+  type ThemeBackground,
+} from "@/lib/public-event";
 
 export type KioskThemeMode = "light" | "dark" | "bold";
 
-export interface KioskModel {
+// ช่วงเวลาเปิด-ปิด (ScheduleInfo) ใช้ค่าเดียวกับหน้า /r และ /s → จอ Kiosk กับหน้ามือถือไม่ขัดกัน
+export interface KioskModel extends ScheduleInfo {
   code: string;
   name: { th: string; en: string };
   desc: { th: string; en: string };
@@ -21,15 +31,12 @@ export interface KioskModel {
   startTime: string; // HH:mm
   endTime: string;
   venue: string;
-  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: string };
-  logo?: string; // URL รูปโลโก้ (ไม่มี = ใช้ตัวอักษรย่อ)
+  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: ThemeBackground };
+  logo?: string; // URL รูปโลโก้ (ไม่มี = โลโก้ระบบ)
+  closed: boolean; // Event ปิด → แบบประเมินสำหรับผู้ที่ลงทะเบียนแล้วเท่านั้น
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
   adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้น Branding)
   screen: Event["kiosk"]["screen"];
-  status: Event["status"];
-  regClose: string; // yyyy-MM-ddTHH:mm ("" = ไม่กำหนด)
-  surveyEnabled: boolean;
-  surveyClose: string;
 }
 
 // รูปจาก Wizard ที่มีไฟล์จริง · ไม่มีเลย = undefined (ใช้รูปของ store หลักแทน)
@@ -41,73 +48,73 @@ function draftAds(draft?: EventDraft): string[] | undefined {
 export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
   const g = draft?.general;
   const th = draft?.theme;
+  const pub = buildPublicEvent(event, draft); // ช่วงเวลา + Survey เปิดอยู่ไหม (ชุดเดียวกับหน้า /r, /s)
   return {
     code: event.code,
     name: { th: g?.nameTh || event.name.th, en: g?.nameEn || event.name.en || "" },
     desc: { th: g?.descTh || event.description.th, en: g?.descEn || event.description.en || "" },
     organizer: g?.organizer || event.organizerName,
     contactEmail: (g ? g.showContact : event.showContact) ? g?.email || event.email || "" : "",
-    date: g?.date || event.date,
-    startTime: g?.startTime || event.startTime,
-    endTime: g?.endTime || event.endTime,
-    venue: [g?.venue || event.venue, g?.spot || event.meetingPoint].filter(Boolean).join(" · "),
+    date: pub.date,
+    endDate: pub.endDate,
+    startTime: pub.startTime,
+    endTime: pub.endTime,
+    venue: pub.venue,
     theme: {
-      primary: th?.primary || event.theme.primary,
+      primary: pub.theme.primary,
       secondary: th?.secondary || event.theme.secondary,
-      mode: th?.mode || event.theme.kind,
-      background: event.theme.background.type === "color" ? event.theme.background.value : "#FFFFFF",
+      mode: pub.theme.mode,
+      background: pub.theme.background,
     },
-    logo: event.theme.logo,
+    logo: pub.logo,
+    closed: pub.closed,
     // รูปโฆษณา: Wizard (รูปที่ crop 16:9 แล้ว) → รูปเดิมใน store หลัก
     ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : []),
     adSeconds: draft?.ads?.seconds || 6,
     screen: event.kiosk.screen,
     status: event.status,
-    regClose: draft?.schedule.regClose || event.registration.closesAt,
-    // Survey เปิดอยู่ถ้าแหล่งใดแหล่งหนึ่งบอกว่าเปิด: Wizard / Event / ข้อมูล mock ที่ Dashboard-Report ใช้
-    // (store หลักยังไม่เก็บ event.survey → ต้องดู mock ของ Report ด้วย ไม่งั้นจะไม่ตรงกับ Dashboard)
-    surveyEnabled:
-      !!draft?.survey.enabled || !!event.survey?.enabled || !!getReportData(event.id)?.survey.enabled,
-    surveyClose: draft?.schedule.surveyClose || event.surveyWindow.closesAt,
+    regOpen: pub.regOpen,
+    regClose: pub.regClose,
+    maxAttendees: pub.maxAttendees,
+    surveyOpen: pub.surveyOpen,
+    surveyClose: pub.surveyClose,
+    survey: { enabled: pub.survey.enabled },
   };
 }
 
 // ============ หน้าจอที่ต้องแสดง (ตรงกับ frame ใน Figma) ============
-// upcoming  = K1 ยังไม่เริ่ม (นับถอยหลัง + QR ลงทะเบียน)
+// upcoming  = K1 ยังไม่เริ่ม (นับถอยหลัง · QR ลงทะเบียนโผล่เมื่อถึงเวลาเปิดรับ)
 // live      = K2/K3 กำลังจัดงาน (QR ตาม kiosk.screen)
 // thanks    = K4 จบงานแล้ว แต่ Survey ยังเปิด (QR แบบประเมินอย่างเดียว)
 // closed    = K5 ปิดแล้ว (ไม่มี QR)
 export type KioskScene = "upcoming" | "live" | "thanks" | "closed";
 
-const passed = (iso: string, now: Date) => !!iso && now > new Date(iso);
+export interface KioskSceneResult {
+  scene: KioskScene;
+  showRegister: boolean;
+  showSurvey: boolean;
+  reg: RegisterPhase; // ใช้บอกเหตุผลเมื่อไม่มี QR (ยังไม่เปิด / ปิดแล้ว / เต็ม)
+  survey: SurveyPhase;
+}
 
-export function getKioskScene(m: KioskModel, now: Date) {
-  // สถานะหลักใช้ตามที่ระบบเก็บไว้ (ตรงกับ Dashboard/ป้ายสถานะทุกหน้า)
-  // เวลาปัจจุบันใช้แค่ตัดสินว่า "ช่วงรับลงทะเบียน / ช่วงตอบ Survey" ยังเปิดอยู่ไหม
-  const regOpen = !passed(m.regClose, now);
-  const surveyOpen = m.surveyEnabled && !passed(m.surveyClose, now);
+export function getKioskScene(m: KioskModel, now: Date, registeredCount: number): KioskSceneResult {
+  // QR โผล่ก็ต่อเมื่อหน้ามือถือที่ QR พาไป "เปิดรับอยู่จริง" (กฎเดียวกับ /r และ /s)
+  const reg = getRegisterPhase(m, now, registeredCount);
+  const survey = getSurveyPhase(m, now);
 
   const wantsRegister = m.screen === "register" || m.screen === "both";
   const wantsSurvey = m.screen === "survey" || m.screen === "both";
+  const showRegister = wantsRegister && reg === "open";
+  const showSurvey = wantsSurvey && survey === "open";
 
-  if (m.status === "ended") {
-    // จบงาน: ลงทะเบียนปิดเสมอ / Survey ตอบต่อได้ถ้ายังอยู่ในช่วงเวลา
-    return wantsSurvey && surveyOpen
-      ? { scene: "thanks" as const, showRegister: false, showSurvey: true }
-      : { scene: "closed" as const, showRegister: false, showSurvey: false };
-  }
+  // หน้าจอหลักตามช่วงของงาน (ดูวัน-เวลาจริง แบบเดียวกับ Event Admin · ไม่มีวันเวลา → ใช้สถานะ)
+  const phase = getEventPhase(m, now);
+  let scene: KioskScene;
+  if (phase === "ended") scene = showSurvey ? "thanks" : "closed";
+  else if (phase === "upcoming") scene = "upcoming";
+  else scene = "live";
 
-  if (m.status === "scheduled") {
-    // ยังไม่เริ่ม: แสดงเฉพาะ QR ลงทะเบียน (Survey ยังตอบไม่ได้)
-    return { scene: "upcoming" as const, showRegister: wantsRegister && regOpen, showSurvey: false };
-  }
-
-  // active
-  return {
-    scene: "live" as const,
-    showRegister: wantsRegister && regOpen,
-    showSurvey: wantsSurvey && m.surveyEnabled,
-  };
+  return { scene, showRegister, showSurvey, reg, survey };
 }
 
 // ตัวย่อจากคำภาษาอังกฤษในข้อความ: 2 คำขึ้นไป → อักษรแรกของ 2 คำแรก / 1 คำ → 2 ตัวแรก

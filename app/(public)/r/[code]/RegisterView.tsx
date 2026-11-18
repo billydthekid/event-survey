@@ -19,6 +19,8 @@ import {
   findPublicEvent,
   getRegisterPhase,
   pick,
+  regClosesAt,
+  regOpensAt,
 } from "@/lib/public-event";
 import {
   Countdown,
@@ -210,16 +212,24 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
   const info = <EventInfo event={e} pal={pal} lang={lang} chip={t.chip} />;
 
   if (phase === "notOpen") {
+    const opens = regOpensAt(e); // ไม่ได้ตั้งเวลาเปิด → เวลาเริ่มงาน
     return shell(
       <>
         {info}
-        <StateMessage icon={Clock} tone="amber" pal={pal} title={t.notOpenTitle} lines={[t.notOpenAt(fmtDateTime(e.regOpen, lang)), t.notOpenSub]}>
-          <Countdown to={e.regOpen} lang={lang} pal={pal} />
+        <StateMessage
+          icon={Clock}
+          tone="amber"
+          pal={pal}
+          title={t.notOpenTitle}
+          lines={[opens ? t.notOpenAt(fmtDateTime(opens, lang)) : "", t.notOpenSub]}
+        >
+          <Countdown to={opens} lang={lang} pal={pal} />
         </StateMessage>
       </>
     );
   }
   if (phase === "closed") {
+    const closed = regClosesAt(e); // ไม่ได้ตั้งเวลาปิด → เวลาจบงาน
     return shell(
       <>
         {info}
@@ -228,7 +238,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
           tone="slate"
           pal={pal}
           title={t.closedTitle}
-          lines={[e.regClose ? t.closedAt(fmtDateTime(e.regClose, lang)) : "", t.closedSub]}
+          lines={[closed ? t.closedAt(fmtDateTime(closed, lang)) : "", t.closedSub]}
         />
       </>
     );
@@ -364,11 +374,9 @@ function FieldInput({
     const opts = GENDER_OPTIONS.map((g) => ({ value: g.value, label: pick(g.label, lang) }));
     control = <Segmented pal={pal} error={error} options={opts} value={str} onChange={onChange} label={label} />;
   } else if (f.type === "dropdown" && options.length > 0) {
-    // ตัวเลือกน้อยและสั้น (เช่น S/M/L/XL) → ปุ่มเรียงแถว / นอกนั้น → dropdown
-    const short = options.length <= 4 && options.every((o) => o.label.length <= 6);
-    control = short ? (
-      <Segmented pal={pal} error={error} options={options} value={str} onChange={onChange} label={label} />
-    ) : (
+    // Dropdown เสมอ ตามประเภทที่ Event Admin เลือก (ตรงกับตัวอย่างใน Wizard)
+    // อยากได้แบบปุ่ม/วงกลม → Event Admin เลือกประเภท "ตัวเลือกเดียว" (radio) แทน
+    control = (
       <SelectInput id={inputId} pal={pal} error={error} placeholder={t.ph.select} options={options} value={str} onChange={onChange} describedBy={error ? errId : undefined} />
     );
   } else if (f.type === "multi" && options.length > 0) {
@@ -416,7 +424,7 @@ function FieldInput({
   return (
     <div id={`field-${f.id}`} className="scroll-mt-24">
       <FieldLabel
-        htmlFor={isChoice(f) ? undefined : inputId}
+        htmlFor={isChoice(f) && f.type !== "dropdown" ? undefined : inputId} // dropdown เป็นกล่องเลือกจริง → ผูก label ได้
         label={label}
         required={f.required}
         note={f.required ? undefined : t.optional}
