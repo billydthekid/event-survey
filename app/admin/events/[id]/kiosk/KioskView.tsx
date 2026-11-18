@@ -2,7 +2,7 @@
 // จอ Kiosk เต็มจอ เปิดทิ้งไว้ที่หน้างานให้ผู้เข้าร่วมสแกน QR (ดีไซน์ตาม Figma K1–K5)
 // (Client Component เพราะใช้ store, state, นาฬิกา และ Fullscreen API ของเบราว์เซอร์)
 //
-// ไฟล์นี้ดูแล: ตรวจสิทธิ์ · เลือกภาษา · ย่อ/ขยายผืนผ้าใบ 1080 px ให้พอดีจอ · ปุ่มเต็มจอ/ออก
+// ไฟล์นี้ดูแล: ตรวจสิทธิ์ · เลือกภาษา · เลือกแนวตั้ง/แนวนอนตามจอ + ย่อ/ขยายให้เต็มจอ · ปุ่มเต็มจอ/ออก
 // หน้าตาจอจริงอยู่ใน KioskScreen.tsx · การตัดสินว่าแสดงหน้าไหนอยู่ใน kioskModel.ts
 "use client";
 import { use, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -16,7 +16,7 @@ import { Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { buildKioskModel, getKioskScene } from "./kioskModel";
-import { KioskScreen, pageColor } from "./KioskScreen";
+import { KioskScreen, pageColor, type KioskLayout } from "./KioskScreen";
 
 // ============ ข้อความของปุ่ม/หน้าแจ้งเตือนฝั่ง admin ============
 const TEXT = {
@@ -46,9 +46,12 @@ const TEXT = {
   },
 };
 
-// ผืนผ้าใบออกแบบที่ 1080×1920 (Full HD แนวตั้ง)
+// ผืนผ้าใบออกแบบที่ 1080×1920 (Full HD แนวตั้ง) และ 1920×1080 (Full HD แนวนอน)
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
+const PORTRAIT_MIN_H = 1400; // จอแนวตั้งที่เตี้ยสุดที่ยังวางรูป + ชื่องาน + QR ได้ครบ (3:4 = 1440)
+const LANDSCAPE_H = 1080;
+const LANDSCAPE_RATIO = 1.2; // กว้าง/สูง ตั้งแต่ค่านี้ใช้เลย์เอาต์แนวนอน
 
 // ============ hooks อ่านค่าจากเบราว์เซอร์ (ฝั่ง server ไม่มี window/document) ============
 const noopSubscribe = () => () => {};
@@ -176,10 +179,13 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const model = buildKioskModel(event, draft);
   const sceneInfo = getKioskScene(model, now, registeredCount);
 
-  // ย่อ/ขยายผืนผ้าใบให้พอดีจอ:
-  // - จอแนวตั้งที่สูงกว่า 9:16 → กว้างเต็มจอ และผืนผ้าใบยืดสูงขึ้น (ไม่มีขอบ)
-  // - จอแนวนอน (เช่น ทดสอบบน notebook) → สูงเต็มจอ วางกลาง ขอบซ้าย-ขวาเป็นสีพื้นหลัง
-  const scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
+  // ย่อ/ขยายผืนผ้าใบให้เต็มจอพอดี (ไม่มีขอบว่าง ไม่มี scroll) — เลือกเลย์เอาต์จากสัดส่วนจอ:
+  // - แนวนอน (กว้าง ≥ 1.2 เท่าของสูง เช่น 16:9) → ผืนสูง 1080 px กว้างตามจอ (16:9 = 1920 × 1080)
+  // - แนวตั้ง (9:16, 3:4, 1:1)                → ผืนกว้างอย่างน้อย 1080 px และสูงอย่างน้อย 1400 px
+  //   9:16 = 1080 × 1920 · 3:4 = 1080 × 1440 · 1:1 = 1400 × 1400 (รูปโฆษณาหดเองเมื่อจอเตี้ย)
+  const layout: KioskLayout = vw / vh >= LANDSCAPE_RATIO ? "landscape" : "portrait";
+  const scale = layout === "landscape" ? vh / LANDSCAPE_H : Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
+  const canvasW = vw / scale;
   const canvasH = vh / scale;
 
   return (
@@ -187,29 +193,26 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       ref={rootRef}
       onPointerMove={controls.poke}
       onPointerDown={controls.poke}
-      className="fixed inset-0 z-50 flex justify-center overflow-hidden"
+      className="fixed inset-0 z-50 overflow-hidden"
       style={{ background: pageColor(model) }}
     >
-      <div style={{ width: CANVAS_W * scale, height: vh }}>
-        <div
-          style={{ width: CANVAS_W, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}
-        >
-          <KioskScreen
-            model={model}
-            info={sceneInfo}
-            lang={lang}
-            setLang={setOverride}
-            now={now}
-            origin={origin}
-            admin={{
-              visible: controls.visible,
-              isFullscreen,
-              onToggleFullscreen: toggleFullscreen,
-              onExit: handleExit,
-              labels: { fullscreen: t.fullscreen, exitFullscreen: t.exitFullscreen, exit: t.exit },
-            }}
-          />
-        </div>
+      <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <KioskScreen
+          model={model}
+          info={sceneInfo}
+          layout={layout}
+          lang={lang}
+          setLang={setOverride}
+          now={now}
+          origin={origin}
+          admin={{
+            visible: controls.visible,
+            isFullscreen,
+            onToggleFullscreen: toggleFullscreen,
+            onExit: handleExit,
+            labels: { fullscreen: t.fullscreen, exitFullscreen: t.exitFullscreen, exit: t.exit },
+          }}
+        />
       </div>
     </div>
   );
