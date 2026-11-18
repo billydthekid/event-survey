@@ -305,14 +305,10 @@ export default function UsersPage() {
 
       {/* ================= Modal สร้างบัญชี (กลางจอ) ================= */}
       {drawerOpen && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4"
-          onClick={closeDrawer}
-        >
-          <div
-            className="flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        // ปิดได้ทางปุ่ม X / ยกเลิก เท่านั้น (คลิกพื้นหลังหรือเลื่อนจอไม่ปิด กันข้อมูลที่กรอกหาย)
+        // overscroll-contain: เลื่อนในกล่องแล้วไม่ลามไปเลื่อนหน้าข้างหลัง
+        <div className="fixed inset-0 z-40 flex items-center justify-center overscroll-contain bg-slate-900/40 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-[520px] flex-col overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">เพิ่มผู้ใช้</h2>
               <button onClick={closeDrawer} aria-label="ปิด">
