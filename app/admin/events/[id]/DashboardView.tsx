@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useEventAccess } from "./eventAccess";
 import { ReportData } from "./report/mockData";
 import { pct, summarize, tr } from "./report/summary";
-import { respondedRegistrationIds } from "./report/people";
+import { respondedRegistrationIds, responseCounts } from "./report/people";
 import { Donut, HBar, VBars, type VBar } from "./report/charts";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
@@ -34,6 +34,7 @@ const TEXT = {
     latestAt: (time: string) => `คนล่าสุด ${time} น.`,
     answered: "ตอบ Survey",
     notAnswered: (n: number) => `ยังไม่ตอบ ${n} คน`,
+    anonymousN: (n: number) => `ไม่ระบุชื่อ ${n}`, // คำตอบที่ไม่โยงกับผู้ลงทะเบียน (แสดงเมื่อ > 0)
     rate: "Response rate",
     rateOf: (a: number, b: number) => `${a} จาก ${b} คน`,
     remaining: "เหลือเวลา",
@@ -85,6 +86,7 @@ const TEXT = {
     latestAt: (time: string) => `Latest at ${time}`,
     answered: "Survey responses",
     notAnswered: (n: number) => `${n} not answered yet`,
+    anonymousN: (n: number) => `Anonymous ${n}`,
     rate: "Response rate",
     rateOf: (a: number, b: number) => `${a} of ${b} people`,
     remaining: "Time left",
@@ -252,8 +254,9 @@ function Shortcuts({ eventId, t }: { eventId: string; t: Text }) {
 
 // ============ แถบ KPI 4 ช่อง ============
 function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang: Lang; t: Text }) {
-  const regs = data.registrations.length;      // 46
-  const responded = data.responses.length;     // 31
+  // นับเป็น "คน" จาก responseCounts (people.ts) → ตรงกับแท็บผู้เข้าร่วม และไม่เกิน 100%
+  // เช่น Workshop: regs 46, responded 31, notYet 15, anonymous 0
+  const { registered: regs, responded, notYet, anonymous } = responseCounts(data);
 
   // เวลาของคนลงทะเบียนล่าสุด เช่น "2026-10-23T10:15:00+07:00" → "10:15"
   const latest = data.registrations.map((r) => r.createdAt).sort().at(-1);
@@ -262,8 +265,13 @@ function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang
   return (
     <div className="grid rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:grid-cols-4 md:divide-x md:divide-slate-100">
       <KpiCell label={t.registered} value={String(regs)} sub={t.latestAt(latestTime)} />
-      {/* ยังไม่ตอบ = ผู้ลงทะเบียน − ผู้ตอบ เช่น 46 − 31 = 15 (ไม่ติดลบ) */}
-      <KpiCell label={t.answered} value={String(responded)} sub={t.notAnswered(Math.max(0, regs - responded))} />
+      {/* ยังไม่ตอบ = ผู้ลงทะเบียน − ผู้ตอบ เช่น 46 − 31 = 15 · มีคำตอบไม่ระบุชื่อ → บรรทัดย่อย "ไม่ระบุชื่อ 1" */}
+      <KpiCell
+        label={t.answered}
+        value={String(responded)}
+        sub={t.notAnswered(notYet)}
+        note={anonymous > 0 ? t.anonymousN(anonymous) : undefined}
+      />
       {/* 31 ÷ 46 = 0.673… → 67% (pct ตัวเดียวกับหน้า Report) */}
       <KpiCell label={t.rate} value={`${pct(responded, regs)}%`} sub={t.rateOf(responded, regs)} />
       <RemainingCell event={event} t={t} />
@@ -271,12 +279,14 @@ function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang
   );
 }
 
-function KpiCell({ label, value, sub }: { label: string; value: string; sub: string }) {
+// note (ไม่บังคับ) = บรรทัดย่อยที่ 2 เช่น "ไม่ระบุชื่อ 1"
+function KpiCell({ label, value, sub, note }: { label: string; value: string; sub: string; note?: string }) {
   return (
     <div className="px-5 py-4">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1 text-4xl font-bold">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{sub}</p>
+      {note && <p className="text-xs text-slate-400">{note}</p>}
     </div>
   );
 }
@@ -399,9 +409,8 @@ function SlotChart({ event, data, t }: { event: Event; data: ReportData; t: Text
 // ============ โดนัท "ตอบ Survey แล้ว" ============
 // ใช้ Donut เดิมจาก charts.tsx: ส่วนน้ำเงิน = ตอบแล้ว 31, ส่วนเทา = ยังไม่ตอบ 15
 function RespondedDonut({ data, t }: { data: ReportData; t: Text }) {
-  const regs = data.registrations.length;
-  const responded = data.responses.length;
-  const notYet = Math.max(0, regs - responded);
+  // ตัวเลขชุดเดียวกับ KPI (responseCounts) — คำตอบไม่ระบุชื่อไม่อยู่ในโดนัท แต่บอกไว้ใต้คำอธิบาย
+  const { registered: regs, responded, notYet, anonymous } = responseCounts(data);
   return (
     <div className="flex flex-col rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-2">
       <p className="font-semibold">{t.responded}</p>
@@ -422,6 +431,7 @@ function RespondedDonut({ data, t }: { data: ReportData; t: Text }) {
             <span className="h-2 w-2 rounded-full bg-slate-200" /> {t.notRespondedN(notYet)}
           </span>
         </div>
+        {anonymous > 0 && <p className="text-xs text-slate-400">{t.anonymousN(anonymous)}</p>}
       </div>
     </div>
   );

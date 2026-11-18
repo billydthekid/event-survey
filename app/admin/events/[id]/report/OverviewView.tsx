@@ -7,12 +7,14 @@ import { Card } from "@/components/ui/card";
 import { useReport } from "./ReportShell";
 import { Donut, HBar } from "./charts";
 import { Gender } from "./mockData";
+import { responseCounts } from "./people";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
 const TEXT = {
   th: {
     registered: "ผู้ลงทะเบียนทั้งหมด",
     responded: "ผู้ตอบแบบสอบถาม",
+    anonymousN: (n: number) => `ไม่ระบุชื่อ ${n}`, // คำตอบที่ไม่โยงกับผู้ลงทะเบียน (แสดงเมื่อ > 0)
     rate: "Response rate",
     gender: "เพศ",
     genders: { male: "ชาย", female: "หญิง", unspecified: "ไม่ระบุ" },
@@ -29,6 +31,7 @@ const TEXT = {
   en: {
     registered: "Total registrations",
     responded: "Survey respondents",
+    anonymousN: (n: number) => `Anonymous ${n}`,
     rate: "Response rate",
     gender: "Gender",
     genders: { male: "Male", female: "Female", unspecified: "Not specified" },
@@ -65,7 +68,8 @@ export function OverviewView() {
 
   const regs = data.registrations;
   const total = regs.length;
-  const respondents = data.responses.length;
+  // นับเป็น "คน" (responseCounts ใน people.ts) → ตรงกับแท็บผู้เข้าร่วม และ Response rate ไม่เกิน 100%
+  const { responded: respondents, anonymous } = responseCounts(data);
 
   // ----- เพศ: นับจาก answers.gender -----
   const genderCount = GENDERS.map((g) => regs.filter((r) => r.answers.gender === g).length);
@@ -88,7 +92,11 @@ export function OverviewView() {
       {/* ===== ตัวเลขสรุป 3 ใบ ===== */}
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label={t.registered} value={String(total)} />
-        <StatCard label={t.responded} value={String(respondents)} />
+        <StatCard
+          label={t.responded}
+          value={String(respondents)}
+          sub={anonymous > 0 ? t.anonymousN(anonymous) : undefined}
+        />
         <StatCard label={t.rate} value={`${pct(respondents, total)}%`} sub={`${respondents} ÷ ${total}`} />
       </div>
 

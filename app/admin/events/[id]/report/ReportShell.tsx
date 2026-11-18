@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
 import { useEventAccess } from "../eventAccess";
 import { ReportData } from "./mockData";
+import { responseCounts } from "./people";
 import { ExportButtons } from "./ExportButtons";
 import { isReportPrintPath } from "./printPath";
 
@@ -21,8 +22,9 @@ const TEXT = {
   th: {
     title: "Report",
     // เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง 23 ต.ค. 2569 15:00"
-    summaryLine: (responses: number, regs: number, when: string) =>
-      `${responses} คำตอบ จากผู้ลงทะเบียน ${regs} คน · ข้อมูลถึง ${when}`,
+    // มีคำตอบไม่ระบุชื่อ → ต่อท้าย " · ไม่ระบุชื่อ 1" (0 = ไม่แสดง)
+    summaryLine: (responses: number, regs: number, anonymous: number, when: string) =>
+      `${responses} คำตอบ จากผู้ลงทะเบียน ${regs} คน${anonymous > 0 ? ` · ไม่ระบุชื่อ ${anonymous}` : ""} · ข้อมูลถึง ${when}`,
     tabs: { overview: "Overview", participants: "ผู้เข้าร่วม", survey: "Survey", answers: "คำตอบรายคน" },
     noData: "ยังไม่มีข้อมูลรายงาน",
     noDataHint: "รายงานจะมีข้อมูลเมื่อ Event เริ่มจัดงานแล้ว",
@@ -32,8 +34,8 @@ const TEXT = {
   },
   en: {
     title: "Report",
-    summaryLine: (responses: number, regs: number, when: string) =>
-      `${responses} responses from ${regs} registrations · Data as of ${when}`,
+    summaryLine: (responses: number, regs: number, anonymous: number, when: string) =>
+      `${responses} responses from ${regs} registrations${anonymous > 0 ? ` · Anonymous ${anonymous}` : ""} · Data as of ${when}`,
     tabs: { overview: "Overview", participants: "Participants", survey: "Survey", answers: "Responses" },
     noData: "No report data yet",
     noDataHint: "The report will have data once the event has started",
@@ -118,7 +120,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const base = `/admin/events/${event.id}/report`;
 
   // บรรทัดสรุป เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง ..." (ใช้ทั้งส่วนหัวและหน้า print)
-  const summaryText = data ? t.summaryLine(data.responses.length, data.registrations.length, latestText) : "";
+  // ตัวเลขชุดเดียวกับ Dashboard (responseCounts): ผู้ลงทะเบียนที่ตอบแล้ว + คำตอบไม่ระบุชื่อแยกต่างหาก
+  const counts = data ? responseCounts(data) : null;
+  const summaryText = counts ? t.summaryLine(counts.responded, counts.registered, counts.anonymous, latestText) : "";
 
   // ===== หน้าพิมพ์ (/report/print): ผ่านด่านที่ 1 มาแล้ว แต่ไม่แสดงหัว/แท็บ/ปุ่ม =====
   // ยังส่งข้อมูลผ่าน Context เหมือนแท็บอื่น และถ้ายังไม่มีข้อมูล (ด่านที่ 2) ก็แสดงการ์ดเดิม

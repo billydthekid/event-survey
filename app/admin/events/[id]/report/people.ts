@@ -28,8 +28,33 @@ export function maskPhone(phone: string | string[] | undefined): string {
 // รับ: ข้อมูลรายงาน
 // คืน: Set ของ registrationId ที่มีคำตอบ → เช็คทีละคนด้วย .has(id) ได้เร็ว
 // ตัวอย่าง (Workshop): ขนาด 31 จาก 46 คน, มี "e-workshop-reg-46" แต่ไม่มี "e-workshop-reg-44"
+// คำตอบที่ไม่มี registrationId (ส่งจากหน้า /s) ถูกกรองออกก่อน → Set มีแต่ id จริง
 export function respondedRegistrationIds(data: ReportData): Set<string> {
-  return new Set(data.responses.map((r) => r.registrationId));
+  const ids = data.responses.map((r) => r.registrationId).filter((id): id is string => id !== undefined);
+  return new Set(ids);
+}
+
+// ============ ตัวเลขผู้ตอบ (ใช้ทุกที่ที่แสดง Response rate) ============
+// นับ "คน" ไม่ใช่ "คำตอบ" → ตรงกับแท็บผู้เข้าร่วมเสมอ และ Response rate ไม่มีทางเกิน 100%
+// - responded : ผู้ลงทะเบียนที่มีคำตอบอย่างน้อย 1 ชุด (นับจากรายชื่อผู้ลงทะเบียนจริงของงานนี้)
+// - notYet    : ผู้ลงทะเบียนที่ยังไม่ตอบ = registered − responded (ไม่ติดลบ เพราะ responded ≤ registered)
+// - anonymous : คำตอบที่ไม่รู้ว่าเป็นของใคร (ไม่มี registrationId หรือ id ไม่ตรงกับผู้ลงทะเบียนคนไหน)
+// ตัวอย่าง (Workshop + คำตอบจากหน้า /s 1 ชุด):
+//   { registered: 46, responded: 31, notYet: 15, anonymous: 1 } → Response rate = 31 ÷ 46 = 67%
+export interface ResponseCounts {
+  registered: number;
+  responded: number;
+  notYet: number;
+  anonymous: number;
+}
+
+export function responseCounts(data: ReportData): ResponseCounts {
+  const answered = respondedRegistrationIds(data);
+  const regIds = new Set(data.registrations.map((r) => r.id));
+  const responded = data.registrations.filter((r) => answered.has(r.id)).length;
+  const anonymous = data.responses.filter((r) => !r.registrationId || !regIds.has(r.registrationId)).length;
+  const registered = data.registrations.length;
+  return { registered, responded, notYet: registered - responded, anonymous };
 }
 
 // ============ ผู้เข้าร่วม 1 คน (1 แถวในตารางแท็บ "ผู้เข้าร่วม") ============
@@ -110,6 +135,9 @@ export function pageNumbers(current: number, totalPages: number): (number | "…
   return result;
 }
 
+// ชื่อที่แสดงแทน เมื่อคำตอบไม่ได้โยงกับผู้ลงทะเบียน (เช่น ตอบจากหน้า /s โดยตรง)
+const ANONYMOUS = { th: "ไม่ระบุชื่อ", en: "Anonymous" };
+
 // ============ คำตอบ 1 ชุด (1 รายการในแท็บ "คำตอบรายคน") ============
 export interface AnswerEntry {
   id: string;            // response id เช่น "e-workshop-res-31"
@@ -125,7 +153,8 @@ export interface AnswerEntry {
 // คืน: คำตอบทุกชุด + ข้อมูลผู้ตอบ เรียงตอบใหม่สุดก่อน
 // ตัวอย่าง (Workshop): ตัวแรก = { id: "e-workshop-res-31", name: "นภัสวรรณ ฟ้าใสสะอาด",
 //                      registeredAt: …12:38, answeredAt: …15:00, stars: 5 หรือค่าที่ข้อ 1 ได้ } ยาว 31
-export function buildAnswerEntries(data: ReportData): AnswerEntry[] {
+// lang: ใช้กับชื่อของผู้ตอบที่ไม่รู้ว่าเป็นใคร ("ไม่ระบุชื่อ" / "Anonymous")
+export function buildAnswerEntries(data: ReportData, lang: Lang): AnswerEntry[] {
   const regById = new Map(data.registrations.map((r) => [r.id, r]));
 
   // ข้อ rating ข้อแรกตามลำดับ order (Workshop = ข้อ 1 "ความพึงพอใจต่อ Workshop")
@@ -134,11 +163,13 @@ export function buildAnswerEntries(data: ReportData): AnswerEntry[] {
   return [...data.responses]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((r) => {
-      const reg = regById.get(r.registrationId);
+      // ไม่มี registrationId (ตอบจากหน้า /s) → reg = undefined → ชื่อ "ไม่ระบุชื่อ" (ดู name ด้านล่าง)
+      const reg = r.registrationId ? regById.get(r.registrationId) : undefined;
       const score = firstRating ? r.answers[firstRating.id] : undefined;
       return {
         id: r.id,
-        name: text(reg?.answers.name) || "—",
+        // ไม่พบผู้ลงทะเบียน หรือผู้ลงทะเบียนไม่ได้กรอกชื่อ → "ไม่ระบุชื่อ"
+        name: text(reg?.answers.name) || tr(ANONYMOUS, lang),
         faculty: text(reg?.answers.faculty),
         registeredAt: reg?.createdAt ?? "",
         answeredAt: r.createdAt,

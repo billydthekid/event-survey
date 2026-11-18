@@ -10,7 +10,8 @@ import { BiText, Question, Registration, Survey, SurveyResponse } from "@/types"
 // types/ ยังไม่มีช่องโยงกลับ → ต่อขยายเฉพาะในหน้า Report (ไม่แก้ types/)
 // ของจริง: ระบบลงทะเบียน/Survey ควรบันทึก registrationId ตอนผู้ใช้กดส่งคำตอบ
 export interface ReportResponse extends SurveyResponse {
-  registrationId: string; // เช่น "e-workshop-reg-46"
+  // เช่น "e-workshop-reg-46" · คำตอบที่ส่งจากหน้า /s ยังไม่มีช่องนี้ → undefined (หน้าจอขึ้น "ไม่ระบุชื่อ")
+  registrationId?: string;
 }
 
 // ============ ข้อมูลที่หน้า Report ใช้ ============
