@@ -32,6 +32,11 @@ export function nowParts(now = new Date()) {
 // แต่ค่าจาก store หลักอาจเป็น ISO ยาว → ตัดให้เหลือ 16 ตัวก่อน
 const dt = (v: string) => v.slice(0, 16);
 
+/** วันจบของงาน (ไม่ได้ตั้ง = วันเดียวกับวันเริ่ม) */
+export function eventEndDate(d: EventDraft): string {
+  return d.general.endDate || d.general.date;
+}
+
 export function validateDates(d: EventDraft, now = new Date()): DateErrors {
   const { today, nowLocal } = nowParts(now);
   const g = d.general;
@@ -42,7 +47,10 @@ export function validateDates(d: EventDraft, now = new Date()): DateErrors {
   if (g.date && g.startTime && !e.date && `${g.date}T${g.startTime}` <= nowLocal) {
     e.startTime = "เวลาเริ่มผ่านไปแล้ว";
   }
-  if (g.startTime && g.endTime && g.endTime <= g.startTime) e.endTime = "ต้องหลังเวลาเริ่ม";
+  // วันจบว่าง = วันเดียวกับวันเริ่ม · เทียบทั้งวัน + เวลา (งานข้ามวันได้)
+  const endDate = eventEndDate(d);
+  if (g.date && endDate < g.date) e.endTime = "วันจบต้องไม่ก่อนวันเริ่ม";
+  else if (g.startTime && g.endTime && `${endDate}T${g.endTime}` <= `${g.date}T${g.startTime}`) e.endTime = "ต้องหลังเวลาเริ่ม";
 
   if (s.regClose && s.regOpen && dt(s.regClose) <= dt(s.regOpen)) e.regClose = "ต้องหลังเวลาเปิดรับ";
   if (s.regClose && !e.regClose && dt(s.regClose) <= nowLocal) e.regClose = "เวลาปิดรับผ่านไปแล้ว";

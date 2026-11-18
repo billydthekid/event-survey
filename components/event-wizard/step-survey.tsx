@@ -1,7 +1,7 @@
 "use client";
 // ขั้นที่ 4: Survey — หน้าเดียวเรียงลงมา (แบบเดียวกับขั้นฟอร์มลงทะเบียน): เวลาเปิด–ปิดรับคำตอบ → คำถาม
 // Survey Builder เดิม (/survey/builder) ย้ายมาอยู่ตรงนี้แล้ว:
-// - การ์ดทีละคำถาม: พิมพ์คำถามในการ์ด (TH / EN) · แก้ตัวเลือก / ตาราง / สเกล (QuestionEditor) · ทำสำเนา · ลบ
+// - การ์ดทีละคำถาม: พิมพ์คำถามในการ์ด (ภาษาไทย) · แก้ตัวเลือก / ตาราง / สเกล (QuestionEditor) · ทำสำเนา · ลบ
 // - ท้ายการ์ด: เปลี่ยนประเภท · คะแนนเต็ม (ให้ดาว / สเกล) · Required (เดิมอยู่แผงขวา)
 // - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts) · แถบ "เพิ่มคำถาม" = 12 ประเภท (lib/survey-types.ts)
 // - ต้องมีอย่างน้อย 1 คำถาม + กำหนดเวลา ก่อนกด "ถัดไป" (stepBlock)
@@ -25,7 +25,6 @@ import { WizardSection } from "./wizard-section";
 export function StepSurvey() {
   const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
-  const [editLang, setEditLang] = useState<"th" | "en">("th");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
@@ -52,8 +51,6 @@ export function StepSurvey() {
   const remove = (qid: string) => setQs(qs.filter((q) => q.id !== qid));
   const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q) });
 
-  const field = editLang === "th" ? "titleTh" : "titleEn";
-  const enMissing = qs.some((q) => !q.titleEn);
 
   return (
     <>
@@ -61,17 +58,8 @@ export function StepSurvey() {
         <TimeWindowFields openKey="surveyOpen" closeKey="surveyClose" openLabel="เปิดให้ตอบ" closeLabel="ปิดรับคำตอบ" />
       </WizardSection>
 
-      <WizardSection
-        title="คำถาม"
-        description={`${qs.length} คำถาม · ${qs.length === 0 ? "" : enMissing ? "EN ยังไม่แปล (ไม่บังคับ) · " : "EN ครบ · "}ลากที่ ⋮⋮ เพื่อเรียงลำดับ`}
-        action={
-          // ภาษาที่กำลังพิมพ์คำถาม (ตัวเลือกใช้ร่วมกันทั้ง 2 ภาษา)
-          <ToggleGroup value={[editLang]} onValueChange={(v) => v[0] && setEditLang(v[0] as "th" | "en")} variant="outline" size="sm">
-            <ToggleGroupItem value="th">TH</ToggleGroupItem>
-            <ToggleGroupItem value="en">EN</ToggleGroupItem>
-          </ToggleGroup>
-        }
-      >
+      {/* พิมพ์คำถามภาษาไทยอย่างเดียว (ตัดปุ่มสลับ TH / EN ออกแล้ว · titleEn เดิมยังเก็บไว้) */}
+      <WizardSection title="คำถาม" description={`${qs.length} คำถาม · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`}>
         {qs.length === 0 && (
           <p className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
             ยังไม่มีคำถาม เลือกประเภทจากแถบด้านล่างเพื่อเริ่มสร้าง
@@ -124,9 +112,9 @@ export function StepSurvey() {
               {/* ชื่อคำถาม พิมพ์แก้ในการ์ดได้เลย */}
               <div className="flex items-baseline gap-1">
                 <input
-                  value={q[field]}
-                  onChange={(e) => update(q.id, { [field]: e.target.value })}
-                  placeholder={editLang === "en" ? q.titleTh || "Type your question…" : "พิมพ์คำถาม…"}
+                  value={q.titleTh}
+                  onChange={(e) => update(q.id, { titleTh: e.target.value })}
+                  placeholder="พิมพ์คำถาม…"
                   aria-label="ชื่อคำถาม"
                   className="field-sizing-content min-w-[10ch] max-w-full bg-transparent text-lg font-bold outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
                 />
