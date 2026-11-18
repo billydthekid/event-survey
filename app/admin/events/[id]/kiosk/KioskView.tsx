@@ -52,6 +52,8 @@ const CANVAS_H = 1920;
 const PORTRAIT_MIN_H = 1400; // จอแนวตั้งที่เตี้ยสุดที่ยังวางรูป + ชื่องาน + QR ได้ครบ (3:4 = 1440)
 const LANDSCAPE_H = 1080;
 const LANDSCAPE_RATIO = 1.2; // กว้าง/สูง ตั้งแต่ค่านี้ใช้เลย์เอาต์แนวนอน
+// ตอนนี้ล็อกเป็นแนวตั้งเสมอ (ตกลงกับทีม) · เปลี่ยนเป็น true เพื่อให้จอกว้างใช้เลย์เอาต์แนวนอน 16:9 อัตโนมัติ
+const AUTO_LANDSCAPE = false;
 
 // ============ hooks อ่านค่าจากเบราว์เซอร์ (ฝั่ง server ไม่มี window/document) ============
 const noopSubscribe = () => () => {};
@@ -199,13 +201,19 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const model = buildKioskModel(event, draft);
   const sceneInfo = getKioskScene(model, now, registeredCount);
 
-  // ย่อ/ขยายผืนผ้าใบให้เต็มจอพอดี (ไม่มีขอบว่าง ไม่มี scroll) — เลือกเลย์เอาต์จากสัดส่วนจอ:
-  // - แนวนอน (กว้าง ≥ 1.2 เท่าของสูง เช่น 16:9) → ผืนสูง 1080 px กว้างตามจอ (16:9 = 1920 × 1080)
-  // - แนวตั้ง (9:16, 3:4, 1:1)                → ผืนกว้างอย่างน้อย 1080 px และสูงอย่างน้อย 1400 px
+  // ย่อ/ขยายผืนผ้าใบให้พอดีจอ (ไม่มี scroll):
+  // - แนวตั้ง (9:16, 3:4, 1:1) → เต็มจอ: ผืนกว้างอย่างน้อย 1080 px และสูงอย่างน้อย 1400 px
   //   9:16 = 1080 × 1920 · 3:4 = 1080 × 1440 · 1:1 = 1400 × 1400 (รูปโฆษณาหดเองเมื่อจอเตี้ย)
-  const layout: KioskLayout = vw / vh >= LANDSCAPE_RATIO ? "landscape" : "portrait";
-  const scale = layout === "landscape" ? vh / LANDSCAPE_H : Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
-  const canvasW = vw / scale;
+  // - จอกว้าง (กว้าง ≥ 1.2 เท่าของสูง เช่น notebook / ทีวี 16:9):
+  //   AUTO_LANDSCAPE = true  → เลย์เอาต์แนวนอน ผืนสูง 1080 px กว้างตามจอ (16:9 = 1920 × 1080)
+  //   AUTO_LANDSCAPE = false → โปสเตอร์แนวตั้ง 1080 px วางกลางจอ ขอบซ้าย-ขวาเป็นสีพื้นหลัง
+  const wide = vw / vh >= LANDSCAPE_RATIO;
+  const layout: KioskLayout = wide && AUTO_LANDSCAPE ? "landscape" : "portrait";
+  let scale: number;
+  if (layout === "landscape") scale = vh / LANDSCAPE_H;
+  else if (wide) scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
+  else scale = Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
+  const canvasW = wide && layout === "portrait" ? CANVAS_W : vw / scale;
   const canvasH = vh / scale;
 
   return (
@@ -215,26 +223,29 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       onPointerDown={controls.poke}
       // overflow-clip (ไม่ใช่ hidden): กล่อง hidden ยังถูกเลื่อนได้ (โฟกัสปุ่ม / ลากเลือกข้อความ) → หัวจอหายขึ้นไป
       // clip ตัดส่วนเกินทิ้งเฉย ๆ เลื่อนไม่ได้เลย
-      className="fixed inset-0 z-50 overflow-clip"
+      className="fixed inset-0 z-50 flex justify-center overflow-clip"
       style={{ background: pageColor(model) }}
     >
-      <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-        <KioskScreen
-          model={model}
-          info={sceneInfo}
-          layout={layout}
-          lang={lang}
-          setLang={setOverride}
-          now={now}
-          origin={origin}
-          admin={{
-            visible: controls.visible,
-            isFullscreen,
-            onToggleFullscreen: toggleFullscreen,
-            onExit: handleExit,
-            labels: { fullscreen: t.fullscreen, exitFullscreen: t.exitFullscreen, exit: t.exit },
-          }}
-        />
+      {/* กล่องขนาดจริงหลังย่อ → flex จัดโปสเตอร์ไว้กลางจอ (กรณีจอกว้าง) */}
+      <div className="shrink-0" style={{ width: canvasW * scale, height: vh }}>
+        <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <KioskScreen
+            model={model}
+            info={sceneInfo}
+            layout={layout}
+            lang={lang}
+            setLang={setOverride}
+            now={now}
+            origin={origin}
+            admin={{
+              visible: controls.visible,
+              isFullscreen,
+              onToggleFullscreen: toggleFullscreen,
+              onExit: handleExit,
+              labels: { fullscreen: t.fullscreen, exitFullscreen: t.exitFullscreen, exit: t.exit },
+            }}
+          />
+        </div>
       </div>
     </div>
   );
