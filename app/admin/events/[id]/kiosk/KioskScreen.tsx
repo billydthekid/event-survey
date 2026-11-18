@@ -213,7 +213,7 @@ export function KioskScreen({
 
   return (
     // overflow-hidden: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: pal.page, color: pal.text }}>
+    <div className="flex h-full flex-col overflow-clip" style={{ background: pal.page, color: pal.text }}>
       <Header m={m} pal={pal} lang={lang} setLang={setLang} admin={admin} />
 
       {scene === "closed" ? (

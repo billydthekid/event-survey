@@ -103,6 +103,23 @@ function useAutoHide(ms = 3000) {
   return { visible, poke };
 }
 
+// ล็อก scroll ของหน้าที่อยู่ข้างใต้ (Sidebar/Topbar ของ /admin, /super) ระหว่างเปิดจอ Kiosk
+// ไม่งั้นล้อเมาส์/ลากนิ้ว จะเลื่อนหน้าข้างใต้ และบนมือถือจอ Kiosk จะขยับตาม
+function useLockPageScroll() {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = [html.style.overflow, body.style.overflow, html.style.overscrollBehavior];
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    window.scrollTo(0, 0);
+    return () => {
+      [html.style.overflow, body.style.overflow, html.style.overscrollBehavior] = prev;
+    };
+  }, []);
+}
+
 // ============ ส่วนหลัก ============
 export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params); // เช่น { id: "e-workshop" }
@@ -118,6 +135,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const now = useNow(1000); // นาฬิกา + นับถอยหลัง
   const controls = useAutoHide();
   const router = useRouter();
+  useLockPageScroll();
 
   // ภาษา: ค่าตั้งต้นจากบัญชี admin / ผู้เข้าร่วมกดสลับที่จอได้ (ไม่เปลี่ยนภาษาในบัญชี)
   const [override, setOverride] = useState<Lang | null>(null);
@@ -195,7 +213,9 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       ref={rootRef}
       onPointerMove={controls.poke}
       onPointerDown={controls.poke}
-      className="fixed inset-0 z-50 overflow-hidden"
+      // overflow-clip (ไม่ใช่ hidden): กล่อง hidden ยังถูกเลื่อนได้ (โฟกัสปุ่ม / ลากเลือกข้อความ) → หัวจอหายขึ้นไป
+      // clip ตัดส่วนเกินทิ้งเฉย ๆ เลื่อนไม่ได้เลย
+      className="fixed inset-0 z-50 overflow-clip"
       style={{ background: pageColor(model) }}
     >
       <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
