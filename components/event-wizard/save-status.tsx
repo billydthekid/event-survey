@@ -1,13 +1,12 @@
 "use client";
 // ป้าย "บันทึกอัตโนมัติ" มุมขวาบนของ Wizard — เปลี่ยนทุกครั้งที่แก้ข้อมูลของ Event นี้
-// - แก้อะไรก็ตาม → "กำลังบันทึก…" (หมุน) → "บันทึกแล้ว · 14:32:05" (เวลาที่บันทึกล่าสุด) + กระพริบสีเขียวสั้น ๆ
+// - แก้อะไรก็ตาม → "กำลังบันทึก…" (หมุน) → "บันทึกแล้ว" + กระพริบสีเขียวสั้น ๆ
 // - ยังไม่ได้แก้อะไรตั้งแต่เปิดหน้า → "บันทึกอัตโนมัติ"
 // - ตรวจจาก wizard store โดยตรง (subscribe): ข้อมูลของ Event นี้เปลี่ยน = persist เขียนลง localStorage ไปแล้ว
 //   (เขียนทันทีแบบ synchronous) · หน่วงขึ้น "บันทึกแล้ว" 600 ms ให้ผู้ใช้เห็นว่ามีการบันทึกเกิดขึ้นจริง
 
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import { format } from "date-fns";
 import { useWizardStore } from "@/lib/wizard-store";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +50,7 @@ export function SaveStatus({ eventId, locked }: { eventId: string; locked: boole
       )}
     >
       <Check className="size-3.5" />
-      {st.savedAt ? `บันทึกแล้ว · ${format(st.savedAt, "HH:mm:ss")} น.` : "บันทึกอัตโนมัติ"}
+      {st.savedAt ? "บันทึกแล้ว" : "บันทึกอัตโนมัติ"}
       <style>{`@keyframes save-flash{0%{background:rgb(16 185 129 / .25)}100%{background:transparent}}`}</style>
     </span>
   );
