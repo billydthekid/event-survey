@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
+import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, ALLOW_LIST_READY, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
 import { formatThaiDateTime } from "@/lib/utils/date";
 import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import type { AllowList, AllowListKind } from "@/types/event";
@@ -71,6 +71,22 @@ export function AllowListCard() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // ยังไม่เปิดใช้ (ALLOW_LIST_READY = false): แสดงหน้าตาแบบ Event ปิดไว้ให้เห็น แต่เบลอ กดไม่ได้ + ป้ายแจ้ง
+  if (!ALLOW_LIST_READY) {
+    return (
+      <div className="relative">
+        <div aria-hidden className="pointer-events-none select-none blur-[3px]">
+          <AllowListPreview title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")} tr={tr} />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <p className="rounded-xl border bg-background/95 px-5 py-3 text-center text-sm font-semibold shadow-sm">
+            {tr("วัยรุ่นกำลังสร้างมองข้ามไปเทอมนี้ก่อนนะจ๊ะ", "Still under construction · skip this for this term 😉")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <WizardSection
@@ -167,6 +183,42 @@ export function AllowListCard() {
           )}
         </div>
       )}
+    </WizardSection>
+  );
+}
+
+// หน้าตาของส่วน "Event ปิด" แบบอ่านอย่างเดียว (ใช้ตอนยังไม่เปิดใช้ · อยู่ใต้ชั้นเบลอ ไม่มีปุ่มที่ทำงานจริง)
+function AllowListPreview({ title, tr }: { title: string; tr: (th: string, en: string) => string }) {
+  const pill = "rounded-md border px-2.5 py-1 text-sm";
+  return (
+    <WizardSection
+      title={title}
+      description={tr("Event ปิด · รับเฉพาะคนที่มีอีเมลอยู่ในไฟล์ที่ import", "Closed event · only people whose email is in the imported file")}
+      action={
+        <div className="flex gap-1">
+          <span className={pill}>{tr("เปิด (ทุกคน)", "Open (everyone)")}</span>
+          <span className={`${pill} bg-foreground text-background`}>{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</span>
+        </div>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium">{tr("ตรวจสิทธิ์ด้วย", "Check by")}</span>
+        <span className={`${pill} bg-foreground text-background`}>{tr("อีเมล", "Email")}</span>
+        <span className={pill}>{tr("เบอร์มือถือ", "Mobile number")}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-4">
+        <FileSpreadsheet className="size-8 text-muted-foreground" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-semibold">{tr("ยังไม่มีรายชื่อ", "No list yet")}</p>
+          <p className="text-xs text-muted-foreground">{tr(".csv / .xlsx · คอลัมน์ \"email\"", ".csv / .xlsx · \"email\" column")}</p>
+        </div>
+        <span className={pill}>
+          <Download className="mr-1 inline size-4" /> {tr("ไฟล์ตัวอย่าง", "Sample file")}
+        </span>
+        <span className={`${pill} bg-foreground text-background`}>
+          <Upload className="mr-1 inline size-4" /> {tr("Import ไฟล์", "Import file")}
+        </span>
+      </div>
     </WizardSection>
   );
 }
