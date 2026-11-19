@@ -4,7 +4,7 @@
 // - ท้ายการ์ด: เปลี่ยนประเภท + Required (เดิมอยู่แผงขวา)
 // - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts)
 // - แถบ "เพิ่มช่อง" = 12 ประเภท (lib/form-types.ts) · กดแล้วได้ช่องพร้อมชื่อตัวอย่าง แก้ชื่อได้
-// - ต้องมีอย่างน้อย 1 ช่อง + กำหนดเวลาเปิด–ปิดรับ ก่อนกด "ถัดไป" (stepBlock)
+// - ฟอร์มไม่บังคับ (ไม่มีช่อง = ไม่รับลงทะเบียน) · ถ้ามีช่องต้องกำหนดเวลาเปิด–ปิดรับก่อนกด "ถัดไป" (stepBlock)
 
 import { useState } from "react";
 import { Copy, Eye, GripVertical, Plus, Trash2, X } from "lucide-react";
@@ -66,8 +66,15 @@ export function StepForm() {
 
   return (
     <>
-      <WizardSection title="เปิดรับลงทะเบียน" description="ผู้เข้าร่วมลงทะเบียนผ่าน QR และลิงก์ได้เฉพาะช่วงนี้">
-        <TimeWindowFields openKey="regOpen" closeKey="regClose" openLabel="เปิดรับ" closeLabel="ปิดรับ" />
+      <WizardSection
+        title="เปิดรับลงทะเบียน"
+        description={
+          fields.length === 0
+            ? "ฟอร์มไม่บังคับ · ไม่มีช่องในฟอร์ม = Event นี้ไม่รับลงทะเบียน (ข้ามขั้นนี้ได้)"
+            : "ผู้เข้าร่วมลงทะเบียนผ่าน QR และลิงก์ได้เฉพาะช่วงนี้"
+        }
+      >
+        <TimeWindowFields openKey="regOpen" closeKey="regClose" openLabel="เปิดรับ" closeLabel="ปิดรับ" required={fields.length > 0} />
       </WizardSection>
 
       <WizardSection
@@ -214,7 +221,7 @@ export function StepForm() {
               type="button"
               title={`${k.en} · เช่น ${k.example}`}
               onClick={() => add(k.value)}
-              className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
+              className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold transition hover:bg-foreground/15"
             >
               <Plus className="size-3.5" /> <k.icon className="size-4" /> {k.th}
             </button>

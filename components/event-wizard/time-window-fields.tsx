@@ -16,11 +16,13 @@ export function TimeWindowFields({
   closeKey,
   openLabel,
   closeLabel,
+  required = true,
 }: {
   openKey: Key;
   closeKey: Key;
   openLabel: string;
   closeLabel: string;
+  required?: boolean; // แสดง * (Survey ไม่มีคำถาม = ไม่บังคับ)
 }) {
   const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
@@ -33,7 +35,7 @@ export function TimeWindowFields({
 
   return (
     <DateTimeRange
-      required
+      required={required}
       startLabel={openLabel}
       endLabel={closeLabel}
       minDate={today}

@@ -23,8 +23,9 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   eventName: string;
   code: string; // เช่น FIG-1017 (QR ใช้ code นี้ จึงไม่เปลี่ยนแม้แก้ข้อมูล Event)
-  reg: Window;
-  survey: Window;
+  /** null = Event นี้ไม่มีฟอร์มลงทะเบียน / Survey (ไม่บังคับสร้าง) → ไม่แสดง QR นั้น */
+  reg: Window | null;
+  survey: Window | null;
   /** เปิดหลังกดเผยแพร่ → หัวข้อ "เผยแพร่แล้ว" + ปุ่ม "ไว้ทีหลัง" */
   justPublished?: boolean;
 }
@@ -80,11 +81,17 @@ export function QrDialog({ open, onOpenChange, eventName, code, reg, survey, jus
   const now = useNow();
   const regUrl = `${origin()}/r/${code}`;
   const surveyUrl = `${origin()}/s/${code}`;
+  const none = !reg && !survey;
 
   /** โปสเตอร์ A4: เปิดหน้าต่างใหม่ แล้วสั่งพิมพ์ (เลือก "Save as PDF" ได้) */
   const printPoster = () => {
-    const [reg, sur] = Array.from(grid.current?.querySelectorAll("canvas") ?? []).map((c) => c.toDataURL("image/png"));
-    if (!reg || !sur) return;
+    // รูป QR ตามลำดับการ์ดที่แสดงอยู่ (มีแค่อันที่ Event นี้มีจริง)
+    const imgs = Array.from(grid.current?.querySelectorAll("canvas") ?? []).map((c) => c.toDataURL("image/png"));
+    const cards = [
+      reg && { title: "ลงทะเบียน", url: regUrl },
+      survey && { title: "ตอบ Survey", url: surveyUrl },
+    ].filter((x): x is { title: string; url: string } => !!x);
+    if (cards.length === 0 || imgs.length !== cards.length) return;
     const w = window.open("", "_blank");
     if (!w) return alert("เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
     w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Poster ${esc(code)}</title>
@@ -106,8 +113,7 @@ h1{font-size:30pt;margin:0 0 4mm}
   <h1>${esc(eventName)}</h1>
   <div class="sub">สแกน QR ด้วยมือถือเพื่อเข้าร่วม</div>
   <div class="row">
-    <div class="card"><img src="${reg}" alt=""><h2>ลงทะเบียน</h2><p>${esc(noProtocol(regUrl))}</p></div>
-    <div class="card"><img src="${sur}" alt=""><h2>ตอบ Survey</h2><p>${esc(noProtocol(surveyUrl))}</p></div>
+    ${cards.map((c, i) => `<div class="card"><img src="${imgs[i]}" alt=""><h2>${c.title}</h2><p>${esc(noProtocol(c.url))}</p></div>`).join("")}
   </div>
   <div class="foot">รหัสงาน ${esc(code)}</div>
 </div>
@@ -122,30 +128,40 @@ h1{font-size:30pt;margin:0 0 4mm}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {justPublished && <CircleCheck className="size-5 text-emerald-600" />}
-            {justPublished ? "เผยแพร่ Event แล้ว · QR พร้อมใช้" : "QR ลงทะเบียน / Survey"}
+            {justPublished ? (none ? "เผยแพร่ Event แล้ว" : "เผยแพร่ Event แล้ว · QR พร้อมใช้") : "QR ลงทะเบียน / Survey"}
           </DialogTitle>
           <DialogDescription>
-            {eventName} · พิมพ์ติดหน้างาน หรือส่งลิงก์ให้ผู้เข้าร่วม
-            {justPublished && " · ยังไม่ดาวน์โหลดตอนนี้ก็ได้ กลับมาเอาได้ที่ปุ่ม QR ในหน้า Event ของฉัน"}
+            {eventName}
+            {!none && " · พิมพ์ติดหน้างาน หรือส่งลิงก์ให้ผู้เข้าร่วม"}
+            {justPublished && !none && " · ยังไม่ดาวน์โหลดตอนนี้ก็ได้ กลับมาเอาได้ที่ปุ่ม QR ในหน้า Event ของฉัน"}
           </DialogDescription>
         </DialogHeader>
 
-        <div ref={grid} className="grid gap-4 sm:grid-cols-2">
-          <QrCard title="QR ลงทะเบียน (ฟอร์ม)" url={regUrl} state={windowState(reg, now, "เปิดรับอยู่")} filename={`qr-register-${code}`} />
-          <QrCard title="QR แบบประเมิน (Survey)" url={surveyUrl} state={windowState(survey, now, "เปิดให้ตอบ")} filename={`qr-survey-${code}`} />
-        </div>
+        {/* แสดงเฉพาะ QR ที่ Event นี้มี (ฟอร์ม / Survey ไม่บังคับสร้าง) */}
+        {none ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Event นี้ไม่มีฟอร์มลงทะเบียนและ Survey จึงไม่มี QR · จอ Kiosk แสดงแค่รายละเอียดงาน
+          </p>
+        ) : (
+          <div ref={grid} className={reg && survey ? "grid gap-4 sm:grid-cols-2" : "mx-auto grid w-full max-w-sm gap-4"}>
+            {reg && <QrCard title="QR ลงทะเบียน (ฟอร์ม)" url={regUrl} state={windowState(reg, now, "เปิดรับอยู่")} filename={`qr-register-${code}`} />}
+            {survey && <QrCard title="QR แบบประเมิน (Survey)" url={surveyUrl} state={windowState(survey, now, "เปิดให้ตอบ")} filename={`qr-survey-${code}`} />}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">QR ไม่เปลี่ยนแม้แก้ไขข้อมูล Event · ใช้ซ้ำได้ตลอดงาน</p>
+          <p className="text-xs text-muted-foreground">{none ? "" : "QR ไม่เปลี่ยนแม้แก้ไขข้อมูล Event · ใช้ซ้ำได้ตลอดงาน"}</p>
           <div className="flex gap-2">
             {justPublished && (
-              <Button variant="secondary" onClick={() => onOpenChange(false)}>
-                ไว้ทีหลัง
+              <Button variant={none ? "default" : "secondary"} onClick={() => onOpenChange(false)}>
+                {none ? "ตกลง" : "ไว้ทีหลัง"}
               </Button>
             )}
-            <Button onClick={printPoster}>
-              <Download className="size-4" /> ดาวน์โหลดโปสเตอร์ A4 (PDF)
-            </Button>
+            {!none && (
+              <Button onClick={printPoster}>
+                <Download className="size-4" /> ดาวน์โหลดโปสเตอร์ A4 (PDF)
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

@@ -85,6 +85,8 @@ export function KioskPreview({ d }: { d: EventDraft }) { // Live Preview จอ 
     return () => clearInterval(t);
   }, [srcs.length, ms]);
   const current = index % Math.max(1, srcs.length);
+  // ฟอร์ม / Survey ไม่บังคับ → แสดง QR เฉพาะที่มีจริง
+  const qrLabel = d.form.fields.length > 0 ? "สแกนลงทะเบียน" : d.survey.questions.length > 0 ? "สแกนตอบแบบประเมิน" : null;
 
   return (
     <div className="mx-auto flex aspect-[9/16] w-full max-w-[260px] flex-col gap-3 overflow-hidden rounded-2xl border p-3 shadow-lg" style={pageStyle(c)}>
@@ -113,17 +115,27 @@ export function KioskPreview({ d }: { d: EventDraft }) { // Live Preview จอ 
         )}
       </div>
       <p className="line-clamp-2 text-sm font-bold">{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>
-      <div className="mt-auto rounded-xl p-3" style={{ background: c.button.bg, color: c.button.text }}>
-        <div className="flex items-center gap-2">
-          <span className="flex size-12 items-center justify-center rounded-md bg-white text-slate-900">
-            <QrCode className="size-8" />
-          </span>
-          <div className="text-[11px] leading-tight">
-            <p className="font-semibold">สแกนลงทะเบียน</p>
-            <p className="opacity-80">รหัส {d.code}</p>
+      {/* QR: มีฟอร์ม → ลงทะเบียน · ไม่มีฟอร์มแต่มี Survey → ตอบแบบประเมิน · ไม่มีทั้งคู่ → รายละเอียดงานอย่างเดียว (ไม่มี QR) */}
+      {qrLabel ? (
+        <div className="mt-auto rounded-xl p-3" style={{ background: c.button.bg, color: c.button.text }}>
+          <div className="flex items-center gap-2">
+            <span className="flex size-12 items-center justify-center rounded-md bg-white text-slate-900">
+              <QrCode className="size-8" />
+            </span>
+            <div className="text-[11px] leading-tight">
+              <p className="font-semibold">{qrLabel}</p>
+              <p className="opacity-80">รหัส {d.code}</p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-auto space-y-1 rounded-xl border p-3 text-[11px] leading-snug" style={{ borderColor: c.muted, color: c.muted }}>
+          <p>
+            {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} – {g.endTime || "--:--"}
+          </p>
+          {g.venue && <p className="line-clamp-2">{g.venue}</p>}
+        </div>
+      )}
       {srcs.length > 1 && (
         <p className="text-center text-[10px]" style={{ color: c.muted }}>
           รูป {current + 1}/{srcs.length} · ทุก {Math.round(ms / 1000)} วิ

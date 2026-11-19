@@ -32,6 +32,10 @@ export function nowParts(now = new Date()) {
 // แต่ค่าจาก store หลักอาจเป็น ISO ยาว → ตัดให้เหลือ 16 ตัวก่อน
 const dt = (v: string) => v.slice(0, 16);
 
+/** Event นี้มีการลงทะเบียน / Survey ไหม (ฟอร์มกับ Survey ไม่บังคับ · ไม่มีช่อง / ไม่มีคำถาม = ไม่มี) */
+export const hasRegistration = (d: EventDraft) => d.form.fields.length > 0;
+export const hasSurvey = (d: EventDraft) => d.survey.questions.length > 0;
+
 /** วันจบของงาน (ไม่ได้ตั้ง = วันเดียวกับวันเริ่ม) */
 export function eventEndDate(d: EventDraft): string {
   return d.general.endDate || d.general.date;
@@ -110,8 +114,8 @@ export function missingGeneral(d: EventDraft): string[] {
 // ============ ด่านของแต่ละขั้น (ไม่มีเมนูขั้นตอนด้านบนแล้ว → ต้องผ่านทีละขั้น) ============
 // คืน "เหตุผลที่ยังไปขั้นถัดไปไม่ได้" (ไม่มี = ผ่าน) · ขั้นที่ 2 Branding และ 5 Preview ไม่มีช่องบังคับ
 // 1 ข้อมูลทั่วไป: ช่อง (*) + วันเวลางาน + รายชื่อ Event ปิด
-// 3 ฟอร์มลงทะเบียน: อย่างน้อย 1 ช่อง + เวลาเปิด–ปิดรับลงทะเบียน
-// 4 Survey: อย่างน้อย 1 คำถาม + เวลาเปิด–ปิดรับคำตอบ
+// 3 ฟอร์มลงทะเบียน: ไม่บังคับ (ไม่มีช่อง = Event นี้ไม่รับลงทะเบียน) · ถ้ามีช่องต้องกำหนดเวลาเปิด–ปิดรับลงทะเบียน
+// 4 Survey: ไม่บังคับ · ถ้ามีคำถามต้องกำหนดเวลาเปิด–ปิดรับคำตอบ
 export function stepBlock(d: EventDraft, step: number, now = new Date()): string | undefined {
   const e = validateDates(d, now);
   const s = d.schedule;
@@ -122,12 +126,13 @@ export function stepBlock(d: EventDraft, step: number, now = new Date()): string
     return allowListProblem(d);
   }
   if (step === 3) {
-    if (d.form.fields.length === 0) return "เพิ่มช่องในฟอร์มอย่างน้อย 1 ช่อง";
+    if (d.form.fields.length === 0) return undefined; // ไม่มีฟอร์ม = ไม่รับลงทะเบียน → ผ่านได้เลย
     if (!s.regOpen || !s.regClose) return "กำหนดเวลาเปิด–ปิดรับลงทะเบียน";
     if (e.regClose) return `เวลาปิดรับลงทะเบียน: ${e.regClose}`;
   }
   if (step === 4) {
-    if (d.survey.questions.length === 0) return "เพิ่มคำถาม Survey อย่างน้อย 1 ข้อ";
+    // Survey ไม่บังคับ: ไม่มีคำถาม = ไม่มี Survey → ผ่านได้เลย · มีคำถามแล้วต้องกำหนดเวลาเปิด–ปิดด้วย
+    if (d.survey.questions.length === 0) return undefined;
     if (!s.surveyOpen || !s.surveyClose) return "กำหนดเวลาเปิด–ปิดรับคำตอบ Survey";
     if (e.surveyClose) return `เวลาปิดรับคำตอบ: ${e.surveyClose}`;
   }

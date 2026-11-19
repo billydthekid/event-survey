@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useEventAccess } from "@/app/admin/events/[id]/eventAccess";
-import { firstBlockedStep, isWizardLocked, stepBlock, toEventPatch } from "@/lib/utils/wizard-rules";
+import { firstBlockedStep, hasRegistration, hasSurvey, isWizardLocked, stepBlock, toEventPatch } from "@/lib/utils/wizard-rules";
 import { QrDialog } from "@/components/event/qr-dialog";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
@@ -117,8 +117,8 @@ export default function EditEventPage() {
       justPublished
       eventName={current.general.nameTh}
       code={current.code}
-      reg={{ opensAt: current.schedule.regOpen, closesAt: current.schedule.regClose }}
-      survey={{ opensAt: current.schedule.surveyOpen, closesAt: current.schedule.surveyClose }}
+      reg={hasRegistration(current) ? { opensAt: current.schedule.regOpen, closesAt: current.schedule.regClose } : null}
+      survey={hasSurvey(current) ? { opensAt: current.schedule.surveyOpen, closesAt: current.schedule.surveyClose } : null}
     />
     </>
   );

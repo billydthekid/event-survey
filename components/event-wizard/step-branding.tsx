@@ -1,7 +1,7 @@
 "use client";
 // ขั้นที่ 2: Branding (เดิม Theme + โฆษณา)
 // หน้าเดียวเรียงลงมา: Live Preview จอ Kiosk (บนสุด · ช่องรูป = โฆษณา, ไม่มีโฆษณา = รูปปก)
-// → โลโก้ · รูปภาพ [รูปปก | โฆษณา] · ธีมสำเร็จรูป 6 แบบ + Reset · ปรับแต่งเอง (สีหลัก, พื้นหลัง สี/รูป, โหมด = รอปรับปรุง)
+// → โลโก้ · รูปภาพ [รูปปก | โฆษณา] · ธีมสำเร็จรูป 6 แบบ + Reset · ปรับแต่งเอง (สีหลัก, พื้นหลัง สี/รูป) · โหมด (Light/Dark/Bold) มาจากธีมสำเร็จรูปเท่านั้น
 // รูปทุกแบบเก็บเป็น data URL ใน wizard store (localStorage) — ยังไม่มี server
 // ธีมตอนนี้มีผลใน Wizard (Preview) · หน้าจริง /r, /s, Kiosk ยังใช้แค่สีหลัก + โหมด (ไฟล์ของเพื่อน)
 
@@ -27,11 +27,6 @@ type Media = "cover" | "ads";
 
 const PRIMARY = ["#2563EB", "#7C3AED", "#0F766E", "#C2410C", "#BE185D", "#1E1B2E"];
 const BG = ["#FFFFFF", "#F8FAFC", "#FEF3C7", "#E0F2FE", "#FDF2F8", "#0F172A"];
-const MODES: { value: Theme["mode"]; label: string; hint: string }[] = [
-  { value: "light", label: "Light", hint: "ตัวหนังสือเข้ม" },
-  { value: "dark", label: "Dark", hint: "ตัวหนังสือขาว" },
-  { value: "bold", label: "Bold", hint: "พื้นสีหลักเต็ม" },
-];
 
 export function StepBranding() {
   const draft = useWizardStore((s) => s.draft);
@@ -151,28 +146,6 @@ export function StepBranding() {
               className="aspect-[9/16] w-24"
             />
           )}
-        </Section>
-
-        {/* โหมด: ยังกดไม่ได้ (รอปรับปรุง) — ตอนนี้โหมดเปลี่ยนได้จากธีมสำเร็จรูปเท่านั้น */}
-        <Section title="โหมด" hint="รอปรับปรุง · เปลี่ยนได้จากธีมสำเร็จรูป">
-          <div className="grid grid-cols-3 gap-2">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                aria-pressed={t.mode === m.value}
-                disabled
-                title="รอปรับปรุง"
-                className={cn(
-                  "cursor-not-allowed rounded-lg border px-3 py-2 text-left text-sm opacity-60",
-                  t.mode === m.value && "border-primary bg-primary/5 font-semibold text-primary"
-                )}
-              >
-                {m.label}
-                <span className="block text-xs font-normal text-muted-foreground">{m.hint}</span>
-              </button>
-            ))}
-          </div>
         </Section>
       </WizardSection>
     </>

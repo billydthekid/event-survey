@@ -4,7 +4,7 @@
 // - การ์ดทีละคำถาม: พิมพ์คำถามในการ์ด (ภาษาไทย) · แก้ตัวเลือก / ตาราง / สเกล (QuestionEditor) · ทำสำเนา · ลบ
 // - ท้ายการ์ด: เปลี่ยนประเภท · คะแนนเต็ม (ให้ดาว / สเกล) · Required (เดิมอยู่แผงขวา)
 // - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts) · แถบ "เพิ่มคำถาม" = 12 ประเภท (lib/survey-types.ts)
-// - ต้องมีอย่างน้อย 1 คำถาม + กำหนดเวลา ก่อนกด "ถัดไป" (stepBlock)
+// - Survey ไม่บังคับ (ไม่มีคำถาม = ไม่มี Survey) · ถ้ามีคำถามต้องกำหนดเวลาก่อนกด "ถัดไป" (stepBlock)
 
 import { useState } from "react";
 import { Copy, GripVertical, Trash2 } from "lucide-react";
@@ -54,8 +54,21 @@ export function StepSurvey() {
 
   return (
     <>
-      <WizardSection title="เปิดตอบ Survey" description="ผู้เข้าร่วมตอบแบบประเมินผ่าน QR Survey ได้เฉพาะช่วงนี้">
-        <TimeWindowFields openKey="surveyOpen" closeKey="surveyClose" openLabel="เปิดให้ตอบ" closeLabel="ปิดรับคำตอบ" />
+      <WizardSection
+        title="เปิดตอบ Survey"
+        description={
+          qs.length === 0
+            ? "Survey ไม่บังคับ · ไม่มีคำถาม = Event นี้ไม่มี Survey (ข้ามขั้นนี้ได้)"
+            : "ผู้เข้าร่วมตอบแบบประเมินผ่าน QR Survey ได้เฉพาะช่วงนี้"
+        }
+      >
+        <TimeWindowFields
+          openKey="surveyOpen"
+          closeKey="surveyClose"
+          openLabel="เปิดให้ตอบ"
+          closeLabel="ปิดรับคำตอบ"
+          required={qs.length > 0}
+        />
       </WizardSection>
 
       {/* พิมพ์คำถามภาษาไทยอย่างเดียว (ตัดปุ่มสลับ TH / EN ออกแล้ว · titleEn เดิมยังเก็บไว้) */}
@@ -173,7 +186,7 @@ export function StepSurvey() {
               key={qt.value}
               type="button"
               onClick={() => add(qt.value)}
-              className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold hover:bg-muted/70"
+              className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold transition hover:bg-foreground/15"
             >
               <qt.icon className="size-4" /> {qt.th}
             </button>
