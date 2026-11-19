@@ -200,7 +200,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
   }
 
   const e = buildPublicEvent(event, draft);
-  const pal = palette(e);
+  const pal = palette(e, "form"); // สี / พื้นหลัง / แบนเนอร์ ของหน้าฟอร์มที่ตั้งใน Wizard
   const shell = (children: React.ReactNode) => (
     <PublicShell event={e} pal={pal} lang={lang} setLang={setLang}>
       {children}

@@ -31,7 +31,8 @@ export interface KioskModel extends ScheduleInfo {
   startTime: string; // HH:mm
   endTime: string;
   venue: string;
-  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: ThemeBackground };
+  // textColor: สีตัวอักษรที่ Event Admin ตั้งเอง "" = อัตโนมัติตามโหมด
+  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: ThemeBackground; textColor: string };
   logo?: string; // URL รูปโลโก้ (ไม่มี = โลโก้ระบบ)
   closed: boolean; // Event ปิด → แบบประเมินสำหรับผู้ที่ลงทะเบียนแล้วเท่านั้น
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
@@ -79,6 +80,7 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
       secondary: th?.secondary || event.theme.secondary,
       mode: pub.theme.mode,
       background: pub.theme.background,
+      textColor: pub.theme.textColor,
     },
     logo: pub.logo,
     closed: pub.closed,

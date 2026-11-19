@@ -93,7 +93,16 @@ interface Palette {
   langBorder: string;
 }
 
+// สีตัวอักษรที่ Event Admin ตั้งเอง (Wizard ขั้น Branding) → ใช้กับชื่องาน รายละเอียด วันเวลา · ไม่ตั้ง = ตามโหมด
 function palette(m: KioskModel): Palette {
+  const base = basePalette(m);
+  const tc = m.theme.textColor;
+  if (!tc) return base;
+  const muted = /^#[0-9a-f]{6}$/i.test(tc) ? `${tc}B8` : tc; // ตัวรอง = สีเดียวกันจางลง (72%)
+  return { ...base, text: tc, muted };
+}
+
+function basePalette(m: KioskModel): Palette {
   const p = m.theme.primary;
   // พื้นหลังจาก Wizard: สีที่ Event Admin เลือกเอง (ทุกธีม เหมือนตัวอย่างใน Wizard) / สีเดิมใน Event (เฉพาะ Light)
   const bg = m.theme.background;

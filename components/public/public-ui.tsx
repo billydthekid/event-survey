@@ -9,7 +9,9 @@ import { th as thLocale } from "date-fns/locale";
 import { CalendarDays, ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import type { Lang } from "@/types";
 import { useNow } from "@/lib/hooks/useNow";
-import { PublicEvent, pick } from "@/lib/public-event";
+import { PublicEvent, pick, type PageStyle } from "@/lib/public-event";
+import type { PageKey } from "@/lib/theme-presets";
+import { whiteTextContrast } from "@/lib/utils/color";
 
 // ============ ภาษา: จำไว้ในเครื่องผู้ใช้ (ลงทะเบียนเป็น EN → หน้าแบบประเมินก็ EN) ============
 const LANG_KEY = "esp.public.lang";
@@ -48,7 +50,9 @@ export interface Palette {
   mode: "light" | "dark" | "bold";
   primary: string;
   page: string; // พื้นหลังส่วนเนื้อหา (สีพื้นหลังที่ Event Admin เลือกใน Wizard ถ้ามี)
-  pageImage: string; // รูปพื้นหลังจาก Wizard ("" = ไม่มี) แสดงรอบกรอบเนื้อหา
+  pageImage: string; // รูปพื้นหลังจาก Wizard ("" = ไม่มี)
+  imageInside: boolean; // true = รูปพื้นหลังอยู่หลังเนื้อหาเลย (หน้าฟอร์ม / Survey ที่ตั้งรูปแยก) · false = แสดงรอบกรอบเนื้อหา
+  banner: string; // แบนเนอร์หัวหน้า 4:1 (Wizard ขั้น Branding) "" = ไม่มี
   text: string;
   muted: string;
   line: string;
@@ -59,15 +63,55 @@ export interface Palette {
   soft: string; // พื้นตัวเลือกที่ถูกเลือก (โทนอ่อนของสีหลัก)
 }
 
-export function palette(e: Pick<PublicEvent, "theme"> | null): Palette {
+// page = หน้าไหน (ฟอร์ม / Survey) → ใช้สีที่ Event Admin ตั้งแยกให้หน้านั้น + แบนเนอร์ของหน้านั้น
+export function palette(e: Pick<PublicEvent, "theme" | "pages"> | null, page?: PageKey): Palette {
+  const look = page ? e?.pages?.[page] : undefined;
+  const base = basePalette(e);
+  const withBanner = { ...base, banner: look?.banner ?? "" };
+  // ตั้งสีแยกให้หน้านี้ → ใช้สีชุดนั้นทั้งหน้า (เหมือน Preview ฟอร์ม / Survey ใน Wizard)
+  if (look?.own) return ownPagePalette(look, withBanner.banner);
+  // ไม่ได้ตั้งแยก → ธีมเดิม · ตั้งสีตัวอักษรเอง (textColor) → ใช้กับส่วนข้อมูลงาน (ชื่อ รายละเอียด)
+  const tc = e?.theme.textColor;
+  return tc ? { ...withBanner, head: { ...withBanner.head, text: tc, muted: alpha(tc, 0.72) } } : withBanner;
+}
+
+// ใส่ความโปร่งใสให้สี HEX (#RRGGBB) — สีตัวอักษรรอง
+const alpha = (hex: string, a: number) =>
+  /^#[0-9a-f]{6}$/i.test(hex) ? hex + Math.round(a * 255).toString(16).padStart(2, "0") : hex;
+
+// สีชุดที่ Event Admin ตั้งแยกให้หน้าฟอร์ม / Survey: พื้นเข้ม → ช่องกรอกโทนเข้ม · พื้นอ่อน → โทนอ่อน
+function ownPagePalette(l: PageStyle, banner: string): Palette {
+  const dark = whiteTextContrast(l.bg) >= 4.5;
+  const p = l.primary;
+  const line = dark ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.10)";
+  return {
+    mode: dark ? "dark" : "light",
+    primary: p,
+    page: l.bg,
+    pageImage: l.bgImage ?? "",
+    imageInside: !!l.bgImage,
+    banner,
+    text: l.text,
+    muted: l.muted,
+    line,
+    input: dark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)",
+    inputText: dark ? "#F8FAFC" : "#0F172A",
+    head: { bg: "transparent", text: l.text, muted: l.muted, line },
+    chip: dark ? { bg: `${p}40`, text: "#E0E7FF" } : { bg: `${p}1A`, text: p },
+    soft: dark ? `${p}33` : `${p}14`,
+  };
+}
+
+function basePalette(e: Pick<PublicEvent, "theme"> | null): Omit<Palette, "banner"> {
   const primary = e?.theme.primary ?? "#2563EB";
   const mode = e?.theme.mode ?? "light";
   // พื้นหลังจาก Wizard: สีที่เลือกเอง (ทุกธีม เหมือนตัวอย่างใน Wizard) / สีเดิมใน Event (เฉพาะ Light)
   const bg = e?.theme.background;
   const pageImage = bg?.image ?? "";
+  const imageInside = false;
   if (mode === "dark") {
     return {
-      mode, primary, pageImage,
+      mode, primary, pageImage, imageInside,
       page: bg?.custom || "#0F172A", text: "#F8FAFC", muted: "#94A3B8", line: "rgba(255,255,255,0.10)",
       input: "#1E293B", inputText: "#F8FAFC",
       head: { bg: "#0F172A", text: "#F8FAFC", muted: "#94A3B8", line: "rgba(255,255,255,0.10)" },
@@ -77,7 +121,7 @@ export function palette(e: Pick<PublicEvent, "theme"> | null): Palette {
   }
   const light = {
     page: "#FFFFFF", text: "#0F172A", muted: "#64748B", line: "#E2E8F0",
-    input: "#F1F5F9", inputText: "#0F172A", soft: `${primary}14`, pageImage,
+    input: "#F1F5F9", inputText: "#0F172A", soft: `${primary}14`, pageImage, imageInside,
   };
   if (mode === "bold") {
     return {
@@ -144,12 +188,25 @@ export function PublicShell({
   }, [pal.page]);
 
   // รูปพื้นหลังจาก Wizard: แสดงรอบกรอบเนื้อหา (เห็นบนแท็บเล็ต/คอม) · ตัวเนื้อหาใช้สีพื้นทึบ → ฟอร์มอ่านง่ายเสมอ
-  const outer: React.CSSProperties = pal.pageImage
-    ? { backgroundColor: pal.page, backgroundImage: `url("${pal.pageImage}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }
-    : { background: pal.page };
+  // รูปพื้นหลัง 2 แบบ:
+  // - รูปของ Kiosk (ไม่ได้ตั้งหน้าแยก) → อยู่รอบกรอบเนื้อหา เนื้อหาเป็นสีทึบ (ฟอร์มอ่านง่าย)
+  // - รูปที่ Event Admin ตั้งให้หน้าฟอร์ม / Survey โดยเฉพาะ (แนวตั้งสำหรับมือถือ) → อยู่หลังเนื้อหาเลย (เหมือน Preview)
+  const image = (src: string): React.CSSProperties => ({
+    backgroundColor: pal.page,
+    backgroundImage: `url("${src}")`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
+  });
+  const outer: React.CSSProperties = pal.pageImage && !pal.imageInside ? image(pal.pageImage) : { background: pal.page };
+  const inner: React.CSSProperties | undefined = !pal.pageImage
+    ? undefined
+    : pal.imageInside
+      ? image(pal.pageImage)
+      : { background: pal.page };
   return (
     <div className="min-h-dvh" style={{ ...outer, color: pal.text }}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col" style={pal.pageImage ? { background: pal.page } : undefined}>
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col" style={inner}>
         <header style={{ background: pal.head.bg, color: pal.head.text }}>
           <div className="flex items-center justify-between gap-3 px-5 py-3.5">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -226,10 +283,17 @@ export function EventInfo({
       className="border-b px-5 pt-4 pb-5"
       style={{ background: pal.head.bg, color: pal.head.text, borderColor: pal.head.line }}
     >
-      {/* รูปปก 16:9 จาก Wizard (เหมือนตัวอย่างหน้า Event บนมือถือใน Wizard) · ไม่มีรูป = ไม่แสดงกรอบ */}
-      {event.cover && (
-        // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก
-        <img src={event.cover} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />
+      {/* รูปหัวหน้า:
+          - มีแบนเนอร์ของหน้านี้ (4:1 แบบ Google Forms, ตั้งในขั้น Branding) → แสดงแบนเนอร์ (เหมือน Preview ฟอร์ม / Survey)
+          - ไม่มี → รูปปก 16:9 (เหมือนตัวอย่างหน้า Event บนมือถือ) · ไม่มีทั้งคู่ = ไม่แสดงกรอบ */}
+      {pal.banner ? (
+        // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL
+        <img src={pal.banner} alt="" className="mb-4 aspect-[4/1] w-full rounded-xl object-cover" />
+      ) : (
+        event.cover && (
+          // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก
+          <img src={event.cover} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />
+        )
       )}
       {/* ป้าย: หน้านี้คืออะไร (ลงทะเบียน / แบบประเมิน) + ประเภทงาน (เหมือนตัวอย่างใน Wizard) */}
       <div className="flex flex-wrap gap-1.5">

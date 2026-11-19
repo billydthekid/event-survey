@@ -10,6 +10,7 @@ import type { BiText, Event, FieldType, QuestionType, Registration } from "@/typ
 import type { AllowListKind, BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
 import { eventTypeLabel } from "@/lib/event-types";
+import { pageLook, type PageKey, type PageLook } from "@/lib/theme-presets";
 import { isActive, normalizeContact } from "@/lib/allow-list";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
@@ -59,7 +60,10 @@ export interface PublicEvent {
   startTime: string;
   endTime: string;
   venue: string;
-  theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground };
+  // textColor: สีตัวอักษร (ชื่องาน รายละเอียด) ที่ Event Admin ตั้งเอง "" = อัตโนมัติตามโหมด
+  theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground; textColor: string };
+  // หน้าตาหน้าฟอร์ม (/r) / Survey (/s) จาก Wizard ขั้น Branding (pageLook ของ P1tch4pa) · ไม่มี draft = ไม่มี
+  pages?: Record<PageKey, PageStyle>;
   logo?: string;
   cover?: string; // รูปปก 16:9 (Wizard ขั้น Branding) ไม่มี = ไม่แสดง
   closed: boolean; // Event ปิด (รับเฉพาะรายชื่อที่ import) → แบบประเมินตอบได้เฉพาะผู้ที่ลงทะเบียน
@@ -149,6 +153,17 @@ export function themeBackground(event: Event, draft?: EventDraft): ThemeBackgrou
   };
 }
 export const themeLogo = (event: Event, draft?: EventDraft) => draft?.theme.logo?.dataUrl || event.theme.logo;
+
+// หน้าตาของหน้าฟอร์ม / Survey: ใช้ pageLook() ตัวเดียวกับ Preview ใน Wizard → หน้าจริงตรงกับที่ Event Admin เห็น
+// own = Event Admin เปิด "ตั้งสีแยก" ของหน้านั้น (ไม่เปิด = ใช้สีเดียวกับ Kiosk → หน้าเราใช้ธีมเดิมของเรา)
+export interface PageStyle extends PageLook {
+  own: boolean;
+}
+function pageStyles(draft?: EventDraft): Record<PageKey, PageStyle> | undefined {
+  if (!draft) return undefined;
+  const style = (k: PageKey): PageStyle => ({ ...pageLook(draft.theme, k), own: !!draft.theme.pages?.[k] });
+  return { form: style("form"), survey: style("survey") };
+}
 // รูปปก: Wizard (crop 16:9 แล้ว) → รูปเดิมใน store หลัก · ไม่มีทั้งคู่ = undefined
 export const eventCover = (event: Event, draft?: EventDraft) => draft?.general.cover?.dataUrl || event.coverImage || undefined;
 
@@ -237,7 +252,9 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
       primary: draft?.theme.primary || event.theme.primary,
       mode: draft?.theme.mode || event.theme.kind,
       background: themeBackground(event, draft),
+      textColor: draft?.theme.textColor || "",
     },
+    pages: pageStyles(draft),
     logo: themeLogo(event, draft),
     cover: eventCover(event, draft),
     closed: isActive(draft?.allowList),

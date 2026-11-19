@@ -163,7 +163,7 @@ export function SurveyView({ params }: { params: Promise<{ code: string }> }) {
   }
 
   const e = buildPublicEvent(event, draft);
-  const pal = palette(e);
+  const pal = palette(e, "survey"); // สี / พื้นหลัง / แบนเนอร์ ของหน้า Survey ที่ตั้งใน Wizard
   const qs = e.survey.questions;
   const required = qs.filter((q) => q.required);
   const requiredDone = required.filter((q) => answered(q, answers[q.id])).length;
