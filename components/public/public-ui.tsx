@@ -291,8 +291,14 @@ export function EventInfo({
         <img src={pal.banner} alt="" className="mb-4 aspect-[4/1] w-full rounded-xl object-cover" />
       ) : (
         event.cover && (
-          // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก
-          <img src={event.cover} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />
+          // โชว์รูปปกเต็มทั้งรูป (object-contain) ไม่ตัดหัว-ท้าย เช่นโปสเตอร์แนวตั้งในกรอบ 16:9
+          // ส่วนที่ว่างข้าง ๆ เติมด้วยรูปเดียวกันแบบเบลอ (แบบเดียวกับจอ Kiosk) · รูป 16:9 = เต็มกรอบเหมือนเดิม
+          <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก */}
+            <img src={event.cover} alt="" aria-hidden className="absolute inset-0 size-full scale-110 object-cover blur-xl" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก */}
+            <img src={event.cover} alt="" className="absolute inset-0 size-full object-contain" />
+          </div>
         )
       )}
       {/* ป้าย: หน้านี้คืออะไร (ลงทะเบียน / แบบประเมิน) + ประเภทงาน (เหมือนตัวอย่างใน Wizard) */}
