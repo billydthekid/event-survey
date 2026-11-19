@@ -39,6 +39,8 @@ export function EventSetupWizard({ step }: { step: number }) {
   const mainEvent = access.status === "nodata" || access.status === "ok" ? access.event : null;
   const updateEvent = useStore((s) => s.updateEvent);
   const addLog = useStore((s) => s.addLog);
+  // ชื่อผู้สร้าง Event (หัว Wizard: "สร้างโดย …") · หา user ไม่เจอ = ไม่แสดง
+  const creatorName = useStore((s) => s.users.find((u) => u.id === mainEvent?.createdBy)?.name ?? "");
 
   // ---- wizard store ----
   const { draft, drafts, setStep, publish, load, ensureFromMainStore } = useWizardStore();
@@ -92,8 +94,10 @@ export function EventSetupWizard({ step }: { step: number }) {
     <WizardShell
       eventId={id}
       eventName={current.general.nameTh}
-      assignedBy={current.assignedBy}
+      createdBy={creatorName || current.assignedBy}
+      // ล็อกแล้ว → สถานะจริงใน store หลัก (กำลังจัดงาน / จบแล้ว) · ยังแก้ได้ → สถานะจากวันเวลา (Draft / รอเปิดรับ / …)
       status={locked ? STATUS_LABEL[mainEvent.status].text : PHASE_META[getPhase(current)].th}
+      statusCls={locked ? STATUS_LABEL[mainEvent.status].color : PHASE_META[getPhase(current)].cls}
       step={step}
       onStep={(n) => router.push(stepHref(id, n))} // เปลี่ยนขั้น = เปลี่ยนหน้า (URL)
       title={META[step].title}

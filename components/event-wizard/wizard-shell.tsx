@@ -28,8 +28,10 @@ export function stepHref(eventId: string, n: number): string {
 interface Props {
   eventId: string; // ใช้ดูการบันทึกอัตโนมัติของ Event นี้ (SaveStatus)
   eventName: string;
-  assignedBy: string;
-  status: string;
+  /** ชื่อผู้สร้าง Event (ว่าง = ไม่แสดง) */
+  createdBy: string;
+  status: string; // ข้อความในป้ายสถานะ เช่น "Draft", "กำลังจัดงาน"
+  statusCls: string; // สีของป้ายสถานะ (class ของ Tailwind)
   step: number;
   onStep: (n: number) => void;
   title: string;
@@ -63,14 +65,18 @@ export function WizardShell(p: Props) {
           >
             <X className="size-4" />
           </Button>
-          <div className="leading-tight">
-            <p className="text-xs text-muted-foreground">
-              แก้ไข Event · {p.status} · มอบหมายโดย {p.assignedBy}
+          {/* ชื่อ Event เด่น + ป้ายสถานะ · บรรทัดล่าง "ตั้งค่า Event · สร้างโดย …" (ไม่รู้ผู้สร้าง = ไม่แสดงส่วนนั้น) */}
+          <div className="min-w-0 leading-tight">
+            <div className="flex items-center gap-2">
+              <p className="truncate font-semibold">{p.eventName || "(ยังไม่ตั้งชื่อ Event)"}</p>
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", p.statusCls)}>{p.status}</span>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              ตั้งค่า Event{p.createdBy && ` · สร้างโดย ${p.createdBy}`}
             </p>
-            <p className="font-semibold">{p.eventName}</p>
           </div>
         </div>
-        {/* เปลี่ยนทุกครั้งที่แก้: กำลังบันทึก… → บันทึกแล้ว · เวลา */}
+        {/* เปลี่ยนทุกครั้งที่แก้: กำลังบันทึก… → บันทึกแล้ว */}
         <SaveStatus eventId={p.eventId} locked={p.locked} />
       </header>
 
