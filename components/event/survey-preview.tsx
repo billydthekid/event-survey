@@ -7,6 +7,8 @@ import { Calendar, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeQuestion } from "@/lib/survey-types";
 import type { SurveyQuestion } from "@/types/event";
+import { lookStyle, type PageLook } from "@/lib/theme-presets";
+import { useTr } from "@/lib/wizard-lang";
 
 const box = "rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground";
 
@@ -16,13 +18,14 @@ export const ratingOf = (q: SurveyQuestion) => ({ max: q.ratingMax ?? 5 });
 export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuestion; primary: string; size?: "sm" | "md" }) {
   const q = normalizeQuestion(raw);
   const sm = size === "sm";
+  const tr = useTr();
   const nums = Array.from({ length: ratingOf(q).max }, (_, i) => i + 1);
 
   switch (q.type) {
     case "short":
-      return <div className={cn(box, "max-w-md")}>พิมพ์คำตอบสั้น ๆ</div>;
+      return <div className={cn(box, "max-w-md")}>{tr("พิมพ์คำตอบสั้น ๆ", "Short answer")}</div>;
     case "long":
-      return <div className={cn(box, "h-20")}>พิมพ์คำตอบ…</div>;
+      return <div className={cn(box, "h-20")}>{tr("พิมพ์คำตอบ…", "Your answer…")}</div>;
     case "date":
       return (
         <div className={cn(box, "flex max-w-xs items-center justify-between")}>
@@ -32,7 +35,7 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
     case "dropdown":
       return (
         <div className={cn(box, "flex max-w-md items-center justify-between")}>
-          {q.options[0] || "เลือกคำตอบ"} <ChevronDown className="size-4" />
+          {q.options[0] || tr("เลือกคำตอบ", "Choose")} <ChevronDown className="size-4" />
         </div>
       );
     case "single":
@@ -121,20 +124,30 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
 export function SurveyPreview({
   questions,
   lang,
-  primary,
+  primary: primaryProp,
   title,
+  look,
 }: {
   questions: SurveyQuestion[];
   lang: "th" | "en";
   primary: string;
   title: string;
+  /** สีของหน้า Survey (ขั้น Branding → ปรับแต่งเอง แท็บ Survey) · ไม่ส่ง = พื้นขาวแบบเดิม */
+  look?: PageLook;
 }) {
-  const label = (q: SurveyQuestion) => (lang === "en" && q.titleEn ? q.titleEn : q.titleTh) || "(ยังไม่ตั้งชื่อคำถาม)";
+  const primary = look?.primary ?? primaryProp;
+  const tr = useTr();
+  const label = (q: SurveyQuestion) => (lang === "en" && q.titleEn ? q.titleEn : q.titleTh) || tr("(ยังไม่ตั้งชื่อคำถาม)", "(Untitled question)");
 
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg">
+    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
+      {/* แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
+      {look?.banner && (
+        // eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว
+        <img src={look.banner} alt="" className="-mx-1 mb-4 aspect-[4/1] w-[calc(100%+0.5rem)] rounded-xl object-cover" />
+      )}
       <p className="mb-4 text-base font-bold">{title}</p>
-      {questions.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีคำถาม</p>}
+      {questions.length === 0 && <p className="text-sm text-muted-foreground" style={{ color: look?.muted }}>{tr("ยังไม่มีคำถาม", "No questions yet")}</p>}
       <div className="space-y-5">
         {questions.map((q, i) => (
           <div key={q.id} className="space-y-2">
@@ -146,7 +159,7 @@ export function SurveyPreview({
         ))}
       </div>
       <button type="button" className="mt-6 w-full rounded-lg py-2.5 text-sm font-semibold text-white" style={{ backgroundColor: primary }}>
-        {lang === "th" ? "ส่งแบบประเมิน" : "Submit"}
+        {tr("ส่งแบบประเมิน", "Submit")}
       </button>
     </div>
   );

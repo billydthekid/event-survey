@@ -16,24 +16,25 @@ export interface QTypeMeta {
   th: string;
   en: string; // ชื่อแบบ Google Form
   example: string; // ตัวอย่างการใช้งาน
+  exampleEn: string; // ตัวอย่าง (อังกฤษ)
   icon: LucideIcon;
   hasOptions: boolean; // ผู้สร้างแก้ตัวเลือกได้
   hasRows: boolean; // ตาราง (แถว × คอลัมน์)
 }
 
 export const QTYPES: QTypeMeta[] = [
-  { value: "short", th: "ข้อความสั้น", en: "Short Answer", example: "ระบุความคิดเห็นสั้น ๆ", icon: Type, hasOptions: false, hasRows: false },
-  { value: "long", th: "ข้อความยาว", en: "Paragraph", example: "ข้อเสนอแนะเพิ่มเติม", icon: AlignLeft, hasOptions: false, hasRows: false },
-  { value: "single", th: "ตัวเลือกเดียว", en: "Multiple Choice", example: "คุณรู้จัก Event จากช่องทางใด", icon: CircleDot, hasOptions: true, hasRows: false },
-  { value: "multi", th: "หลายตัวเลือก", en: "Checkboxes", example: "คุณชอบกิจกรรมส่วนไหนบ้าง", icon: CheckSquare, hasOptions: true, hasRows: false },
-  { value: "dropdown", th: "Dropdown", en: "Dropdown", example: "เลือกประเภทผู้เข้าร่วม", icon: ChevronDown, hasOptions: true, hasRows: false },
-  { value: "linear", th: "สเกลตัวเลข", en: "Linear Scale", example: "ให้คะแนน 1–5", icon: SlidersHorizontal, hasOptions: false, hasRows: false },
-  { value: "rating", th: "ให้ดาว", en: "Rating", example: "ให้คะแนนด้วยดาว ⭐", icon: Star, hasOptions: false, hasRows: false },
-  { value: "opinion", th: "ระดับความเห็น", en: "Opinion Scale", example: "ระดับความเห็นด้วย", icon: ThumbsUp, hasOptions: true, hasRows: false },
-  { value: "mcgrid", th: "ตารางเลือกข้อเดียว", en: "Multiple Choice Grid", example: "ประเมินหลายหัวข้อ", icon: Grid3x3, hasOptions: true, hasRows: true },
-  { value: "cbgrid", th: "ตารางเลือกหลายข้อ", en: "Checkbox Grid", example: "เลือกได้หลายข้อในตาราง", icon: Grid2x2Check, hasOptions: true, hasRows: true },
-  { value: "yesno", th: "ใช่ / ไม่ใช่", en: "Yes / No", example: "ต้องการเข้าร่วมอีกหรือไม่", icon: ToggleLeft, hasOptions: false, hasRows: false },
-  { value: "date", th: "วันที่", en: "Date", example: "วันที่ทำแบบสำรวจ", icon: Calendar, hasOptions: false, hasRows: false },
+  { value: "short", th: "ข้อความสั้น", en: "Short Answer", example: "ระบุความคิดเห็นสั้น ๆ", exampleEn: "A short comment", icon: Type, hasOptions: false, hasRows: false },
+  { value: "long", th: "ข้อความยาว", en: "Paragraph", example: "ข้อเสนอแนะเพิ่มเติม", exampleEn: "Further suggestions", icon: AlignLeft, hasOptions: false, hasRows: false },
+  { value: "single", th: "ตัวเลือกเดียว", en: "Multiple Choice", example: "คุณรู้จัก Event จากช่องทางใด", exampleEn: "How did you hear about the event?", icon: CircleDot, hasOptions: true, hasRows: false },
+  { value: "multi", th: "หลายตัวเลือก", en: "Checkboxes", example: "คุณชอบกิจกรรมส่วนไหนบ้าง", exampleEn: "Which parts did you enjoy?", icon: CheckSquare, hasOptions: true, hasRows: false },
+  { value: "dropdown", th: "Dropdown", en: "Dropdown", example: "เลือกประเภทผู้เข้าร่วม", exampleEn: "Attendee type", icon: ChevronDown, hasOptions: true, hasRows: false },
+  { value: "linear", th: "สเกลตัวเลข", en: "Linear Scale", example: "ให้คะแนน 1–5", exampleEn: "Score 1–5", icon: SlidersHorizontal, hasOptions: false, hasRows: false },
+  { value: "rating", th: "ให้ดาว", en: "Rating", example: "ให้คะแนนด้วยดาว ⭐", exampleEn: "Star rating ⭐", icon: Star, hasOptions: false, hasRows: false },
+  { value: "opinion", th: "ระดับความเห็น", en: "Opinion Scale", example: "ระดับความเห็นด้วย", exampleEn: "Level of agreement", icon: ThumbsUp, hasOptions: true, hasRows: false },
+  { value: "mcgrid", th: "ตารางเลือกข้อเดียว", en: "Multiple Choice Grid", example: "ประเมินหลายหัวข้อ", exampleEn: "Rate several topics", icon: Grid3x3, hasOptions: true, hasRows: true },
+  { value: "cbgrid", th: "ตารางเลือกหลายข้อ", en: "Checkbox Grid", example: "เลือกได้หลายข้อในตาราง", exampleEn: "Pick several in a grid", icon: Grid2x2Check, hasOptions: true, hasRows: true },
+  { value: "yesno", th: "ใช่ / ไม่ใช่", en: "Yes / No", example: "ต้องการเข้าร่วมอีกหรือไม่", exampleEn: "Would you join again?", icon: ToggleLeft, hasOptions: false, hasRows: false },
+  { value: "date", th: "วันที่", en: "Date", example: "วันที่ทำแบบสำรวจ", exampleEn: "Date of the survey", icon: Calendar, hasOptions: false, hasRows: false },
 ];
 
 export const qtype = (t: SurveyQType) => QTYPES.find((q) => q.value === t) ?? QTYPES[0];
@@ -43,23 +44,33 @@ export const YES_NO = ["ใช่", "ไม่ใช่"];
 export const GRID_COLUMNS = ["ดีมาก", "ดี", "พอใช้", "ควรปรับปรุง"];
 export const GRID_ROWS = ["หัวข้อ 1", "หัวข้อ 2"];
 
+// ค่าตั้งต้นภาษาอังกฤษ (ใช้ตอนหน้าตั้งค่าเป็น EN · ผู้ตอบเห็นตามที่ผู้จัดพิมพ์ไว้)
+const EN = {
+  options: ["Option 1", "Option 2"],
+  opinion: ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"],
+  yesno: ["Yes", "No"],
+  columns: ["Excellent", "Good", "Fair", "Needs improvement"],
+  rows: ["Topic 1", "Topic 2"],
+};
+
 /** ค่าตั้งต้นเมื่อเพิ่มคำถาม / เปลี่ยนประเภท (คงค่าที่ใช้ต่อได้ของคำถามเดิมไว้) */
-export function defaultsFor(type: SurveyQType, prev?: SurveyQuestion): Partial<SurveyQuestion> {
+export function defaultsFor(type: SurveyQType, prev?: SurveyQuestion, lang: "th" | "en" = "th"): Partial<SurveyQuestion> {
   const keepOptions = prev && prev.options.length >= 2;
+  const en = lang === "en";
   switch (type) {
     case "single":
     case "multi":
     case "dropdown":
-      return { options: keepOptions && qtype(prev.type).hasOptions && !qtype(prev.type).hasRows ? prev.options : ["ตัวเลือก 1", "ตัวเลือก 2"] };
+      return { options: keepOptions && qtype(prev.type).hasOptions && !qtype(prev.type).hasRows ? prev.options : en ? [...EN.options] : ["ตัวเลือก 1", "ตัวเลือก 2"] };
     case "opinion":
-      return { options: [...OPINION_LEVELS] };
+      return { options: en ? [...EN.opinion] : [...OPINION_LEVELS] };
     case "yesno":
-      return { options: [...YES_NO] };
+      return { options: en ? [...EN.yesno] : [...YES_NO] };
     case "mcgrid":
     case "cbgrid":
       return {
-        rows: prev?.rows?.length ? prev.rows : [...GRID_ROWS],
-        options: prev && qtype(prev.type).hasRows ? prev.options : [...GRID_COLUMNS],
+        rows: prev?.rows?.length ? prev.rows : en ? [...EN.rows] : [...GRID_ROWS],
+        options: prev && qtype(prev.type).hasRows ? prev.options : en ? [...EN.columns] : [...GRID_COLUMNS],
       };
     case "linear":
       return { options: [], ratingMax: prev?.ratingMax ?? 5, ratingStyle: undefined };

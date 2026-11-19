@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { CircleCheck, Download } from "lucide-react";
 import { useNow } from "@/lib/hooks/useNow";
+import { useTr, type Tr } from "@/lib/wizard-lang";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +24,9 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   eventName: string;
   code: string; // เช่น FIG-1017 (QR ใช้ code นี้ จึงไม่เปลี่ยนแม้แก้ข้อมูล Event)
-  reg: Window;
-  survey: Window;
+  /** null = Event นี้ไม่มีฟอร์มลงทะเบียน / Survey (ไม่บังคับสร้าง) → ไม่แสดง QR นั้น */
+  reg: Window | null;
+  survey: Window | null;
   /** เปิดหลังกดเผยแพร่ → หัวข้อ "เผยแพร่แล้ว" + ปุ่ม "ไว้ทีหลัง" */
   justPublished?: boolean;
 }
@@ -34,9 +36,9 @@ const origin = () => process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "unde
 const noProtocol = (u: string) => u.replace(/^https?:\/\//, "");
 
 type WindowState = { label: string; cls: string };
-function windowState(w: Window, now: Date, openLabel: string): WindowState {  // ตรวจเวลาตอนนี้เทียบกับ opensAt / closesAt → แสดง Badge
-  if (w.opensAt && now < new Date(w.opensAt)) return { label: "ยังไม่เปิด", cls: "bg-amber-100 text-amber-800" };
-  if (w.closesAt && now > new Date(w.closesAt)) return { label: "ปิดแล้ว", cls: "bg-slate-200 text-slate-700" };
+function windowState(w: Window, now: Date, openLabel: string, tr: Tr): WindowState {  // ตรวจเวลาตอนนี้เทียบกับ opensAt / closesAt → แสดง Badge
+  if (w.opensAt && now < new Date(w.opensAt)) return { label: tr("ยังไม่เปิด", "Not open yet"), cls: "bg-amber-100 text-amber-800" };
+  if (w.closesAt && now > new Date(w.closesAt)) return { label: tr("ปิดแล้ว", "Closed"), cls: "bg-slate-200 text-slate-700" };
   return { label: openLabel, cls: "bg-emerald-100 text-emerald-800" };
 }
 
@@ -46,6 +48,7 @@ function QrCard({ title, url, state, filename }: {
   title: string; url: string; state: WindowState; filename: string;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
+  const tr = useTr();
 
   const downloadPng = () => {
     const canvas = wrap.current?.querySelector("canvas");
@@ -68,8 +71,8 @@ function QrCard({ title, url, state, filename }: {
       </div>
       <p className="truncate rounded-md bg-muted px-3 py-2 text-center text-xs">{noProtocol(url)}</p>
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" onClick={downloadPng}>ดาวน์โหลด PNG</Button>
-        <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(url)}>คัดลอกลิงก์</Button>
+        <Button variant="outline" size="sm" onClick={downloadPng}>{tr("ดาวน์โหลด PNG", "Download PNG")}</Button>
+        <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(url)}>{tr("คัดลอกลิงก์", "Copy link")}</Button>
       </div>
     </div>
   );
@@ -77,16 +80,23 @@ function QrCard({ title, url, state, filename }: {
 
 export function QrDialog({ open, onOpenChange, eventName, code, reg, survey, justPublished }: Props) {
   const grid = useRef<HTMLDivElement>(null);
+  const tr = useTr();
   const now = useNow();
   const regUrl = `${origin()}/r/${code}`;
   const surveyUrl = `${origin()}/s/${code}`;
+  const none = !reg && !survey;
 
   /** โปสเตอร์ A4: เปิดหน้าต่างใหม่ แล้วสั่งพิมพ์ (เลือก "Save as PDF" ได้) */
   const printPoster = () => {
-    const [reg, sur] = Array.from(grid.current?.querySelectorAll("canvas") ?? []).map((c) => c.toDataURL("image/png"));
-    if (!reg || !sur) return;
+    // รูป QR ตามลำดับการ์ดที่แสดงอยู่ (มีแค่อันที่ Event นี้มีจริง)
+    const imgs = Array.from(grid.current?.querySelectorAll("canvas") ?? []).map((c) => c.toDataURL("image/png"));
+    const cards = [
+      reg && { title: tr("ลงทะเบียน", "Register"), url: regUrl },
+      survey && { title: tr("ตอบ Survey", "Survey"), url: surveyUrl },
+    ].filter((x): x is { title: string; url: string } => !!x);
+    if (cards.length === 0 || imgs.length !== cards.length) return;
     const w = window.open("", "_blank");
-    if (!w) return alert("เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
+    if (!w) return alert(tr("เบราว์เซอร์บล็อกหน้าต่างใหม่ กรุณาอนุญาต pop-up แล้วลองอีกครั้ง", "Your browser blocked the new window. Allow pop-ups and try again."));
     w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Poster ${esc(code)}</title>
 <style>
 @page{size:A4;margin:0}
@@ -104,12 +114,11 @@ h1{font-size:30pt;margin:0 0 4mm}
 </style></head><body>
 <div class="page">
   <h1>${esc(eventName)}</h1>
-  <div class="sub">สแกน QR ด้วยมือถือเพื่อเข้าร่วม</div>
+  <div class="sub">${tr("สแกน QR ด้วยมือถือเพื่อเข้าร่วม", "Scan the QR with your phone to join")}</div>
   <div class="row">
-    <div class="card"><img src="${reg}" alt=""><h2>ลงทะเบียน</h2><p>${esc(noProtocol(regUrl))}</p></div>
-    <div class="card"><img src="${sur}" alt=""><h2>ตอบ Survey</h2><p>${esc(noProtocol(surveyUrl))}</p></div>
+    ${cards.map((c, i) => `<div class="card"><img src="${imgs[i]}" alt=""><h2>${c.title}</h2><p>${esc(noProtocol(c.url))}</p></div>`).join("")}
   </div>
-  <div class="foot">รหัสงาน ${esc(code)}</div>
+  <div class="foot">${tr("รหัสงาน", "Event code")} ${esc(code)}</div>
 </div>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`);
@@ -122,30 +131,44 @@ h1{font-size:30pt;margin:0 0 4mm}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {justPublished && <CircleCheck className="size-5 text-emerald-600" />}
-            {justPublished ? "เผยแพร่ Event แล้ว · QR พร้อมใช้" : "QR ลงทะเบียน / Survey"}
+            {justPublished
+              ? none
+                ? tr("เผยแพร่ Event แล้ว", "Event published")
+                : tr("เผยแพร่ Event แล้ว · QR พร้อมใช้", "Event published · QR codes ready")
+              : tr("QR ลงทะเบียน / Survey", "Registration / survey QR")}
           </DialogTitle>
           <DialogDescription>
-            {eventName} · พิมพ์ติดหน้างาน หรือส่งลิงก์ให้ผู้เข้าร่วม
-            {justPublished && " · ยังไม่ดาวน์โหลดตอนนี้ก็ได้ กลับมาเอาได้ที่ปุ่ม QR ในหน้า Event ของฉัน"}
+            {eventName}
+            {!none && tr(" · พิมพ์ติดหน้างาน หรือส่งลิงก์ให้ผู้เข้าร่วม", " · print it at the venue or send the link to attendees")}
+            {justPublished && !none && tr(" · ยังไม่ดาวน์โหลดตอนนี้ก็ได้ กลับมาเอาได้ที่ปุ่ม QR ในหน้า Event ของฉัน", " · you can download later from the QR button on My events")}
           </DialogDescription>
         </DialogHeader>
 
-        <div ref={grid} className="grid gap-4 sm:grid-cols-2">
-          <QrCard title="QR ลงทะเบียน (ฟอร์ม)" url={regUrl} state={windowState(reg, now, "เปิดรับอยู่")} filename={`qr-register-${code}`} />
-          <QrCard title="QR แบบประเมิน (Survey)" url={surveyUrl} state={windowState(survey, now, "เปิดให้ตอบ")} filename={`qr-survey-${code}`} />
-        </div>
+        {/* แสดงเฉพาะ QR ที่ Event นี้มี (ฟอร์ม / Survey ไม่บังคับสร้าง) */}
+        {none ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {tr("Event นี้ไม่มีฟอร์มลงทะเบียนและ Survey จึงไม่มี QR · จอ Kiosk แสดงแค่รายละเอียดงาน", "This event has no registration form or survey, so there are no QR codes · the Kiosk shows event details only")}
+          </p>
+        ) : (
+          <div ref={grid} className={reg && survey ? "grid gap-4 sm:grid-cols-2" : "mx-auto grid w-full max-w-sm gap-4"}>
+            {reg && <QrCard title={tr("QR ลงทะเบียน (ฟอร์ม)", "Registration QR (form)")} url={regUrl} state={windowState(reg, now, tr("เปิดรับอยู่", "Open"), tr)} filename={`qr-register-${code}`} />}
+            {survey && <QrCard title={tr("QR แบบประเมิน (Survey)", "Survey QR")} url={surveyUrl} state={windowState(survey, now, tr("เปิดให้ตอบ", "Open"), tr)} filename={`qr-survey-${code}`} />}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">QR ไม่เปลี่ยนแม้แก้ไขข้อมูล Event · ใช้ซ้ำได้ตลอดงาน</p>
+          <p className="text-xs text-muted-foreground">{none ? "" : tr("QR ไม่เปลี่ยนแม้แก้ไขข้อมูล Event · ใช้ซ้ำได้ตลอดงาน", "The QR never changes, even if you edit the event · reuse it for the whole event")}</p>
           <div className="flex gap-2">
             {justPublished && (
-              <Button variant="secondary" onClick={() => onOpenChange(false)}>
-                ไว้ทีหลัง
+              <Button variant={none ? "default" : "secondary"} onClick={() => onOpenChange(false)}>
+                {none ? tr("ตกลง", "OK") : tr("ไว้ทีหลัง", "Later")}
               </Button>
             )}
-            <Button onClick={printPoster}>
-              <Download className="size-4" /> ดาวน์โหลดโปสเตอร์ A4 (PDF)
-            </Button>
+            {!none && (
+              <Button onClick={printPoster}>
+                <Download className="size-4" /> {tr("ดาวน์โหลดโปสเตอร์ A4 (PDF)", "Download A4 poster (PDF)")}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

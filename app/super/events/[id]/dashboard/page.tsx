@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { ClipboardCheck, Clock, Download, QrCode, TabletSmartphone, UserPlus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
+import { useWizardStore } from "@/lib/wizard-store";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { countdown, eventRange, formatRecent, formatTime } from "@/lib/utils/date";
 import { latestAt, registrationSlots, satisfactionSummary } from "@/lib/utils/stats";
@@ -29,6 +30,7 @@ function EventDashboard() {
   const allResponses = useStore((s) => s.responses);
   const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   const now = useNow();   // อัปเดตทุก 1 นาที → เหลือเวลา / ข้อมูลถึง / ช่องประ ขยับเอง
+  const draft = useWizardStore((st) => st.drafts[id]);   // ข้อมูลใน Wizard → การ์ดสถานะ (ช่วงลงทะเบียนที่ผู้จัดงานตั้ง)
 
   if (!event) {
     return (
@@ -76,15 +78,11 @@ function EventDashboard() {
           <span className="rounded-lg bg-purple-50 p-2 text-purple-600"><TabletSmartphone size={18} /></span>
           <span className="text-sm font-semibold">เปิดหน้า Kiosk</span>
         </Link>
-        {/* ยังไม่ได้ตกลงว่า Export (CSV / PDF) เป็นงานใคร → ปิดไว้ก่อน */}
-        <button
-          disabled
-          title="ยังไม่เปิดใช้"
-          className="flex cursor-not-allowed items-center gap-3 rounded-xl bg-white p-3 text-left opacity-50 shadow-sm"
-        >
+        {/* Export → ไปหน้า Report ของ Event นี้ (มีปุ่ม CSV / PDF) แบบเดียวกับ Dashboard ฝั่งผู้จัดงาน */}
+        <Link href={`/super/events/${event.id}/report`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
           <span className="rounded-lg bg-pink-50 p-2 text-pink-600"><Download size={18} /></span>
           <span className="text-sm font-semibold">Export CSV / PDF</span>
-        </button>
+        </Link>
       </div>
 
       {/* ---------- KPI 3 ใบ ---------- */}
@@ -113,7 +111,7 @@ function EventDashboard() {
 
       {/* ---------- สถานะ Event + เมื่อไหร่และที่ไหน (Figma 1136 : 460) ---------- */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[1136fr_460fr]">
-        <EventStatusCard event={event} now={now} />
+        <EventStatusCard event={event} draft={draft} now={now} registered={registrations.length} />
         <WhenWhereCard event={event} now={now} />
       </div>
     </div>

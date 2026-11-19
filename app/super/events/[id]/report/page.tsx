@@ -9,7 +9,9 @@ import { useNow } from "@/lib/hooks/useNow";
 import { Lang } from "@/types";
 import { eventRange, formatTime, isToday } from "@/lib/utils/date";
 import { registrationSlots } from "@/lib/utils/stats";
-import { ageSummary, genderSummary, percent, summarizeQuestion } from "@/lib/utils/surveyStats";
+import { ageSummary, genderSummary, percent, summarizeQuestion, surveySummaryRows } from "@/lib/utils/surveyStats";
+import { downloadCSV } from "@/lib/utils/csv";
+import { downloadPDF } from "@/lib/utils/pdf";
 import { LineChartCard } from "@/components/report/LineChartCard";
 import { GenderCard } from "@/components/report/GenderCard";
 import { AgeCard } from "@/components/report/AgeCard";
@@ -19,7 +21,7 @@ import { AnswersTab } from "@/components/report/AnswersTab";
 
 // หน้า Report เจาะ Event (ส่วน ④) — /super/events/<id>/report · Figma 318:4925
 // แท็บเก็บใน URL (?tab=overview|participants|survey|answers) → หน้า Survey ลิงก์มาที่แท็บ Survey ได้ตรงๆ
-// ปุ่ม CSV / PDF แสดงไว้ ยังกดไม่ได้ (ตกลงไว้: Export ยังไม่ต้องทำ)
+// ปุ่ม CSV / PDF = สรุปผล Survey ทีละข้อ (คอลัมน์เดียวกับฝั่งผู้จัดงาน) · ภาษาตามปุ่ม TH / EN · ไม่มี Survey → กดไม่ได้
 // TH / EN = เปลี่ยนภาษาคำถามและตัวเลือก (ข้อความอื่นยังเป็นไทย — ยังไม่มีระบบภาษากลาง)
 
 const TABS = [
@@ -75,6 +77,17 @@ function EventReport() {
   // "ข้อมูลถึง 12:40 น. วันนี้" — วันงาน = วันนี้ → "วันนี้" · วันอื่นไม่ต้องบอกวัน
   const updated = `ข้อมูลถึง ${formatTime(now)} น.${isToday(event.date, now) ? " วันนี้" : ""} · อัปเดตอัตโนมัติ`;
 
+  // ---------- Export CSV / PDF ----------
+  // ชื่อไฟล์ใช้ id ของ Event (กันปัญหาชื่อไทยในชื่อไฟล์) เช่น survey-summary_e-workshop_2026-11-17.csv
+  const handleExport = (type: "csv" | "pdf") => {
+    const rows = surveySummaryRows(questions, responses, lang);
+    // วันนี้แบบ 2026-11-17 ตามเวลาไทย (sv-SE = ปี-เดือน-วัน) — แบบเดียวกับหน้าภาพรวม
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+    if (type === "csv") downloadCSV(`survey-summary_${event.id}_${today}.csv`, rows);
+    else downloadPDF(`สรุปผล Survey · ${event.name.th} (${today})`, rows);
+  };
+  const noSurvey = questions.length === 0;
+
   return (
     <div>
       {/* ---------- หัวข้อ ---------- */}
@@ -101,10 +114,20 @@ function EventReport() {
               </button>
             ))}
           </div>
-          <button disabled title="ยังไม่เปิดใช้" className="flex cursor-not-allowed items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-400 shadow-sm">
+          <button
+            onClick={() => handleExport("csv")}
+            disabled={noSurvey}
+            title={noSurvey ? "Event นี้ยังไม่มี Survey" : "สรุปผล Survey ทีละข้อ (CSV)"}
+            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+          >
             <Download size={16} /> CSV
           </button>
-          <button disabled title="ยังไม่เปิดใช้" className="flex cursor-not-allowed items-center gap-2 rounded-lg bg-blue-600/50 px-4 py-2 text-sm font-semibold text-white">
+          <button
+            onClick={() => handleExport("pdf")}
+            disabled={noSurvey}
+            title={noSurvey ? "Event นี้ยังไม่มี Survey" : "สรุปผล Survey ทีละข้อ (PDF)"}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-600/50"
+          >
             <FileText size={16} /> PDF
           </button>
         </div>

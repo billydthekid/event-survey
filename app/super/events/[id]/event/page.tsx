@@ -17,7 +17,9 @@ import {
 // หน้า Event (ข้อมูล + QR) เจาะ Event (ส่วน ④) — /super/events/<id>/event · Figma 318:5683
 // ตกลงกับ Jin 13 พ.ย.:
 // - ข้อมูลที่ Event ยังไม่มี → "ยังไม่กำหนด" (ไม่แตะ lib/mock/events.ts ของ Billy)
-// - ปุ่ม "แก้ไข" / "เปิดหน้า Kiosk" แสดงไว้แต่กดไม่ได้ — หน้า Wizard / Kiosk อยู่ฝั่งผู้จัดงาน (/admin) Admin เข้าไม่ได้
+// - ปุ่ม "แก้ไข" แสดงไว้แต่กดไม่ได้ — หน้า Wizard อยู่ฝั่งผู้จัดงาน (/admin) Super Admin เข้าไม่ได้
+// - ปุ่ม "เปิดหน้า Kiosk" → /super/events/<id>/kiosk (จอเดียวกับฝั่งผู้จัดงาน · hafopTTT ทำให้ Super Admin เปิดได้ 18 พ.ย.)
+// - ป้ายสถานะคิดจากวัน-เวลาจริง (useLiveStatus ของ Billy ใน lib/utils/live-status.ts) · ตรงกับ Dashboard และ popup เลือก Event
 // - ล็อกการแก้ไขเมื่อสถานะ กำลังจัดงาน / จบแล้ว (isEditLocked)
 
 // ---------- origin ของเว็บ (เช่น "http://localhost:3000") ----------
@@ -94,13 +96,12 @@ function EventDetail() {
           >
             {locked ? <Lock size={16} /> : <Pencil size={16} />} แก้ไข
           </button>
-          <button
-            disabled
-            title="ยังเปิดไม่ได้ · หน้า Kiosk ตอนนี้เปิดได้เฉพาะผู้จัดงานของ Event"
-            className="cursor-not-allowed rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-400 shadow-sm"
+          <Link
+            href={`/super/events/${event.id}/kiosk`}
+            className="rounded-lg bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-slate-50"
           >
             เปิดหน้า Kiosk
-          </button>
+          </Link>
           <Link
             href={`/super/events/${event.id}/report`}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
