@@ -23,6 +23,8 @@ export function AllowListCard() {
   const [report, setReport] = useState<(ParseResult & { fileName: string }) | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // ยังไม่เปิดใช้ Event ปิด: กด "ปิด" แค่ "แอบดู" (ไม่บันทึก closed ลงข้อมูล → หน้า /r ยังรับทุกคน)
+  const [peekClosed, setPeekClosed] = useState(false);
 
   const list: AllowList = draft.allowList ?? { closed: false, kind: "email", values: [], fileName: "", importedAt: "" };
   const lang = useWizardLang();
@@ -72,19 +74,46 @@ export function AllowListCard() {
     URL.revokeObjectURL(url);
   };
 
-  // ยังไม่เปิดใช้ (ALLOW_LIST_READY = false): แสดงหน้าตาแบบ Event ปิดไว้ให้เห็น แต่เบลอ กดไม่ได้ + ป้ายแจ้ง
+  // ยังไม่เปิดใช้ (ALLOW_LIST_READY = false): ปุ่ม เปิด / ปิด กดได้ตามปกติ
+  // กด "ปิด" → ส่วนตั้งค่า Event ปิดแสดงแบบเบลอ กดไม่ได้ + ป้ายแจ้ง (ไม่บันทึกอะไร) · กด "เปิด" → กลับเป็น Event เปิด
   if (!ALLOW_LIST_READY) {
     return (
-      <div className="relative">
-        <div aria-hidden className="pointer-events-none select-none blur-[3px]">
-          <AllowListPreview title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")} tr={tr} />
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <p className="rounded-xl border bg-background/95 px-5 py-3 text-center text-sm font-semibold shadow-sm">
-            {tr("วัยรุ่นกำลังสร้างมองข้ามไปเทอมนี้ก่อนนะจ๊ะ", "Still under construction · skip this for this term 😉")}
-          </p>
-        </div>
-      </div>
+      <WizardSection
+        title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
+        description={
+          peekClosed
+            ? tr("Event ปิด · รับเฉพาะคนที่อยู่ในรายชื่อที่ import", "Closed event · only people in the imported list")
+            : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
+        }
+        action={
+          <ToggleGroup
+            value={[peekClosed ? "closed" : "open"]}
+            onValueChange={(v) => {
+              if (!v[0]) return;
+              setPeekClosed(v[0] === "closed");
+              if (list.closed) set({ closed: false }); // ข้อมูลเก่าที่เคยตั้งเป็น Event ปิด → กลับเป็น Event เปิด
+            }}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
+            <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
+          </ToggleGroup>
+        }
+      >
+        {peekClosed && (
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none space-y-4 select-none blur-[3px]">
+              <AllowListPreview tr={tr} />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <p className="rounded-xl border bg-background/95 px-5 py-3 text-center text-sm font-semibold shadow-sm">
+                {tr("วัยรุ่นกำลังสร้างมองข้ามไปเทอมนี้ก่อนนะจ๊ะ", "Still under construction · skip this for this term 😉")}
+              </p>
+            </div>
+          </div>
+        )}
+      </WizardSection>
     );
   }
 
@@ -187,20 +216,11 @@ export function AllowListCard() {
   );
 }
 
-// หน้าตาของส่วน "Event ปิด" แบบอ่านอย่างเดียว (ใช้ตอนยังไม่เปิดใช้ · อยู่ใต้ชั้นเบลอ ไม่มีปุ่มที่ทำงานจริง)
-function AllowListPreview({ title, tr }: { title: string; tr: (th: string, en: string) => string }) {
+// หน้าตาของส่วนตั้งค่า "Event ปิด" แบบอ่านอย่างเดียว (ใช้ตอนยังไม่เปิดใช้ · อยู่ใต้ชั้นเบลอ ไม่มีปุ่มที่ทำงานจริง)
+function AllowListPreview({ tr }: { tr: (th: string, en: string) => string }) {
   const pill = "rounded-md border px-2.5 py-1 text-sm";
   return (
-    <WizardSection
-      title={title}
-      description={tr("Event ปิด · รับเฉพาะคนที่มีอีเมลอยู่ในไฟล์ที่ import", "Closed event · only people whose email is in the imported file")}
-      action={
-        <div className="flex gap-1">
-          <span className={pill}>{tr("เปิด (ทุกคน)", "Open (everyone)")}</span>
-          <span className={`${pill} bg-foreground text-background`}>{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</span>
-        </div>
-      }
-    >
+    <>
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium">{tr("ตรวจสิทธิ์ด้วย", "Check by")}</span>
         <span className={`${pill} bg-foreground text-background`}>{tr("อีเมล", "Email")}</span>
@@ -219,6 +239,6 @@ function AllowListPreview({ title, tr }: { title: string; tr: (th: string, en: s
           <Upload className="mr-1 inline size-4" /> {tr("Import ไฟล์", "Import file")}
         </span>
       </div>
-    </WizardSection>
+    </>
   );
 }
