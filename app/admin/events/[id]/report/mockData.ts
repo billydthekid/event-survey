@@ -6,17 +6,22 @@
 // - สร้างแบบคงที่: ไม่ใช้ Math.random ตัวเลขจึงเท่าเดิมทุกครั้งที่เปิด
 import { MOCK_DATES } from "@/lib/mock/dates";
 import { BiText, Question, Registration, Survey, SurveyResponse } from "@/types";
+import type { ReportQuestion } from "./reportData";
 
 // ============ คำตอบ Survey ที่รู้ว่าเป็นของผู้ลงทะเบียนคนไหน ============
 // types/ ยังไม่มีช่องโยงกลับ → ต่อขยายเฉพาะในหน้า Report (ไม่แก้ types/)
 // ของจริง: ระบบลงทะเบียน/Survey ควรบันทึก registrationId ตอนผู้ใช้กดส่งคำตอบ
 export interface ReportResponse extends SurveyResponse {
-  registrationId: string; // เช่น "e-workshop-reg-46"
+  // เช่น "e-workshop-reg-46" · คำตอบที่ส่งจากหน้า /s ยังไม่มีช่องนี้ → undefined (หน้าจอขึ้น "ไม่ระบุชื่อ")
+  registrationId?: string;
 }
 
 // ============ ข้อมูลที่หน้า Report ใช้ ============
+// Survey ที่คำถามเป็น ReportQuestion (มี rows / ratingMax เพิ่ม) — Survey ปกติใส่ได้เลยเพราะสองช่องนี้ไม่บังคับ
+export type ReportSurvey = Omit<Survey, "questions"> & { questions: ReportQuestion[] };
+
 export interface ReportData {
-  survey: Survey;
+  survey: ReportSurvey;
   registrations: Registration[];
   responses: ReportResponse[];
   // คำกำกับปลายสเกล Rating ต่อคำถาม (type Question ยังไม่มีช่องนี้) ไม่มี → แสดงแค่ตัวเลข
@@ -25,7 +30,7 @@ export interface ReportData {
 }
 
 export interface RatingLabel {
-  max: BiText;   // คำกำกับคะแนน 5
+  max: BiText;   // คำกำกับคะแนนสูงสุด (5 หรือ 10 ตาม ratingMax)
   min: BiText;   // คำกำกับคะแนน 1
   hint?: BiText; // คำอธิบายสเกลในบรรทัดสรุป เช่น "1 = ง่าย, 5 = ยาก"
 }

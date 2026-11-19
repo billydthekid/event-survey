@@ -57,6 +57,7 @@ export interface PublicEvent {
   venue: string;
   theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground };
   logo?: string;
+  cover?: string; // รูปปก 16:9 (Wizard ขั้น Branding) ไม่มี = ไม่แสดง
   closed: boolean; // Event ปิด (รับเฉพาะรายชื่อที่ import) → แบบประเมินตอบได้เฉพาะผู้ที่ลงทะเบียน
   // ช่วงเวลา (yyyy-MM-ddTHH:mm หรือ ISO) "" = ไม่กำหนด
   regOpen: string;
@@ -138,6 +139,8 @@ export function themeBackground(event: Event, draft?: EventDraft): ThemeBackgrou
   };
 }
 export const themeLogo = (event: Event, draft?: EventDraft) => draft?.theme.logo?.dataUrl || event.theme.logo;
+// รูปปก: Wizard (crop 16:9 แล้ว) → รูปเดิมใน store หลัก · ไม่มีทั้งคู่ = undefined
+export const eventCover = (event: Event, draft?: EventDraft) => draft?.general.cover?.dataUrl || event.coverImage || undefined;
 
 // ============ แปลง Event → PublicEvent ============
 export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent {
@@ -214,6 +217,7 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
       background: themeBackground(event, draft),
     },
     logo: themeLogo(event, draft),
+    cover: eventCover(event, draft),
     closed: isActive(draft?.allowList),
     regOpen: draft?.schedule.regOpen || event.registration.opensAt,
     regClose: draft?.schedule.regClose || event.registration.closesAt,

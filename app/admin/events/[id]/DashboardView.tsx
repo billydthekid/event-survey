@@ -17,8 +17,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEventAccess } from "./eventAccess";
 import { ReportData } from "./report/mockData";
-import { pct, summarize, tr } from "./report/summary";
-import { respondedRegistrationIds } from "./report/people";
+import { pct, satisfactionQuestion, summarize, tr } from "./report/summary";
+import { respondedRegistrationIds, responseCounts } from "./report/people";
 import { Donut, HBar, VBars, type VBar } from "./report/charts";
 
 // ============ พจนานุกรมข้อความ 2 ภาษา ============
@@ -34,6 +34,7 @@ const TEXT = {
     latestAt: (time: string) => `คนล่าสุด ${time} น.`,
     answered: "ตอบ Survey",
     notAnswered: (n: number) => `ยังไม่ตอบ ${n} คน`,
+    anonymousN: (n: number) => `ไม่ระบุชื่อ ${n}`, // คำตอบที่ไม่โยงกับผู้ลงทะเบียน (แสดงเมื่อ > 0)
     rate: "Response rate",
     rateOf: (a: number, b: number) => `${a} จาก ${b} คน`,
     remaining: "เหลือเวลา",
@@ -58,7 +59,8 @@ const TEXT = {
     venueUnset: "ยังไม่ระบุสถานที่",
     left: (h: number, m: number) => (h > 0 ? `เหลือ ${h} ชม. ${m} น.` : `เหลือ ${m} น.`),
     satisfaction: "ความพึงพอใจ",
-    avgOf: (avg: string, n: number) => `เฉลี่ย ${avg} / 5 · ${n} คำตอบ`,
+    // max = คะแนนเต็ม เช่น avgOf("4.2", 5, 31) → "เฉลี่ย 4.2 / 5 · 31 คำตอบ"
+    avgOf: (avg: string, max: number, n: number) => `เฉลี่ย ${avg} / ${max} · ${n} คำตอบ`,
     statusTitle: "สถานะ Event",
     rows: { qr: "QR ลงทะเบียน", survey: "Survey", kiosk: "จอ Kiosk", team: "ทีมดูแล", edit: "แก้ไขข้อมูล Event" },
     regOpen: "เปิดรับอยู่",
@@ -85,6 +87,7 @@ const TEXT = {
     latestAt: (time: string) => `Latest at ${time}`,
     answered: "Survey responses",
     notAnswered: (n: number) => `${n} not answered yet`,
+    anonymousN: (n: number) => `Anonymous ${n}`,
     rate: "Response rate",
     rateOf: (a: number, b: number) => `${a} of ${b} people`,
     remaining: "Time left",
@@ -109,7 +112,7 @@ const TEXT = {
     venueUnset: "Venue not set",
     left: (h: number, m: number) => (h > 0 ? `${h} h ${m} min left` : `${m} min left`),
     satisfaction: "Satisfaction",
-    avgOf: (avg: string, n: number) => `avg. ${avg} / 5 · ${n} responses`,
+    avgOf: (avg: string, max: number, n: number) => `avg. ${avg} / ${max} · ${n} responses`,
     statusTitle: "Event status",
     rows: { qr: "Registration QR", survey: "Survey", kiosk: "Kiosk screen", team: "Team", edit: "Edit event info" },
     regOpen: "Open",
@@ -252,8 +255,9 @@ function Shortcuts({ eventId, t }: { eventId: string; t: Text }) {
 
 // ============ แถบ KPI 4 ช่อง ============
 function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang: Lang; t: Text }) {
-  const regs = data.registrations.length;      // 46
-  const responded = data.responses.length;     // 31
+  // นับเป็น "คน" จาก responseCounts (people.ts) → ตรงกับแท็บผู้เข้าร่วม และไม่เกิน 100%
+  // เช่น Workshop: regs 46, responded 31, notYet 15, anonymous 0
+  const { registered: regs, responded, notYet, anonymous } = responseCounts(data);
 
   // เวลาของคนลงทะเบียนล่าสุด เช่น "2026-10-23T10:15:00+07:00" → "10:15"
   const latest = data.registrations.map((r) => r.createdAt).sort().at(-1);
@@ -262,8 +266,13 @@ function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang
   return (
     <div className="grid rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:grid-cols-4 md:divide-x md:divide-slate-100">
       <KpiCell label={t.registered} value={String(regs)} sub={t.latestAt(latestTime)} />
-      {/* ยังไม่ตอบ = ผู้ลงทะเบียน − ผู้ตอบ เช่น 46 − 31 = 15 (ไม่ติดลบ) */}
-      <KpiCell label={t.answered} value={String(responded)} sub={t.notAnswered(Math.max(0, regs - responded))} />
+      {/* ยังไม่ตอบ = ผู้ลงทะเบียน − ผู้ตอบ เช่น 46 − 31 = 15 · มีคำตอบไม่ระบุชื่อ → บรรทัดย่อย "ไม่ระบุชื่อ 1" */}
+      <KpiCell
+        label={t.answered}
+        value={String(responded)}
+        sub={t.notAnswered(notYet)}
+        note={anonymous > 0 ? t.anonymousN(anonymous) : undefined}
+      />
       {/* 31 ÷ 46 = 0.673… → 67% (pct ตัวเดียวกับหน้า Report) */}
       <KpiCell label={t.rate} value={`${pct(responded, regs)}%`} sub={t.rateOf(responded, regs)} />
       <RemainingCell event={event} t={t} />
@@ -271,12 +280,14 @@ function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang
   );
 }
 
-function KpiCell({ label, value, sub }: { label: string; value: string; sub: string }) {
+// note (ไม่บังคับ) = บรรทัดย่อยที่ 2 เช่น "ไม่ระบุชื่อ 1"
+function KpiCell({ label, value, sub, note }: { label: string; value: string; sub: string; note?: string }) {
   return (
     <div className="px-5 py-4">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1 text-4xl font-bold">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{sub}</p>
+      {note && <p className="text-xs text-slate-400">{note}</p>}
     </div>
   );
 }
@@ -399,9 +410,8 @@ function SlotChart({ event, data, t }: { event: Event; data: ReportData; t: Text
 // ============ โดนัท "ตอบ Survey แล้ว" ============
 // ใช้ Donut เดิมจาก charts.tsx: ส่วนน้ำเงิน = ตอบแล้ว 31, ส่วนเทา = ยังไม่ตอบ 15
 function RespondedDonut({ data, t }: { data: ReportData; t: Text }) {
-  const regs = data.registrations.length;
-  const responded = data.responses.length;
-  const notYet = Math.max(0, regs - responded);
+  // ตัวเลขชุดเดียวกับ KPI (responseCounts) — คำตอบไม่ระบุชื่อไม่อยู่ในโดนัท แต่บอกไว้ใต้คำอธิบาย
+  const { registered: regs, responded, notYet, anonymous } = responseCounts(data);
   return (
     <div className="flex flex-col rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-2">
       <p className="font-semibold">{t.responded}</p>
@@ -422,6 +432,7 @@ function RespondedDonut({ data, t }: { data: ReportData; t: Text }) {
             <span className="h-2 w-2 rounded-full bg-slate-200" /> {t.notRespondedN(notYet)}
           </span>
         </div>
+        {anonymous > 0 && <p className="text-xs text-slate-400">{t.anonymousN(anonymous)}</p>}
       </div>
     </div>
   );
@@ -561,24 +572,28 @@ function InfoRow({ icon: Icon, title, sub }: { icon: LucideIcon; title: string; 
 }
 
 // ============ การ์ด "ความพึงพอใจ" ============
-// ใช้คำถามแบบ Rating ข้อแรก (ตามลำดับ) + summarize() ตัวเดียวกับแท็บ Survey → ตัวเลขตรงกัน
-// ไม่มีคำถาม Rating → ไม่แสดงการ์ดนี้
+// คำถาม: Rating ข้อแรก ถ้าไม่มีใช้ Linear ข้อแรก (satisfactionQuestion ใน summary.ts)
+// + summarize() ตัวเดียวกับแท็บ Survey → ตัวเลขตรงกัน · ไม่มีทั้งสองแบบ → ไม่แสดงการ์ดนี้
 function Satisfaction({ data, lang, t }: { data: ReportData; lang: Lang; t: Text }) {
-  const question = [...data.survey.questions].sort((a, b) => a.order - b.order).find((q) => q.type === "rating");
+  const question = satisfactionQuestion(data.survey.questions);
   if (!question) return null;
 
   const summary = summarize(question, data.responses, lang); // ไม่ส่งคำกำกับสเกล → ป้าย "5".."1"
   if (summary.kind !== "bars") return null;
   const max = Math.max(0, ...summary.rows.map((r) => r.count));
+  // ดาวเฉพาะ Rating · Linear เป็นสเกลตัวเลข → ป้ายเป็นตัวเลขล้วน
+  const star = question.type === "rating" ? " ★" : "";
 
   return (
     <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
       <p className="font-semibold">{t.satisfaction}</p>
-      {summary.avg && <p className="mt-0.5 text-xs text-slate-500">{t.avgOf(summary.avg, summary.n)}</p>}
+      {summary.avg && summary.scaleMax && (
+        <p className="mt-0.5 text-xs text-slate-500">{t.avgOf(summary.avg, summary.scaleMax, summary.n)}</p>
+      )}
       <div className="mt-3 space-y-2">
         {summary.rows.map((r) => (
           // ใช้ HBar เดิม: ป้าย "5 ★", แท่งยาวตามค่ามากสุด, ขวาเป็นจำนวนคน (ตามต้นแบบ ไม่มี %)
-          <HBar key={r.label} label={`${r.label} ★`} value={r.count} max={max} right={String(r.count)} />
+          <HBar key={r.label} label={`${r.label}${star}`} value={r.count} max={max} right={String(r.count)} />
         ))}
       </div>
     </div>
