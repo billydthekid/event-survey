@@ -86,15 +86,20 @@ export const GENDER_OPTIONS: { value: string; label: BiText }[] = [
   { value: "unspecified", label: { th: "ไม่ระบุ", en: "Not specified" } },
 ];
 
-// ฟอร์มตั้งต้น เมื่อ Event ยังไม่ได้ตั้งช่องใดเลย
-const DEFAULT_FIELDS: PublicField[] = (["name", "email"] as const).map((k) => ({
+// ฟอร์มตั้งต้น เมื่อ Event ยังไม่ได้ตั้งช่องใดเลย (ฟอร์มที่ Event Admin ตั้งใน Wizard มาก่อนเสมอ)
+// - Event เปิด: ชื่ออย่างเดียว (ผู้เข้าร่วมไม่ต้องให้อีเมล ไม่ดูเหมือนล็อกอิน)
+// - Event ปิด: ชื่อ + ช่องที่ใช้เช็ครายชื่อ (อีเมล หรือ เบอร์ ตามที่ Event Admin เลือกตอน import)
+const basicField = (k: BasicFieldKey): PublicField => ({
   id: `f-${k}`,
   key: k,
   label: BASIC[k].label,
   type: BASIC[k].type,
   required: true,
   options: [],
-}));
+});
+function defaultFields(allow: EventDraft["allowList"]): PublicField[] {
+  return isActive(allow) ? [basicField("name"), basicField(allow.kind)] : [basicField("name")];
+}
 
 // ช่องจาก Wizard: 12 ประเภท → ชนิดของหน้า /r (ชื่อช่องมีแต่ภาษาไทย)
 const KIND_TO_PUBLIC: Record<FieldKind, PublicFieldType> = {
@@ -162,7 +167,7 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
               required: f.required,
               options: f.options ?? [],
             }))
-        : DEFAULT_FIELDS;
+        : defaultFields(draft?.allowList);
 
   // Survey: Wizard (ถ้ามีคำถาม) → Event → mock ของ Report
   let questions: PublicQuestion[] = [];
