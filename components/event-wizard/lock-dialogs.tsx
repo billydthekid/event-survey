@@ -1,8 +1,8 @@
 "use client";
-// หน้าต่างแจ้งเตือนเรื่อง "ล็อก" ของ Wizard / Survey Builder
-// - LockedArea: ครอบเนื้อหาที่ล็อกแล้ว · คลิกหรือพิมพ์ตรงไหนก็ตาม → เด้งหน้าต่าง "Event เผยแพร่แล้ว แก้ไขไม่ได้"
-//   (ช่องที่ disabled ไม่ส่ง event คลิกออกมา จึงวางแผ่นใสทับไว้ด้านบนเพื่อรับคลิกแทน)
-// - PublishConfirm: สรุปสิ่งที่จะเผยแพร่ + เตือนว่าเผยแพร่แล้วจะแก้ไม่ได้อีก ก่อนยืนยัน
+// ฟ้าใส: หน้าต่างแจ้งเตือนเรื่อง "ล็อก" ของ Wizard / Survey Builder
+// ฟ้าใส: - LockedArea: ครอบเนื้อหาที่ล็อกแล้ว · คลิกหรือพิมพ์ตรงไหนก็ตาม → เด้งหน้าต่าง "Event เผยแพร่แล้ว แก้ไขไม่ได้"
+// ฟ้าใส:   (ช่องที่ disabled ไม่ส่ง event คลิกออกมา จึงวางแผ่นใสทับไว้ด้านบนเพื่อรับคลิกแทน)
+// ฟ้าใส: - PublishConfirm: สรุปสิ่งที่จะเผยแพร่ + เตือนว่าเผยแพร่แล้วจะแก้ไม่ได้อีก ก่อนยืนยัน
 
 import { useState } from "react";
 import { CalendarDays, Lock, QrCode, Rocket } from "lucide-react";
@@ -12,6 +12,7 @@ import { useWizardStore } from "@/lib/wizard-store";
 import { hasRegistration, hasSurvey } from "@/lib/utils/wizard-rules";
 import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ไอคอนกุญแจในวงกลม
 function LockIcon() {
   return (
     <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
@@ -20,9 +21,12 @@ function LockIcon() {
   );
 }
 
+// ฟ้าใส: ครอบเนื้อหาที่ล็อก: กดตรงไหนก็เด้งหน้าต่างแจ้ง
 export function LockedArea({ locked, children }: { locked: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ไม่ล็อก → แสดงเนื้อหาตามปกติ
   if (!locked) return <>{children}</>;
 
   return (
@@ -30,7 +34,7 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
       <fieldset disabled className="min-w-0 space-y-5 opacity-70">
         {children}
       </fieldset>
-      {/* แผ่นใสรับคลิก/แตะ/พิมพ์ทั้งหมดบนเนื้อหาที่ล็อก */}
+      {/* ฟ้าใส: แผ่นใสรับคลิก/แตะ/พิมพ์ทั้งหมดบนเนื้อหาที่ล็อก */}
       <div
         role="button"
         tabIndex={0}
@@ -39,6 +43,7 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
         onClick={() => setOpen(true)}
         onKeyDown={() => setOpen(true)}
       />
+      {/* ฟ้าใส: หน้าต่างแจ้งว่า Event ล็อกแล้ว */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="text-center sm:max-w-sm">
           <DialogHeader className="items-center text-center">
@@ -57,9 +62,9 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
   );
 }
 
-// ถามยืนยันก่อนเผยแพร่ เพราะเผยแพร่แล้วจะแก้ไม่ได้อีก
-// แบบ A: สรุปสิ่งที่จะเผยแพร่ (วันเวลา สถานที่ · QR ที่จะได้) + กล่องเตือนเรื่องล็อก + ปุ่ม "เผยแพร่เลย"
-// อ่านข้อมูลจาก draft ปัจจุบันใน wizard store (Event ที่กำลังตั้งค่า)
+// ฟ้าใส: ถามยืนยันก่อนเผยแพร่ เพราะเผยแพร่แล้วจะแก้ไม่ได้อีก
+// ฟ้าใส: แบบ A: สรุปสิ่งที่จะเผยแพร่ (วันเวลา สถานที่ · QR ที่จะได้) + กล่องเตือนเรื่องล็อก + ปุ่ม "เผยแพร่เลย"
+// ฟ้าใส: อ่านข้อมูลจาก draft ปัจจุบันใน wizard store (Event ที่กำลังตั้งค่า)
 export function PublishConfirm({
   open,
   onOpenChange,
@@ -67,21 +72,31 @@ export function PublishConfirm({
   onConfirm,
 }: {
   open: boolean;
+  // ฟ้าใส: เปิด / ปิดหน้าต่าง
   onOpenChange: (v: boolean) => void;
   eventName: string;
+  // ฟ้าใส: กดเผยแพร่เลย
   onConfirm: () => void;
 }) {
+  // ฟ้าใส: Event ที่กำลังแก้
   const d = useWizardStore((s) => s.draft);
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ข้อมูลทั่วไป
   const g = d.general;
+  // ฟ้าใส: วันจบ (ถ้าข้ามวัน)
   const endDate = g.endDate && g.endDate !== g.date ? `${fmtDate(g.endDate, lang)} ` : "";
+  // ฟ้าใส: ข้อความวันเวลาที่จะแสดง
   const when = g.date ? `${fmtDate(g.date, lang)} · ${g.startTime} – ${endDate}${g.endTime}` : tr("ยังไม่กำหนดวัน", "No date yet");
+  // ฟ้าใส: ข้อความสถานที่ (Online มีป้ายนำหน้า)
   const where = g.venue ? (g.mode === "online" ? `Online · ${g.venue}` : g.venue) : "";
-  // QR ที่จะได้ตามที่สร้างไว้ (ฟอร์ม / Survey ไม่บังคับ)
+  // ฟ้าใส: QR ที่จะได้ตามที่สร้างไว้ (ฟอร์ม / Survey ไม่บังคับ)
   const qrs = [hasRegistration(d) && tr("QR ลงทะเบียน", "Registration QR"), hasSurvey(d) && tr("QR Survey", "Survey QR")].filter(Boolean).join(" + ");
 
   return (
+    // ฟ้าใส: หน้าต่างยืนยันเผยแพร่
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="flex-row items-center gap-3 space-y-0 text-left">
@@ -96,9 +111,11 @@ export function PublishConfirm({
           </div>
         </DialogHeader>
 
-        {/* สรุปสิ่งที่จะเผยแพร่ */}
+        {/* ฟ้าใส: สรุปสิ่งที่จะเผยแพร่ */}
         <ul className="divide-y border-y text-sm">
+          {/* ฟ้าใส: แถวสรุปวันเวลา + สถานที่ */}
           <SummaryRow icon={CalendarDays} title={when} sub={where} />
+          {/* ฟ้าใส: แถวสรุป QR ที่จะได้ */}
           <SummaryRow
             icon={QrCode}
             title={qrs || tr("ไม่มี QR", "No QR codes")}
@@ -110,7 +127,7 @@ export function PublishConfirm({
           />
         </ul>
 
-        {/* คำเตือนเรื่องล็อก (กล่องเดียวชัด ๆ) */}
+        {/* ฟ้าใส: คำเตือนเรื่องล็อก (กล่องเดียวชัด ๆ) */}
         <div role="note" className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <Lock className="mt-0.5 size-4 shrink-0" />
           <p>
@@ -134,6 +151,7 @@ export function PublishConfirm({
   );
 }
 
+// ฟ้าใส: แถวสรุป 1 แถว: ไอคอน + หัวข้อ + คำอธิบาย
 function SummaryRow({ icon: Icon, title, sub }: { icon: typeof Lock; title: string; sub?: string }) {
   return (
     <li className="flex items-start gap-3 py-2.5">

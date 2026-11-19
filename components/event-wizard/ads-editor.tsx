@@ -1,9 +1,9 @@
 "use client";
-// แท็บ "โฆษณา" ในขั้น Branding: รูปโฆษณาบนจอ Kiosk
-// - ใส่ได้หลายรูป (สูงสุด MAX_ADS) · ลากที่ ⋮⋮ เพื่อเรียง · จอ Kiosk เลื่อนวนทุก "seconds" วินาที
-// - เลือกไฟล์แล้วเปิดหน้าต่าง Crop ตามสัดส่วน: 16:9 (1920 × 1080) หรือ 3:4 (1080 × 1440) เมื่อจอ Kiosk แนวนอน · เก็บเป็น data URL (lib/image-crop.ts)
-// - รูปที่ crop ไว้คนละสัดส่วนกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่
-// - ตัวอย่างการเลื่อนรูปอยู่ที่ Live Preview (KioskPreview ใน components/event/brand-preview.tsx)
+// ฟ้าใส: แท็บ "โฆษณา" ในขั้น Branding: รูปโฆษณาบนจอ Kiosk
+// ฟ้าใส: - ใส่ได้หลายรูป (สูงสุด MAX_ADS) · ลากที่ ⋮⋮ เพื่อเรียง · จอ Kiosk เลื่อนวนทุก "seconds" วินาที
+// ฟ้าใส: - เลือกไฟล์แล้วเปิดหน้าต่าง Crop ตามสัดส่วน: 16:9 (1920 × 1080) หรือ 3:4 (1080 × 1440) เมื่อจอ Kiosk แนวนอน · เก็บเป็น data URL (lib/image-crop.ts)
+// ฟ้าใส: - รูปที่ crop ไว้คนละสัดส่วนกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่
+// ฟ้าใส: - ตัวอย่างการเลื่อนรูปอยู่ที่ Live Preview (KioskPreview ใน components/event/brand-preview.tsx)
 
 import { useState } from "react";
 import { Crop, GripVertical, ImageOff, Trash2 } from "lucide-react";
@@ -19,37 +19,52 @@ import { FileDrop } from "./file-drop";
 import { useTr } from "@/lib/wizard-lang";
 import { CropDialog } from "./crop-dialog";
 
-const MAX_ADS = 5; // ใส่ได้สูงสุด 5 รูป (เก็บใน localStorage ของเบราว์เซอร์)
-const MIN_SECONDS = 3; // เลื่อนรูปทุก 3 วินาที (ต่ำสุด) · ถ้าใส่ 0 = ไม่เลื่อน
-const MAX_SECONDS = 60; // เลื่อนรูปทุก 60 วินาที (สูงสุด)
+const MAX_ADS = 5; // ฟ้าใส: ใส่ได้สูงสุด 5 รูป (เก็บใน localStorage ของเบราว์เซอร์)
+const MIN_SECONDS = 3; // ฟ้าใส: เลื่อนรูปทุก 3 วินาที (ต่ำสุด) · ถ้าใส่ 0 = ไม่เลื่อน
+const MAX_SECONDS = 60; // ฟ้าใส: เลื่อนรูปทุก 60 วินาที (สูงสุด)
 
-// รูปที่กำลัง crop: index = null → รูปใหม่ (เพิ่มท้ายรายการ), ตัวเลข → crop รูปเดิมใหม่
+// ฟ้าใส: รูปที่กำลัง crop: index = null → รูปใหม่ (เพิ่มท้ายรายการ), ตัวเลข → crop รูปเดิมใหม่
 type Cropping = { src: string; name: string; index: number | null };
 
+// ฟ้าใส: แท็บโฆษณา: อัปโหลด crop เรียง ลบ และตั้งวินาที
 export function AdsEditor() {
+  // ฟ้าใส: ข้อมูลโฆษณา
   const ads = useWizardStore((s) => s.draft.ads);
-  const ratio = useWizardStore((s) => mediaRatioOf(s.draft.theme)); // 16:9 หรือ 3:4
+  const ratio = useWizardStore((s) => mediaRatioOf(s.draft.theme)); // ฟ้าใส: 16:9 หรือ 3:4
+  // ฟ้าใส: ขนาดรูปผลลัพธ์ตามสัดส่วน
   const size = MEDIA_SIZE[ratio];
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ฟังก์ชันบันทึก
   const patch = useWizardStore((s) => s.patch);
+  // ฟ้าใส: บันทึกรายการรูปใหม่
   const setItems = (items: UploadedAsset[]) => patch("ads", { items });
   const [cropping, setCropping] = useState<Cropping | null>(null);
   const [error, setError] = useState("");
-  const sort = useDragSort(ads.items, setItems); // ลากเรียงรูปโฆษณา
+  const sort = useDragSort(ads.items, setItems); // ฟ้าใส: ลากเรียงรูปโฆษณา
+  // ฟ้าใส: ครบจำนวนสูงสุดแล้วไหม
   const full = ads.items.length >= MAX_ADS;
 
+  // ฟ้าใส: เลือกไฟล์แล้ว → ตรวจ แล้วเปิดหน้าต่าง Crop
   const pickFile = async (file: File) => {
     setError("");
+    // ฟ้าใส: รับเฉพาะ JPG / PNG
     if (!/^image\/(png|jpeg)$/.test(file.type)) return setError(tr("รองรับเฉพาะ JPG / PNG", "Only JPG / PNG are supported"));
+    // ฟ้าใส: ไฟล์ต้องไม่เกิน 10 MB
     if (file.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
+    // ฟ้าใส: ครบแล้ว → เพิ่มไม่ได้
     if (full) return setError(tr(`ใส่ได้สูงสุด ${MAX_ADS} รูป`, `Up to ${MAX_ADS} images`));
     setCropping({ src: await readFileAsDataUrl(file), name: file.name, index: null });
   };
 
+  // ฟ้าใส: crop เสร็จ → เพิ่ม หรือแทนรูปเดิม
   const finishCrop = (dataUrl: string) => {
+    // ฟ้าใส: ไม่ได้ crop อยู่ → ไม่ทำอะไร
     if (!cropping) return;
+    // ฟ้าใส: รูปที่ crop แล้ว
     const item: UploadedAsset = { name: cropping.name, sizeKB: dataUrlKB(dataUrl), cropped: true, ratio, dataUrl };
     try {
+      // ฟ้าใส: รูปใหม่ → ต่อท้าย · crop รูปเดิม → แทนที่
       if (cropping.index === null) setItems([...ads.items, item]);
       else setItems(ads.items.map((a, i) => (i === cropping.index ? item : a)));
     } catch {
@@ -60,6 +75,7 @@ export function AdsEditor() {
 
   return (
     <div className="space-y-4">
+      {/* ฟ้าใส: กล่องลากรูปมาวาง */}
       <FileDrop
         title={full ? tr(`ครบ ${MAX_ADS} รูปแล้ว`, `${MAX_ADS} images added`) : tr("ลากรูปมาวาง หรือเลือกไฟล์", "Drop an image here, or choose a file")}
         hint={`${ratio} · ${size.w}×${size.h} px · ${tr(`สูงสุด ${MAX_ADS} รูป`, `up to ${MAX_ADS} images`)}`}
@@ -129,6 +145,7 @@ export function AdsEditor() {
         <span className="text-muted-foreground">{tr("วินาที", "seconds")}</span>
       </div>
 
+      {/* ฟ้าใส: หน้าต่าง Crop โฆษณา */}
       <CropDialog ratio={ratio} src={cropping?.src ?? null} fileName={cropping?.name ?? ""} onCancel={() => setCropping(null)} onDone={finishCrop} />
     </div>
   );

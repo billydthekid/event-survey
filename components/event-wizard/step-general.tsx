@@ -1,6 +1,6 @@
 "use client";
-// ขั้นที่ 1: ข้อมูลทั่วไป — หน้าเดียวเรียงลงมา: ชื่อ/รายละเอียด/ประเภท → วัน เวลา สถานที่ → ผู้จัด → ผู้ที่ลงทะเบียนได้
-// ช่อง (*) + วันเวลา + รายชื่อ Event ปิด ต้องครบก่อนกด "ถัดไป" (stepBlock ใน lib/utils/wizard-rules.ts)
+// ฟ้าใส: ขั้นที่ 1: ข้อมูลทั่วไป — หน้าเดียวเรียงลงมา: ชื่อ/รายละเอียด/ประเภท → วัน เวลา สถานที่ → ผู้จัด → ผู้ที่ลงทะเบียนได้
+// ฟ้าใส: ช่อง (*) + วันเวลา + รายชื่อ Event ปิด ต้องครบก่อนกด "ถัดไป" (stepBlock ใน lib/utils/wizard-rules.ts)
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,20 +17,29 @@ import { EVENT_TYPES } from "@/lib/event-types";
 import type { EventType } from "@/types/event";
 import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ขั้นที่ 1 ข้อมูลทั่วไป
 export function StepGeneral() {
+  // ฟ้าใส: ข้อมูลทั่วไปของ Event
   const g = useWizardStore((s) => s.draft.general);
+  // ฟ้าใส: Event ทั้งก้อน (ใช้ตรวจวันเวลา)
   const draft = useWizardStore((s) => s.draft);
+  // ฟ้าใส: ฟังก์ชันบันทึก
   const patch = useWizardStore((s) => s.patch);
+  // ฟ้าใส: เวลาปัจจุบัน
   const now = useNow();
   const { today } = nowParts(now);
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: error วันเวลา
   const err = validateDates(draft, now, lang);
+  // ฟ้าใส: บันทึกบางช่องของข้อมูลทั่วไป
   const set = (v: Partial<typeof g>) => patch("general", v);
 
   return (
     <>
-      {/* กรอกภาษาไทยอย่างเดียว (ตัดปุ่มสลับ ไทย / English ออกแล้ว · nameEn / descEn เดิมยังเก็บไว้ แต่แก้จากหน้านี้ไม่ได้) */}
+      {/* ฟ้าใส: กรอกภาษาไทยอย่างเดียว (ตัดปุ่มสลับ ไทย / English ออกแล้ว · nameEn / descEn เดิมยังเก็บไว้ แต่แก้จากหน้านี้ไม่ได้) */}
       <WizardSection title={tr("ชื่อและรายละเอียด", "Name and description")}>
         <div className="space-y-1.5">
           <Label>{tr("ชื่อ Event", "Event name")} <span className="text-destructive">*</span></Label>
@@ -54,6 +63,7 @@ export function StepGeneral() {
         </div>
         <div className="space-y-1.5">
           <Label>{tr("ประเภทงาน", "Event type")} <span className="text-destructive">*</span></Label>
+          {/* ฟ้าใส: ปุ่มเลือกประเภทงาน */}
           <ToggleGroup value={[g.type]} onValueChange={(v) => v[0] && set({ type: v[0] as EventType })} variant="outline" className="flex-wrap justify-start">
             {EVENT_TYPES.map((t) => (
               <ToggleGroupItem key={t.value} value={t.value} className="rounded-full">
@@ -72,23 +82,25 @@ export function StepGeneral() {
         </div>
       </WizardSection>
 
+      {/* ฟ้าใส: ส่วนวัน เวลา และสถานที่ */}
       <WizardSection
         title={tr("วัน เวลา และสถานที่", "Date, time and place")}
         action={
+          // ฟ้าใส: สถานที่จริง / Online
           <ToggleGroup value={[g.mode]} onValueChange={(v) => v[0] && set({ mode: v[0] as "onsite" | "online" })} variant="outline" size="sm">
             <ToggleGroupItem value="onsite">{tr("สถานที่จริง", "In person")}</ToggleGroupItem>
             <ToggleGroupItem value="online">Online</ToggleGroupItem>
           </ToggleGroup>
         }
       >
-        {/* เริ่ม / จบ (งานข้ามวันได้ · วันจบว่าง = วันเดียวกับวันเริ่ม) */}
+        {/* ฟ้าใส: เริ่ม / จบ (งานข้ามวันได้ · วันจบว่าง = วันเดียวกับวันเริ่ม) */}
         <DateTimeRange
           required
           minDate={today}
           start={{ date: g.date, time: g.startTime }}
           end={{ date: g.endDate || g.date, time: g.endTime }}
           onStart={(v) =>
-            // เลื่อนวันเริ่มไปหลังวันจบเดิม → ล้างวันจบ (กลับเป็นวันเดียวกัน)
+            // ฟ้าใส: เลื่อนวันเริ่มไปหลังวันจบเดิม → ล้างวันจบ (กลับเป็นวันเดียวกัน)
             set({ date: v.date, startTime: v.time, ...(g.endDate && v.date > g.endDate ? { endDate: "" } : {}) })
           }
           onEnd={(v) => set({ endDate: v.date === g.date ? "" : v.date, endTime: v.time })}
@@ -125,6 +137,7 @@ export function StepGeneral() {
         )}
       </WizardSection>
 
+      {/* ฟ้าใส: ส่วนผู้จัดและช่องทางติดต่อ */}
       <WizardSection
         title={tr("ผู้จัดและช่องทางติดต่อ", "Organizer and contact")}
         description={tr("ให้ผู้เข้าร่วมรู้ว่าใครจัด และติดต่อใครถ้ามีคำถาม", "Let attendees know who runs the event and who to contact")}
@@ -153,7 +166,7 @@ export function StepGeneral() {
         </div>
       </WizardSection>
 
-      {/* เปิด / ปิด Event (Event ปิด = รับเฉพาะรายชื่อที่ import) */}
+      {/* ฟ้าใส: เปิด / ปิด Event (Event ปิด = รับเฉพาะรายชื่อที่ import) */}
       <AllowListCard />
     </>
   );

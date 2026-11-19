@@ -1,8 +1,8 @@
 "use client";
-// Wizard "ตั้งค่า Event" ทั้งชุด (ด่านสิทธิ์ · sync store หลัก · ด่านทีละขั้น · เผยแพร่ + popup QR)
-// ใช้ร่วมกันทุกหน้าของขั้นตอน: app/admin/events/[id]/edit/setup-*/page.tsx ส่ง step เข้ามา
-// - URL เปลี่ยนตามขั้น (/edit/setup-info → setup-branding → …) · ปุ่ม Back ของเบราว์เซอร์ย้อนทีละขั้นได้
-// - พิมพ์ URL ข้ามไปขั้นที่ยังกรอกขั้นก่อนหน้าไม่ครบ → พากลับไป "ขั้นแรกที่ยังไม่ครบ" (router.replace)
+// ฟ้าใส: Wizard "ตั้งค่า Event" ทั้งชุด (ด่านสิทธิ์ · sync store หลัก · ด่านทีละขั้น · เผยแพร่ + popup QR)
+// ฟ้าใส: ใช้ร่วมกันทุกหน้าของขั้นตอน: app/admin/events/[id]/edit/setup-*/page.tsx ส่ง step เข้ามา
+// ฟ้าใส: - URL เปลี่ยนตามขั้น (/edit/setup-info → setup-branding → …) · ปุ่ม Back ของเบราว์เซอร์ย้อนทีละขั้นได้
+// ฟ้าใส: - พิมพ์ URL ข้ามไปขั้นที่ยังกรอกขั้นก่อนหน้าไม่ครบ → พากลับไป "ขั้นแรกที่ยังไม่ครบ" (router.replace)
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -18,7 +18,7 @@ import { STATUS_LABEL } from "@/lib/utils/status";
 import { makeTr, useTr, useWizardLang } from "@/lib/wizard-lang";
 import type { Event } from "@/types";
 
-// ป้ายสถานะภาษาอังกฤษ (STATUS_LABEL ของเพื่อนมีแค่ไทย)
+// ฟ้าใส: ป้ายสถานะภาษาอังกฤษ (STATUS_LABEL ของเพื่อนมีแค่ไทย)
 const STATUS_EN: Record<Event["status"], string> = { draft: "Draft", scheduled: "Scheduled", active: "Active", ended: "Ended", deleted: "Deleted" };
 import { STEPS, WizardShell, stepHref } from "@/components/event-wizard/wizard-shell";
 import { StepGeneral } from "@/components/event-wizard/step-general";
@@ -27,6 +27,7 @@ import { StepForm } from "@/components/event-wizard/step-form";
 import { StepSurvey } from "@/components/event-wizard/step-survey";
 import { StepPreview } from "@/components/event-wizard/step-preview";
 
+// ฟ้าใส: หัวข้อและคำอธิบายของแต่ละขั้น (ไทย / อังกฤษ)
 const META: Record<number, { title: string; subtitle: string; titleEn: string; subtitleEn: string }> = {
   1: { title: "ข้อมูล Event", subtitle: "รายละเอียดที่ผู้เข้าร่วมเห็นบนหน้า Event และจอ Kiosk", titleEn: "Event details", subtitleEn: "What attendees see on the event page and the Kiosk screen" },
   2: { title: "Branding", subtitle: "รูปปก โฆษณา สี และโลโก้ ที่ผู้เข้าร่วมเห็นบนมือถือและจอ Kiosk", titleEn: "Branding", subtitleEn: "Cover, ads, colors and logo attendees see on mobile and the Kiosk" },
@@ -35,91 +36,114 @@ const META: Record<number, { title: string; subtitle: string; titleEn: string; s
   5: { title: "Preview และเผยแพร่", subtitle: "หน้าตาที่ผู้เข้าร่วมเห็น ก่อนกดเผยแพร่", titleEn: "Preview and publish", subtitleEn: "What attendees will see, before you publish" },
 };
 
+// ฟ้าใส: หน้าตั้งค่า Event 1 ขั้น (step มาจากไฟล์หน้าของขั้นนั้น)
 export function EventSetupWizard({ step }: { step: number }) {
+  // ฟ้าใส: ใช้เปลี่ยนหน้า (URL)
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
 
-  // ---- ด่านสิทธิ์: กฎเดียวกับ Dashboard / Report / QR / Kiosk (ไม่พบ / ถูกลบ / ไม่ได้รับมอบหมาย → denied) ----
+  // ฟ้าใส: ---- ด่านสิทธิ์: กฎเดียวกับ Dashboard / Report / QR / Kiosk (ไม่พบ / ถูกลบ / ไม่ได้รับมอบหมาย → denied) ----
   const access = useEventAccess(id);
+  // ฟ้าใส: Event ใน store หลัก (มีสิทธิ์เท่านั้น)
   const mainEvent = access.status === "nodata" || access.status === "ok" ? access.event : null;
+  // ฟ้าใส: ฟังก์ชันแก้ Event ใน store หลัก
   const updateEvent = useStore((s) => s.updateEvent);
+  // ฟ้าใส: ฟังก์ชันบันทึกประวัติการทำงาน (Action log)
   const addLog = useStore((s) => s.addLog);
-  // ชื่อผู้สร้าง Event (หัว Wizard: "สร้างโดย …") · หา user ไม่เจอ = ไม่แสดง
+  // ฟ้าใส: ชื่อผู้สร้าง Event (หัว Wizard: "สร้างโดย …") · หา user ไม่เจอ = ไม่แสดง
   const creatorName = useStore((s) => s.users.find((u) => u.id === mainEvent?.createdBy)?.name ?? "");
 
-  // ---- wizard store ----
+  // ฟ้าใส: ---- wizard store ----
   const { draft, drafts, setStep, publish, load, ensureFromMainStore } = useWizardStore();
 
-  // ดึง Event จาก store หลักเข้า wizard store (ครั้งแรกที่เปิด) แล้วเลือกเป็น draft ที่กำลังแก้
-  // deps ใช้แค่ id + "มีสิทธิ์แล้วหรือยัง" — ไม่ใช้ object ของ Event เพราะ sync ด้านล่างทำให้ object เปลี่ยนทุกครั้งที่พิมพ์
+  // ฟ้าใส: ดึง Event จาก store หลักเข้า wizard store (ครั้งแรกที่เปิด) แล้วเลือกเป็น draft ที่กำลังแก้
+  // ฟ้าใส: deps ใช้แค่ id + "มีสิทธิ์แล้วหรือยัง" — ไม่ใช้ object ของ Event เพราะ sync ด้านล่างทำให้ object เปลี่ยนทุกครั้งที่พิมพ์
   const allowed = mainEvent !== null;
-  // (พร้อมแสดง = draft ที่เลือกเป็น id นี้แล้ว — ดูด้านล่าง ไม่ต้องมี state แยก)
+  // ฟ้าใส: (พร้อมแสดง = draft ที่เลือกเป็น id นี้แล้ว — ดูด้านล่าง ไม่ต้องมี state แยก)
   useEffect(() => {
+    // ฟ้าใส: ยังไม่ผ่านด่านสิทธิ์ → ยังไม่โหลด
     if (!allowed) return;
+    // ฟ้าใส: หา Event ใน store หลัก
     const ev = useStore.getState().events.find((e) => e.id === id);
+    // ฟ้าใส: ยังไม่มีใน Wizard → คัดลอกมาจาก store หลัก
     if (ev) ensureFromMainStore(ev);
     load(id);
   }, [id, allowed, load, ensureFromMainStore]);
 
+  // ฟ้าใส: เผยแพร่แล้ว (Active / Ended) = ล็อก
   const locked = mainEvent ? isWizardLocked(mainEvent.status) : true;
+  // ฟ้าใส: Event ที่กำลังแก้ (ยังโหลดไม่เสร็จ = null)
   const current = draft.id === id ? draft : null;
 
-  // ---- sync การแก้ใน Wizard → store หลัก (My Events / Sidebar / Dashboard เห็นค่าล่าสุด) ----
+  // ฟ้าใส: ---- sync การแก้ใน Wizard → store หลัก (My Events / Sidebar / Dashboard เห็นค่าล่าสุด) ----
   useEffect(() => {
+    // ฟ้าใส: ยังไม่พร้อม / ล็อกแล้ว → ไม่ส่งข้อมูล
     if (!current || locked) return;
     updateEvent(id, toEventPatch(current));
   }, [current, locked, id, updateEvent]);
 
+  // ฟ้าใส: เวลาปัจจุบัน (อัปเดตเรื่อย ๆ ใช้ตรวจวันที่ผ่านไปแล้ว)
   const now = useNow();
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = makeTr(lang);
-  const [qrOpen, setQrOpen] = useState(false); // popup QR หลังกดเผยแพร่
+  const [qrOpen, setQrOpen] = useState(false); // ฟ้าใส: popup QR หลังกดเผยแพร่
 
-  // ---- ด่านทีละขั้น ----
-  // ไปได้ไม่เกิน "ขั้นแรกที่ยังไม่ครบ" (เช่น อยู่ขั้น 4 แต่ลบชื่อ Event ทิ้ง → กลับไปขั้น 1) · ล็อกแล้ว = ดูได้ทุกขั้น
-  // (hook ต้องอยู่ก่อน return ด้านล่าง จึงคำนวณแบบ "ยังไม่มีข้อมูล = null")
+  // ฟ้าใส: ---- ด่านทีละขั้น ----
+  // ฟ้าใส: ไปได้ไม่เกิน "ขั้นแรกที่ยังไม่ครบ" (เช่น อยู่ขั้น 4 แต่ลบชื่อ Event ทิ้ง → กลับไปขั้น 1) · ล็อกแล้ว = ดูได้ทุกขั้น
+  // ฟ้าใส: (hook ต้องอยู่ก่อน return ด้านล่าง จึงคำนวณแบบ "ยังไม่มีข้อมูล = null")
   const maxStep = current && mainEvent ? (locked ? STEPS.length : firstBlockedStep(current, STEPS.length, now)) : null;
+  // ฟ้าใส: อยู่ขั้นที่เกินกว่าที่ไปได้ไหม (เช่น พิมพ์ URL ข้ามขั้น)
   const tooFar = maxStep !== null && step > maxStep;
+  // ฟ้าใส: ข้ามขั้น → พากลับ · ไม่ข้าม → จำขั้นล่าสุด
   useEffect(() => {
+    // ฟ้าใส: ยังไม่มีข้อมูล → รอ
     if (maxStep === null) return;
-    if (tooFar) router.replace(stepHref(id, maxStep)); // URL ข้ามขั้น → ขั้นแรกที่ยังไม่ครบ
-    else setStep(step); // จำขั้นล่าสุด (เปิด /edit ครั้งหน้ากลับมาขั้นนี้)
+    if (tooFar) router.replace(stepHref(id, maxStep)); // ฟ้าใส: URL ข้ามขั้น → ขั้นแรกที่ยังไม่ครบ
+    else setStep(step); // ฟ้าใส: จำขั้นล่าสุด (เปิด /edit ครั้งหน้ากลับมาขั้นนี้)
   }, [maxStep, tooFar, step, id, router, setStep]);
 
+  // ฟ้าใส: กำลังโหลดสิทธิ์ → ยังไม่แสดงอะไร
   if (access.status === "loading") return null;
+  // ฟ้าใส: ไม่มีสิทธิ์ → แสดงหน้าไม่พบ Event
   if (access.status === "denied") return <NoAccess />;
+  // ฟ้าใส: ข้อมูลยังไม่พร้อม → ยังไม่แสดง
   if (!drafts[id] || !current || !mainEvent || maxStep === null) return null;
-  if (tooFar) return null; // กำลังพาไปขั้นที่ถูกต้อง
+  if (tooFar) return null; // ฟ้าใส: กำลังพาไปขั้นที่ถูกต้อง
 
+  // ฟ้าใส: เหตุผลที่ยังไปขั้นถัดไปไม่ได้ (ไม่มี = ไปได้)
   const nextBlock = stepBlock(current, step, now, lang);
 
-  // เหตุผลที่ยังเผยแพร่ไม่ได้ = ขั้นแรกที่ยังไม่ครบ (ปกติมาถึงขั้นสุดท้ายได้ก็ครบแล้ว · กันไว้อีกชั้น)
+  // ฟ้าใส: เหตุผลที่ยังเผยแพร่ไม่ได้ = ขั้นแรกที่ยังไม่ครบ (ปกติมาถึงขั้นสุดท้ายได้ก็ครบแล้ว · กันไว้อีกชั้น)
   const publishBlock = maxStep < STEPS.length ? `${stepBlock(current, maxStep, now, lang)} ${tr(`(ขั้นที่ ${maxStep})`, `(step ${maxStep})`)}` : undefined;
 
   return (
     <>
+    {/* ฟ้าใส: กรอบหน้าตั้งค่า: แถบบน ความคืบหน้า หัวข้อ ปุ่มล่าง */}
     <WizardShell
       eventId={id}
       eventName={current.general.nameTh}
       createdBy={creatorName || current.assignedBy}
-      // ล็อกแล้ว → สถานะจริงใน store หลัก (กำลังจัดงาน / จบแล้ว) · ยังแก้ได้ → สถานะจากวันเวลา (Draft / รอเปิดรับ / …)
+      // ฟ้าใส: ล็อกแล้ว → สถานะจริงใน store หลัก (กำลังจัดงาน / จบแล้ว) · ยังแก้ได้ → สถานะจากวันเวลา (Draft / รอเปิดรับ / …)
       status={locked ? (lang === "en" ? STATUS_EN[mainEvent.status] : STATUS_LABEL[mainEvent.status].text) : PHASE_META[getPhase(current)][lang]}
       statusCls={locked ? STATUS_LABEL[mainEvent.status].color : PHASE_META[getPhase(current)].cls}
       step={step}
-      onStep={(n) => router.push(stepHref(id, n))} // เปลี่ยนขั้น = เปลี่ยนหน้า (URL)
+      onStep={(n) => router.push(stepHref(id, n))} // ฟ้าใส: เปลี่ยนขั้น = เปลี่ยนหน้า (URL)
       title={lang === "en" ? META[step].titleEn : META[step].title}
       subtitle={lang === "en" ? META[step].subtitleEn : META[step].subtitle}
       locked={locked}
       nextBlock={nextBlock}
       publishBlock={publishBlock}
       onPublish={() => {
+        // ฟ้าใส: ยังไม่ครบ → ไม่เผยแพร่
         if (publishBlock) return;
         publish();
 
-        // เผยแพร่ = Active ทันที (Draft → เผยแพร่ → Active → Ended) และล็อก Wizard ต่อจากนี้
+        // ฟ้าใส: เผยแพร่ = Active ทันที (Draft → เผยแพร่ → Active → Ended) และล็อก Wizard ต่อจากนี้
         updateEvent(id, { ...toEventPatch(current), status: "active" });
         addLog("publish_event", "event", id, `เผยแพร่ "${current.general.nameTh}"`);
-        setQrOpen(true); // popup QR ลงทะเบียน + Survey · ปิดแล้วไปหน้า Event ของฉัน
+        setQrOpen(true); // ฟ้าใส: popup QR ลงทะเบียน + Survey · ปิดแล้วไปหน้า Event ของฉัน
       }}
     >
       {step === 1 && <StepGeneral />}
@@ -129,11 +153,12 @@ export function EventSetupWizard({ step }: { step: number }) {
       {step === 5 && <StepPreview />}
     </WizardShell>
 
-    {/* popup หลังเผยแพร่ อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
+    {/* ฟ้าใส: popup หลังเผยแพร่ อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
     <QrDialog
       open={qrOpen}
       onOpenChange={(v) => {
         setQrOpen(v);
+        // ฟ้าใส: ปิด popup → กลับหน้า Event ของฉัน
         if (!v) router.push("/admin/events");
       }}
       justPublished
@@ -146,7 +171,9 @@ export function EventSetupWizard({ step }: { step: number }) {
   );
 }
 
+// ฟ้าใส: หน้าแสดงเมื่อไม่พบ Event / ไม่มีสิทธิ์
 function NoAccess() {
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
   return (
     <div className="p-8">

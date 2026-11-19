@@ -1,9 +1,12 @@
 import { addDays, format } from "date-fns";
 import type { EventDraft, SurveyQuestion } from "@/types/event";
 
+// ฟ้าใส: วันที่ห่างจากวันนี้ n วัน (yyyy-MM-dd)
 const day = (n: number) => format(addDays(new Date(), n), "yyyy-MM-dd");
+// ฟ้าใส: วัน + เวลา แบบ datetime-local
 const dt = (n: number, t: string) => `${day(n)}T${t}`;
 
+// ฟ้าใส: สร้างคำถามตัวอย่าง 1 ข้อ
 const q = (
   id: string,
   type: SurveyQuestion["type"],
@@ -12,6 +15,7 @@ const q = (
   required = true
 ): SurveyQuestion => ({ id, type, titleTh, titleEn: "", required, options });
 
+// ฟ้าใส: ช่องในฟอร์มตัวอย่าง
 const formFields = (): EventDraft["form"]["fields"] => [
   { id: "f-name", label: "ชื่อ – นามสกุล", kind: "short", hint: "ข้อความสั้น", required: true },
   { id: "f-sid", label: "รหัสนักศึกษา", kind: "number", hint: "ตัวเลข", required: true },
@@ -20,6 +24,7 @@ const formFields = (): EventDraft["form"]["fields"] => [
   { id: "f-track", label: "สายที่สนใจ", kind: "checkbox", hint: "หลายตัวเลือก", required: false, options: ["UX/UI", "Data", "Dev"] },
 ];
 
+// ฟ้าใส: ค่าที่ใช้สร้าง Event ตัวอย่าง
 interface Opts {
   id: string;
   code: string;
@@ -39,7 +44,9 @@ interface Opts {
   questions: SurveyQuestion[];
 }
 
+// ฟ้าใส: สร้าง Event ตัวอย่าง 1 งาน
 function make(o: Opts): EventDraft {
+  // ฟ้าใส: วันจัดงาน
   const date = day(o.dayOffset);
   return {
     id: o.id,
@@ -58,7 +65,7 @@ function make(o: Opts): EventDraft {
     schedule: {
       regOpen: dt(o.regOpenOffset, "09:00"),
       regClose: `${date}T${o.start}`,
-      maxAttendees: "", // ไม่จำกัดจำนวนแล้ว (เดิม o.max)
+      maxAttendees: "", // ฟ้าใส: ไม่จำกัดจำนวนแล้ว (เดิม o.max)
       surveyOpen: `${date}T${o.end}`,
       surveyClose: dt(o.dayOffset + 3, "23:59"),
       remindAfterEnd: false,
@@ -67,7 +74,9 @@ function make(o: Opts): EventDraft {
   };
 }
 
+// ฟ้าใส: Event ตัวอย่างทั้งหมดตอนเปิดเว็บครั้งแรก
 export const createMockDrafts = (): Record<string, EventDraft> => {
+  // ฟ้าใส: งานที่ 1
   const a = make({
     id: "evt-1017", code: "FIG-1017", status: "draft",
     nameTh: "Job Fair คณะเทคโนโลยีสารสนเทศ",
@@ -81,6 +90,7 @@ export const createMockDrafts = (): Record<string, EventDraft> => {
       q("q3", "long", "ข้อเสนอแนะเพิ่มเติม", [], false),
     ],
   });
+  // ฟ้าใส: งานที่ 2
   const b = make({
     id: "evt-1018", code: "WSP-1018", status: "scheduled",
     nameTh: "Workshop Figma เบื้องต้น",
@@ -95,6 +105,7 @@ export const createMockDrafts = (): Record<string, EventDraft> => {
       q("q4", "long", "ข้อเสนอแนะเพิ่มเติม", [], false),
     ],
   });
+  // ฟ้าใส: งานที่ 3
   const c = make({
     id: "evt-1016", code: "OPH-1016", status: "scheduled",
     nameTh: "Open House คณะเทคโนโลยีสารสนเทศ",

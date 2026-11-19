@@ -1,9 +1,9 @@
 "use client";
-// Live Preview ของ Branding — วาดจาก draft ใน wizard store (อัปเดตทันทีที่แก้)
-// - PhonePreview: หน้า Event บนมือถือ (รูปปก, โลโก้, พื้นหลัง, โหมด, สีหลัก)
-// - KioskPreview: จอ Kiosk แนวตั้ง / แนวนอน (16:9 หรือ 3:4) · พื้นหลัง, โลโก้, โฆษณาเลื่อนวน, กรอบ QR สีหลัก
-// ใช้ในขั้น Branding (บนสุด) และขั้น Preview
-// หมายเหตุ: ตอนนี้ธีมมีผลเฉพาะใน Wizard · หน้าจริง /r, /s และจอ Kiosk ยังใช้แค่สีหลัก + โหมด
+// ฟ้าใส: Live Preview ของ Branding — วาดจาก draft ใน wizard store (อัปเดตทันทีที่แก้)
+// ฟ้าใส: - PhonePreview: หน้า Event บนมือถือ (รูปปก, โลโก้, พื้นหลัง, โหมด, สีหลัก)
+// ฟ้าใส: - KioskPreview: จอ Kiosk แนวตั้ง / แนวนอน (16:9 หรือ 3:4) · พื้นหลัง, โลโก้, โฆษณาเลื่อนวน, กรอบ QR สีหลัก
+// ฟ้าใส: ใช้ในขั้น Branding (บนสุด) และขั้น Preview
+// ฟ้าใส: หมายเหตุ: ตอนนี้ธีมมีผลเฉพาะใน Wizard · หน้าจริง /r, /s และจอ Kiosk ยังใช้แค่สีหลัก + โหมด
 
 import { useEffect, useState } from "react";
 import { ImageIcon, QrCode } from "lucide-react";
@@ -12,13 +12,16 @@ import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import { BG_LAYER, bgStyle, previewColors } from "@/lib/theme-presets";
 import type { EventDraft } from "@/types/event";
 
-// พื้นหน้า: สี + รูปพื้นหลัง (เบลอได้) · ใช้คู่กับ className BG_LAYER
+// ฟ้าใส: พื้นหน้า: สี + รูปพื้นหลัง (เบลอได้) · ใช้คู่กับ className BG_LAYER
 function pageStyle(c: ReturnType<typeof previewColors>): React.CSSProperties {
   return bgStyle(c.page, c.pageImage, c.pageBlur, c.text);
 }
 
+// ฟ้าใส: โลโก้: รูปที่อัปโหลด หรือตัวย่อรหัสงาน
 function Logo({ d, size }: { d: EventDraft; size: number }) {
+  // ฟ้าใส: สีของธีม
   const c = previewColors(d.theme);
+  // ฟ้าใส: มีรูปโลโก้ → แสดงรูป
   if (d.theme.logo?.dataUrl) {
     // eslint-disable-next-line @next/next/no-img-element -- data URL จากเครื่องผู้ใช้
     return <img src={d.theme.logo.dataUrl} alt="" style={{ width: size, height: size }} className="rounded-md object-contain" />;
@@ -33,10 +36,15 @@ function Logo({ d, size }: { d: EventDraft; size: number }) {
   );
 }
 
+// ฟ้าใส: ภาพจำลองหน้า Event บนมือถือ
 export function PhonePreview({ d }: { d: EventDraft }) {
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ข้อมูลทั่วไป
   const g = d.general;
+  // ฟ้าใส: สีของธีม
   const c = previewColors(d.theme);
   return (
     <div className={`mx-auto w-full max-w-[300px] overflow-hidden rounded-[2rem] border shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
@@ -60,7 +68,7 @@ export function PhonePreview({ d }: { d: EventDraft }) {
         </span>
         <p className="text-base font-bold">{g.nameTh || tr("(ยังไม่ตั้งชื่อ Event)", "(Untitled event)")}</p>
         <p className="text-xs" style={{ color: c.muted }}>
-          {/* งานข้ามวัน → แสดงวันจบด้วย */}
+          {/* ฟ้าใส: งานข้ามวัน → แสดงวันจบด้วย */}
           {fmtDate(g.date, lang) || tr("ยังไม่กำหนด", "No date")} · {g.startTime || "--:--"} –{" "}
           {g.endDate && g.endDate !== g.date ? `${fmtDate(g.endDate, lang)} · ` : ""}
           {g.endTime || "--:--"}
@@ -74,31 +82,44 @@ export function PhonePreview({ d }: { d: EventDraft }) {
   );
 }
 
-// Live Preview จอ Kiosk · theme.kiosk = แนวตั้ง (ค่าเดิม) / แนวนอน · รูป 16:9 หรือ 3:4 ได้ทั้ง 2 แนว
-// แนวตั้ง: รูปอยู่บน (16:9 เต็มความกว้าง / 3:4 กว้าง 80% ตรงกลาง) · ชื่องาน · QR ล่างสุด
-// แนวนอน + 16:9 (แบบ A): รูปใหญ่ซ้าย · ชื่องาน รายละเอียด QR ขวา
-// แนวนอน + 3:4  (แบบ B): รูปแนวตั้งซ้าย · ฝั่งขวากว้าง วาง QR ลงทะเบียน + Survey คู่กันได้
-// QR แสดงเฉพาะที่มีจริง (ฟอร์ม / Survey ไม่บังคับ) · ไม่มีทั้งคู่ = รายละเอียดงานอย่างเดียว
+// ฟ้าใส: Live Preview จอ Kiosk · theme.kiosk = แนวตั้ง (ค่าเดิม) / แนวนอน · รูป 16:9 หรือ 3:4 ได้ทั้ง 2 แนว
+// ฟ้าใส: แนวตั้ง: รูปอยู่บน (16:9 เต็มความกว้าง / 3:4 กว้าง 80% ตรงกลาง) · ชื่องาน · QR ล่างสุด
+// ฟ้าใส: แนวนอน + 16:9 (แบบ A): รูปใหญ่ซ้าย · ชื่องาน รายละเอียด QR ขวา
+// ฟ้าใส: แนวนอน + 3:4  (แบบ B): รูปแนวตั้งซ้าย · ฝั่งขวากว้าง วาง QR ลงทะเบียน + Survey คู่กันได้
+// ฟ้าใส: QR แสดงเฉพาะที่มีจริง (ฟอร์ม / Survey ไม่บังคับ) · ไม่มีทั้งคู่ = รายละเอียดงานอย่างเดียว
 export function KioskPreview({ d }: { d: EventDraft }) {
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ข้อมูลทั่วไป
   const g = d.general;
+  // ฟ้าใส: สีของธีม
   const c = previewColors(d.theme);
+  // ฟ้าใส: รูปโฆษณาที่มีไฟล์จริง
   const srcs = d.ads.items.map((a) => a.dataUrl).filter((s): s is string => !!s);
   const [index, setIndex] = useState(0);
+  // ฟ้าใส: เวลาต่อ 1 รูป (อย่างน้อย 3 วินาที)
   const ms = Math.max(3, d.ads.seconds || 6) * 1000;
+  // ฟ้าใส: สลับรูปโฆษณาอัตโนมัติ
   useEffect(() => {
+    // ฟ้าใส: มีรูปเดียว / ไม่มี → ไม่ต้องสลับ
     if (srcs.length < 2) return;
-    const t = setInterval(() => setIndex((i) => i + 1), ms); // ถ้ามีรูปโฆษณามากกว่า 1 รูป → เลื่อนทุก ms วินาที สลับรูปวนไปเรื่อย ๆ
+    const t = setInterval(() => setIndex((i) => i + 1), ms); // ฟ้าใส: ถ้ามีรูปโฆษณามากกว่า 1 รูป → เลื่อนทุก ms วินาที สลับรูปวนไปเรื่อย ๆ
     return () => clearInterval(t);
   }, [srcs.length, ms]);
+  // ฟ้าใส: รูปที่กำลังแสดง
   const current = index % Math.max(1, srcs.length);
+  // ฟ้าใส: มีฟอร์มลงทะเบียนไหม
   const hasReg = d.form.fields.length > 0;
+  // ฟ้าใส: มี Survey ไหม
   const hasSur = d.survey.questions.length > 0;
+  // ฟ้าใส: จอแนวนอนไหม
   const landscape = d.theme.kiosk === "landscape";
+  // ฟ้าใส: สัดส่วนรูปปก / โฆษณา
   const ratio = d.theme.mediaRatio ?? "16:9";
 
-  // ===== ชิ้นส่วนที่ใช้ร่วมกันทุกแบบ =====
+  // ฟ้าใส: ===== ชิ้นส่วนที่ใช้ร่วมกันทุกแบบ =====
   const header = (
     <div className="flex items-center gap-2">
       <Logo d={d} size={22} />
@@ -106,7 +127,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     </div>
   );
 
-  // ช่องรูป: โฆษณาเลื่อนวน · ไม่มีโฆษณา = รูปปก · aspect มาจากผู้เรียก
+  // ฟ้าใส: ช่องรูป: โฆษณาเลื่อนวน · ไม่มีโฆษณา = รูปปก · aspect มาจากผู้เรียก
   const media = (aspect: string, extra = "") => (
     <div className={`relative overflow-hidden rounded-xl ${aspect} ${extra}`} style={{ background: c.coverBg }}>
       {srcs.length > 0 ? (
@@ -116,12 +137,12 @@ export function KioskPreview({ d }: { d: EventDraft }) {
             key={i}
             src={src}
             alt=""
-            className="absolute inset-0 size-full object-cover transition-opacity duration-700" // เลื่อนรูปโฆษณาแบบ crossfade
+            className="absolute inset-0 size-full object-cover transition-opacity duration-700" // ฟ้าใส: เลื่อนรูปโฆษณาแบบ crossfade
             style={{ opacity: i === current ? 1 : 0 }}
           />
         ))
       ) : g.cover?.dataUrl ? (
-        // ไม่มีโฆษณา → แสดงรูปปกแทน (ใน Preview เท่านั้น)
+        // ฟ้าใส: ไม่มีโฆษณา → แสดงรูปปกแทน (ใน Preview เท่านั้น)
         // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปปก
         <img src={g.cover.dataUrl} alt="" className="absolute inset-0 size-full object-cover" />
       ) : (
@@ -130,6 +151,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     </div>
   );
 
+  // ฟ้าใส: กล่อง QR 1 อัน (ทึบ = QR หลัก)
   const qr = (label: string, sub: string, solid = true) => (
     <div
       className="flex flex-1 items-center gap-2 rounded-xl p-3"
@@ -145,6 +167,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     </div>
   );
 
+  // ฟ้าใส: รายละเอียดวันเวลา + สถานที่
   const details = (
     <div className="space-y-1 text-[11px] leading-snug" style={{ color: c.muted }}>
       <p>
@@ -154,27 +177,30 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     </div>
   );
 
-  // QR หลัก 1 อัน (แนวตั้ง / แบบ A): ลงทะเบียนก่อน · ไม่มีฟอร์ม = Survey · ไม่มีทั้งคู่ = กล่องรายละเอียดงาน
+  // ฟ้าใส: QR หลัก 1 อัน (แนวตั้ง / แบบ A): ลงทะเบียนก่อน · ไม่มีฟอร์ม = Survey · ไม่มีทั้งคู่ = กล่องรายละเอียดงาน
   const mainQr = hasReg
     ? qr(tr("สแกนลงทะเบียน", "Scan to register"), `${tr("รหัส", "Code")} ${d.code}`)
     : hasSur
       ? qr(tr("สแกนตอบแบบประเมิน", "Scan for the survey"), `${tr("รหัส", "Code")} ${d.code}`)
       : <div className="rounded-xl border p-3" style={{ borderColor: c.muted }}>{details}</div>;
 
+  // ฟ้าใส: บอกลำดับรูปโฆษณาที่กำลังแสดง
   const dots = srcs.length > 1 && (
     <p className="text-center text-[10px]" style={{ color: c.muted }}>
       {tr("รูป", "Image")} {current + 1}/{srcs.length} · {tr("ทุก", "every")} {Math.round(ms / 1000)} {tr("วิ", "s")}
     </p>
   );
 
+  // ฟ้าใส: ป้ายประเภทงาน
   const typeChip = (
     <span className="inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: c.chip.bg, color: c.chip.text }}>
       {eventTypeLabel(g.type, g.typeOther, lang)}
     </span>
   );
+  // ฟ้าใส: ชื่องาน (ขนาดตามแบบจอ)
   const name = (size: string) => <p className={`line-clamp-2 font-bold ${size}`}>{g.nameTh || tr("(ยังไม่ตั้งชื่อ Event)", "(Untitled event)")}</p>;
 
-  // ===== แนวนอน + 3:4 (แบบ B) =====
+  // ฟ้าใส: ===== แนวนอน + 3:4 (แบบ B) =====
   if (landscape && ratio === "3:4") {
     return (
       <div className={`mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
@@ -197,7 +223,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     );
   }
 
-  // ===== แนวนอน + 16:9 (แบบ A) =====
+  // ฟ้าใส: ===== แนวนอน + 16:9 (แบบ A) =====
   if (landscape) {
     return (
       <div className={`mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
@@ -216,7 +242,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
     );
   }
 
-  // ===== แนวตั้ง (เดิม) =====
+  // ฟ้าใส: ===== แนวตั้ง (เดิม) =====
   return (
     <div className={`mx-auto flex aspect-[9/16] w-full max-w-[260px] flex-col gap-3 overflow-hidden rounded-2xl border p-3 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
       {header}
