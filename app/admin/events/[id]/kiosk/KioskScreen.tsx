@@ -13,7 +13,7 @@ import { CalendarDays, Check, Clock, Lock, LogOut, MapPin, Maximize, Minimize, S
 import { QRCodeSVG } from "qrcode.react";
 import type { Lang } from "@/types";
 import { regClosesAt, regOpensAt, surveyClosesAt, surveyOpensAt } from "@/lib/public-event";
-import { KioskModel, KioskScene, KioskSceneResult } from "./kioskModel";
+import { KioskModel, KioskScene, KioskSceneResult, type MediaRatio } from "./kioskModel";
 
 // ============ ข้อความ 2 ภาษา ============
 export const KIOSK_TEXT = {
@@ -254,7 +254,10 @@ export function KioskScreen({
       ) : (
         (() => {
           const hasAds = m.ads.length > 0;
-          const ad = hasAds && <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} />;
+          const ad = hasAds && (
+            <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} ratio={m.mediaRatio} />
+          );
+          const tallMedia = m.mediaRatio === "3:4";
 
           // ===== ชื่องาน + วันเวลา + สถานที่ =====
           const details = (
@@ -363,7 +366,19 @@ export function KioskScreen({
             );
           }
 
-          // ===== แนวนอน (16:9): ซ้าย = รูปโฆษณา (ไม่มีรูป = ชื่องาน) / ขวา = ชื่องาน + QR =====
+          // ===== แนวนอน: ซ้าย = รูปโฆษณา (ไม่มีรูป = ชื่องาน) / ขวา = ชื่องาน + QR =====
+          // รูป 3:4 → รูปสูงเต็มจอทางซ้าย คอลัมน์ขวาขยายเต็มที่เหลือ (เหมือนตัวอย่างใน Wizard)
+          if (hasAds && tallMedia) {
+            return (
+              <main className="flex min-h-0 flex-1 gap-12 px-12 pt-4 pb-12">
+                {ad}
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-10">
+                  {details}
+                  {qr}
+                </div>
+              </main>
+            );
+          }
           return (
             <main className="flex min-h-0 flex-1 gap-12 px-12 pt-4 pb-12">
               <div className="flex min-w-0 flex-1 flex-col justify-center">{hasAds ? ad : details}</div>
@@ -492,22 +507,41 @@ function StatusChip({ scene, text, mode }: { scene: Exclude<KioskScene, "closed"
   );
 }
 
-// ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้น Branding) ============
-function AdSlideshow({ ads, seconds, landscape }: { ads: string[]; seconds: number; landscape: boolean }) {
+// ============ รูปโฆษณา / รูปปก (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้น Branding) ============
+// สัดส่วนกรอบตามที่ Event Admin เลือก (16:9 / 3:4) × แนวจอ — เหมือนตัวอย่างจอ Kiosk ใน Wizard
+// - แนวตั้ง 16:9: กว้างเต็ม สูงได้สุด 554 px (984 × 9/16) / พื้นที่ไม่พอ → หดลง (ไม่ต่ำกว่า 200 px) QR ไม่ตกจอ
+// - แนวตั้ง 3:4 : กรอบแนวตั้งกลางจอ สูงตามพื้นที่ที่เหลือ (ไม่ต่ำกว่า 240 px)
+// - แนวนอน 16:9: กว้างเต็มคอลัมน์ซ้าย
+// - แนวนอน 3:4 : สูงเต็มจอ กว้างตามสัดส่วน (คอลัมน์ขวาขยายเต็มที่เหลือ)
+function AdSlideshow({
+  ads,
+  seconds,
+  landscape,
+  ratio,
+}: {
+  ads: string[];
+  seconds: number;
+  landscape: boolean;
+  ratio: MediaRatio;
+}) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (ads.length < 2) return;
-    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), seconds * 1000); 
+    const timer = setInterval(() => setIndex((i) => (i + 1) % ads.length), seconds * 1000);
     return () => clearInterval(timer);
   }, [ads.length, seconds]);
 
-  return (
-    // แนวตั้ง: สูงได้สุด 16:9 ของความกว้าง (984 × 9/16 ≈ 554 px) / ถ้าพื้นที่ไม่พอจะหดลง (ไม่ต่ำกว่า 200 px)
-    //          และ object-cover ครอปกลางรูปแทน → QR ไม่ถูกดันตกจอ
-    // แนวนอน: กว้างเต็มคอลัมน์ซ้าย สัดส่วน 16:9 (สูงไม่เกินพื้นที่ที่มี)
+  const tall = ratio === "3:4";
+  const box = (
     <div
-      className={`relative w-full overflow-hidden rounded-[36px] bg-slate-100 ${
-        landscape ? "aspect-video max-h-full" : "max-h-[554px] min-h-[200px] flex-1"
+      className={`relative overflow-hidden rounded-[36px] bg-slate-100 ${
+        landscape
+          ? tall
+            ? "aspect-[3/4] h-full shrink-0"
+            : "aspect-video max-h-full w-full"
+          : tall
+            ? "aspect-[3/4] h-full max-w-full"
+            : "max-h-[554px] min-h-[200px] w-full flex-1"
       }`}
     >
       {ads.map((src, i) => (
@@ -533,6 +567,8 @@ function AdSlideshow({ ads, seconds, landscape }: { ads: string[]; seconds: numb
       )}
     </div>
   );
+  // แนวตั้ง 3:4: กรอบกินพื้นที่ที่เหลือ แล้ววางรูปแนวตั้งไว้กลาง · แบบอื่นใช้กรอบรูปตรง ๆ
+  return !landscape && tall ? <div className="flex min-h-[240px] flex-1 justify-center">{box}</div> : box;
 }
 
 // ============ K1: นับถอยหลังถึงเวลาเริ่มงาน ============

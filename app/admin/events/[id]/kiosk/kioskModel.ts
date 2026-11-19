@@ -37,6 +37,20 @@ export interface KioskModel extends ScheduleInfo {
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
   adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้น Branding)
   screen: Event["kiosk"]["screen"];
+  orientation: KioskOrientation; // จอแนวตั้ง / แนวนอน ตามที่ Event Admin เลือกใน Wizard ขั้น Branding
+  mediaRatio: MediaRatio; // สัดส่วนรูปปก / โฆษณา ตามที่ Event Admin เลือก
+}
+
+// ตัวเลือกจอ Kiosk จาก Wizard ขั้น Branding (งานของ P1tch4pa): draft.theme.kiosk / draft.theme.mediaRatio
+// อ่านแบบเผื่อไว้ → ใช้ได้ทั้งก่อนและหลัง branch ของเพื่อน merge (ไม่มีค่า = แนวตั้ง / 16:9 แบบเดิม)
+export type KioskOrientation = "portrait" | "landscape";
+export type MediaRatio = "16:9" | "3:4";
+function kioskOptions(draft?: EventDraft): { orientation: KioskOrientation; mediaRatio: MediaRatio } {
+  const t = draft?.theme as { kiosk?: string; mediaRatio?: string } | undefined;
+  return {
+    orientation: t?.kiosk === "landscape" ? "landscape" : "portrait",
+    mediaRatio: t?.mediaRatio === "3:4" ? "3:4" : "16:9",
+  };
 }
 
 // รูปจาก Wizard ที่มีไฟล์จริง · ไม่มีเลย = undefined (ใช้รูปของ store หลักแทน)
@@ -73,6 +87,7 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
     ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : pub.cover ? [pub.cover] : []),
     adSeconds: draft?.ads?.seconds || 6,
     screen: event.kiosk.screen,
+    ...kioskOptions(draft),
     status: event.status,
     regOpen: pub.regOpen,
     regClose: pub.regClose,
