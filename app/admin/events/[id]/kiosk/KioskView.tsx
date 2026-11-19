@@ -244,6 +244,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
             model={model}
             info={sceneInfo}
             layout={layout}
+            height={canvasH}
             lang={lang}
             setLang={setOverride}
             now={now}

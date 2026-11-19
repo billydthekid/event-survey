@@ -201,6 +201,7 @@ export function KioskScreen({
   model: m,
   info,
   layout,
+  height,
   lang,
   setLang,
   now,
@@ -211,6 +212,7 @@ export function KioskScreen({
   model: KioskModel;
   info: KioskSceneResult;
   layout: KioskLayout;
+  height: number; // ความสูงผืนผ้าใบ (px ก่อนย่อ/ขยาย) ใช้เลือกขนาด QR
   lang: Lang;
   setLang: (l: Lang) => void;
   now: Date;
@@ -218,9 +220,17 @@ export function KioskScreen({
 }) {
   const { scene, showRegister, showSurvey } = info;
   const landscape = layout === "landscape";
-  // แนวนอน: คอลัมน์ขวากว้าง 760 px → QR เล็กลงให้การ์ดคู่วางเคียงกันได้
-  const qrWide = landscape ? 260 : 300;
-  const qrPair = landscape ? 240 : 320;
+  // ขนาด QR ตามพื้นที่:
+  // - แนวนอน: คอลัมน์ขวากว้าง 760 px → QR เล็กลงให้การ์ดคู่วางเคียงกันได้
+  // - แนวตั้งที่สูงพอ (9:16 ขึ้นไป ผืน ≥ 1800 px) → QR ใหญ่ขึ้น สแกนจากไกลได้ และจอไม่โล่ง
+  //   (การ์ดคู่กว้าง 474 px → QR ใหญ่สุด 360 + กรอบขาว 40 ยังพอดี)
+  // - แนวตั้งที่เตี้ย (3:4, 1:1) → ขนาดเดิม (พื้นที่ไม่พอ)
+  const roomy = !landscape && height >= 1800;
+  // compact = จอที่ความสูงจำกัด (แนวนอน 1080 px / แนวตั้งเตี้ย 3:4, 1:1) → ย่อระยะห่าง ตัวหนังสือ การ์ด
+  //   กันไม่ให้ QR ล้นตกขอบล่าง เมื่อชื่องานยาว + รายละเอียดยาว + นับถอยหลัง + QR คู่ (กรณีเนื้อหาเยอะสุด)
+  const compact = !roomy;
+  const qrWide = landscape ? 240 : roomy ? 380 : 260;
+  const qrPair = landscape ? 220 : roomy ? 360 : 260;
   const t = KIOSK_TEXT[lang];
   const pal = palette(m);
   const name = (lang === "en" && m.name.en) || m.name.th;
@@ -264,21 +274,31 @@ export function KioskScreen({
         (() => {
           const hasAds = m.ads.length > 0;
           const ad = hasAds && (
-            <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} ratio={m.mediaRatio} />
+            <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} ratio={m.mediaRatio} compact={compact} />
           );
           const tallMedia = m.mediaRatio === "3:4";
+          // แนวนอน + รูป 16:9: ใต้รูปทางซ้ายยังมีที่ว่าง → ย้ายนับถอยหลังไปไว้ตรงนั้น (คอลัมน์ขวาเหลือที่ให้ QR)
+          const countdownLeft = landscape && hasAds && !tallMedia;
+          const countdown = scene === "upcoming" && <Countdown m={m} now={now} pal={pal} t={t} compact={compact} />;
+          // ชื่องาน: ชื่อยาวตัวเล็กลง · จอที่ความสูงจำกัด เล็กลงอีก 16% (แนวนอนไม่มีรูป = ชื่องานอยู่คอลัมน์ซ้ายเต็มที่ → ขนาดเต็ม)
+          const titleScale = landscape ? (hasAds ? 0.76 : 1) : compact ? 0.84 : 1;
 
           // ===== ชื่องาน + วันเวลา + สถานที่ =====
+          // ตาข่ายกันตก: ถ้าพื้นที่ไม่พอ ส่วนนี้หดก่อน (QR ด้านล่างไม่หด ไม่ตกขอบจอ)
+          // flex-col + flex-wrap: บรรทัดที่ล้นจะถูกดันไปคอลัมน์ถัดไป (ซ่อนด้วย overflow-hidden)
+          // → ซ่อนทั้งบรรทัด ไม่ใช่ถูกตัดครึ่งบรรทัด · ลูกทุกตัวต้อง w-full
           const details = (
-            <section className="shrink-0">
-              <StatusChip scene={scene} text={t.chip[scene]} mode={m.theme.mode} />
+            <section className="flex min-h-0 shrink flex-col flex-wrap content-start overflow-hidden [&>*]:w-full">
+              <div>
+                <StatusChip scene={scene} text={t.chip[scene]} mode={m.theme.mode} />
+              </div>
               {(() => {
                 const title = scene === "thanks" ? t.thanksTitle : name;
                 return (
                   // ชื่อยาว → ตัวเล็กลง และไม่เกิน 2 บรรทัด
                   <h1
                     className="mt-5 line-clamp-2 leading-[1.15] font-bold tracking-tight break-words"
-                    style={{ fontSize: Math.round(titleSize(title) * (landscape && hasAds ? 0.84 : 1)) }}
+                    style={{ fontSize: Math.round(titleSize(title) * titleScale) }}
                   >
                     {title}
                   </h1>
@@ -297,7 +317,10 @@ export function KioskScreen({
               </div>
               {/* รายละเอียดงาน: ก่อนงานเริ่ม + ระหว่างงาน (ช่วงที่คนเดินผ่านอยากรู้ว่างานนี้คืออะไร) */}
               {(scene === "live" || scene === "upcoming") && desc && (
-                <p className="mt-6 line-clamp-3 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
+                <p
+                  className={`${compact ? "mt-4 line-clamp-2" : "mt-6 line-clamp-3"} text-[28px] leading-relaxed break-words`}
+                  style={{ color: pal.muted }}
+                >
                   {desc}
                 </p>
               )}
@@ -312,14 +335,14 @@ export function KioskScreen({
           // ===== ส่วน QR ตามสถานะ =====
           // mt-auto: ดัน QR ลงชิดล่างจอ (ฟีลโปสเตอร์) — ถ้าพื้นที่ไม่พอ ค่านี้เป็น 0 เอง
           const qr = (
-            <section className="mt-auto flex shrink-0 flex-col gap-8">
-              {scene === "upcoming" && <Countdown m={m} now={now} pal={pal} t={t} />}
+            <section className={`mt-auto flex shrink-0 flex-col ${compact ? "gap-5" : "gap-8"}`}>
+              {!countdownLeft && countdown}
 
               {showRegister && showSurvey ? (
                 // K2: QR ทั้งคู่ (การ์ดคู่)
                 <div className="grid grid-cols-2 gap-9">
-                  <QrPairCard title={t.register} caption={t.scanWithPhone} url={registerUrl} colors={pal.reg} qrSize={qrPair} />
-                  <QrPairCard title={t.survey} caption={t.scanWithPhone} url={surveyUrl} colors={pal.survey} qrSize={qrPair} />
+                  <QrPairCard title={t.register} caption={t.scanWithPhone} url={registerUrl} colors={pal.reg} qrSize={qrPair} compact={compact} />
+                  <QrPairCard title={t.survey} caption={t.scanWithPhone} url={surveyUrl} colors={pal.survey} qrSize={qrPair} compact={compact} />
                 </div>
               ) : showRegister ? (
                 // K1/K3: QR ลงทะเบียนอย่างเดียว (การ์ดยาว)
@@ -367,7 +390,7 @@ export function KioskScreen({
             // ===== แนวตั้ง (9:16, 3:4, 1:1): รูป → ชื่องาน → QR เรียงจากบนลงล่าง =====
             // รูปโฆษณาหดได้ เมื่อข้อความ/QR ต้องการพื้นที่ (จอเตี้ยอย่าง 3:4 รูปจะเล็กลงเอง)
             return (
-              <main className="flex min-h-0 flex-1 flex-col gap-12 px-12 pt-4 pb-12">
+              <main className={`flex min-h-0 flex-1 flex-col ${compact ? "gap-8" : "gap-12"} px-12 pt-4 pb-12`}>
                 {ad}
                 {details}
                 {qr}
@@ -381,7 +404,7 @@ export function KioskScreen({
             return (
               <main className="flex min-h-0 flex-1 gap-12 px-12 pt-4 pb-12">
                 {ad}
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-10">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6">
                   {details}
                   {qr}
                 </div>
@@ -390,8 +413,11 @@ export function KioskScreen({
           }
           return (
             <main className="flex min-h-0 flex-1 gap-12 px-12 pt-4 pb-12">
-              <div className="flex min-w-0 flex-1 flex-col justify-center">{hasAds ? ad : details}</div>
-              <div className="flex min-h-0 w-[760px] shrink-0 flex-col gap-10">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-8">
+                {hasAds ? ad : details}
+                {countdownLeft && countdown}
+              </div>
+              <div className="flex min-h-0 w-[760px] shrink-0 flex-col gap-6">
                 {hasAds && details}
                 {qr}
               </div>
@@ -527,11 +553,13 @@ function AdSlideshow({
   seconds,
   landscape,
   ratio,
+  compact,
 }: {
   ads: string[];
   seconds: number;
   landscape: boolean;
   ratio: MediaRatio;
+  compact: boolean; // จอที่ความสูงจำกัด → รูปหดได้จนหาย (QR สำคัญกว่า)
 }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -550,18 +578,22 @@ function AdSlideshow({
             : "aspect-video max-h-full w-full"
           : tall
             ? "aspect-[3/4] h-full max-w-full"
-            : "max-h-[554px] min-h-[200px] w-full flex-1"
+            : `max-h-[554px] ${compact ? "min-h-0" : "min-h-[200px]"} w-full flex-1`
       }`}
     >
+      {/* โชว์รูปเต็มทั้งรูปเสมอ (object-contain) ไม่ตัดขอบ — เช่นรูป 16:9 ในกรอบ 3:4
+          ส่วนที่ว่างรอบรูป เติมด้วยรูปเดียวกันแบบเบลอ (ไม่เป็นขอบโล่ง) · รูปสัดส่วนตรงกรอบ = เหมือนเดิม */}
       {ads.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element -- รูปโฆษณาอาจเป็น URL ภายนอกจาก API
-        <img
+        <div
           key={src + i}
-          src={src}
-          alt=""
-          className="absolute inset-0 size-full object-cover transition-opacity duration-1000"
+          className="absolute inset-0 transition-opacity duration-1000"
           style={{ opacity: i === index % ads.length ? 1 : 0 }}
-        />
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- รูปโฆษณาอาจเป็น URL ภายนอกจาก API */}
+          <img src={src} alt="" aria-hidden className="absolute inset-0 size-full scale-110 object-cover blur-2xl" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- รูปโฆษณาอาจเป็น URL ภายนอกจาก API */}
+          <img src={src} alt="" className="absolute inset-0 size-full object-contain" />
+        </div>
       ))}
       {ads.length > 1 && (
         <div className="absolute inset-x-0 bottom-6 flex justify-center gap-3">
@@ -577,11 +609,16 @@ function AdSlideshow({
     </div>
   );
   // แนวตั้ง 3:4: กรอบกินพื้นที่ที่เหลือ แล้ววางรูปแนวตั้งไว้กลาง · แบบอื่นใช้กรอบรูปตรง ๆ
-  return !landscape && tall ? <div className="flex min-h-[240px] flex-1 justify-center">{box}</div> : box;
+  return !landscape && tall ? (
+    <div className={`flex ${compact ? "min-h-0" : "min-h-[240px]"} flex-1 justify-center`}>{box}</div>
+  ) : (
+    box
+  );
 }
 
 // ============ K1: นับถอยหลังถึงเวลาเริ่มงาน ============
-function Countdown({ m, now, pal, t }: { m: KioskModel; now: Date; pal: Palette; t: Text }) {
+// compact = จอที่ความสูงจำกัด → กล่องเตี้ยลง ตัวเลขเล็กลง
+function Countdown({ m, now, pal, t, compact }: { m: KioskModel; now: Date; pal: Palette; t: Text; compact: boolean }) {
   if (!m.date || !m.startTime) return null;
   const ms = toDate(m.date, m.startTime).getTime() - now.getTime();
   if (ms <= 0) return null;
@@ -593,7 +630,7 @@ function Countdown({ m, now, pal, t }: { m: KioskModel; now: Date; pal: Palette;
   ];
   return (
     <div
-      className="flex items-center justify-between rounded-[32px] border px-12 py-9"
+      className={`flex items-center justify-between rounded-[32px] border px-12 ${compact ? "py-5" : "py-9"}`}
       style={{ background: pal.card, color: pal.cardText, borderColor: pal.cardBorder }}
     >
       <p className="text-[30px] font-medium" style={{ color: m.theme.mode === "bold" ? "#64748B" : pal.muted }}>
@@ -602,9 +639,13 @@ function Countdown({ m, now, pal, t }: { m: KioskModel; now: Date; pal: Palette;
       <div className="flex items-start gap-5">
         {parts.map((p, i) => (
           <div key={p.u} className="flex items-start gap-5">
-            {i > 0 && <span className="text-[56px] leading-none font-bold opacity-30">:</span>}
+            {i > 0 && (
+              <span className={`${compact ? "text-[46px]" : "text-[56px]"} leading-none font-bold opacity-30`}>:</span>
+            )}
             <div className="flex flex-col items-center">
-              <span className="text-[64px] leading-none font-bold tabular-nums">{String(p.v).padStart(2, "0")}</span>
+              <span className={`${compact ? "text-[52px]" : "text-[64px]"} leading-none font-bold tabular-nums`}>
+                {String(p.v).padStart(2, "0")}
+              </span>
               <span className="mt-2 text-[22px]" style={{ color: "#64748B" }}>
                 {p.u}
               </span>
@@ -672,20 +713,22 @@ function QrPairCard({
   url,
   colors,
   qrSize,
+  compact,
 }: {
   title: string;
   caption: string;
   url: string;
   colors: CardColors;
   qrSize: number;
+  compact: boolean; // จอที่ความสูงจำกัด → การ์ดเตี้ยลง
 }) {
   return (
     <div
-      className="flex flex-col items-center rounded-[36px] border px-8 pt-10 pb-8"
+      className={`flex flex-col items-center rounded-[36px] border px-8 ${compact ? "pt-6 pb-5" : "pt-10 pb-8"}`}
       style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
     >
-      <p className="text-[44px] leading-tight font-bold">{title}</p>
-      <div className="mt-7">
+      <p className={`${compact ? "text-[36px]" : "text-[44px]"} leading-tight font-bold`}>{title}</p>
+      <div className={compact ? "mt-4" : "mt-7"}>
         <QrBox url={url} size={qrSize} />
       </div>
       <QrLink url={url} color={colors.sub} />
