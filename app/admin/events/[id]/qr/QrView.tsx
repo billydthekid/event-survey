@@ -8,7 +8,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { toPng } from "html-to-image";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Event, Lang } from "@/types";
+import { tr } from "../report/summary";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,8 @@ import { Button } from "@/components/ui/button";
 // ============ พจนานุกรมข้อความ 2 ภาษา (ใช้เฉพาะหน้านี้) ============
 const TEXT = {
   th: {
+    // STATUS_LABEL ใน lib มีแต่ภาษาไทย → ชื่อสถานะเก็บในพจนานุกรมนี้ (สีป้ายยังใช้ของ lib) เหมือน DashboardView
+    status: { draft: "ฉบับร่าง", scheduled: "ใกล้ถึง", active: "กำลังจัดงาน", ended: "จบแล้ว", deleted: "ถูกลบ" },
     back: "ไปที่ Event ที่ได้รับมอบหมาย",
     backDashboard: "กลับไป Dashboard",
     title: "QR ลงทะเบียน / Survey",
@@ -34,6 +38,7 @@ const TEXT = {
     draftHint: "Event ที่เป็นฉบับร่างยังไม่มีลิงก์ลงทะเบียนและ Survey",
   },
   en: {
+    status: { draft: "Draft", scheduled: "Scheduled", active: "Active", ended: "Ended", deleted: "Deleted" },
     back: "Go to assigned event",
     backDashboard: "Back to Dashboard",
     title: "Registration / Survey QR",
@@ -110,7 +115,7 @@ export function QrView({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div>
-      <Header event={event} t={t} langToggle={langToggle} />
+      <Header event={event} lang={lang} t={t} langToggle={langToggle} />
 
       {event.status === "draft" ? (
         // ด่านที่ 2: ฉบับร่าง → ยังไม่มี QR
@@ -146,8 +151,11 @@ export function QrView({ params }: { params: Promise<{ id: string }> }) {
 }
 
 // ============ ส่วนหัว: ปุ่มกลับ + ชื่อ Event + ป้ายสถานะ ============
-function Header({ event, t, langToggle }: { event: Event; t: Text; langToggle: React.ReactNode }) {
-  const status = STATUS_LABEL[event.status];
+// ป้ายสถานะ = "สถานะตามเวลาจริง" (useLiveStatus ตัวเดียวกับ Dashboard / ฝั่ง Super / หน้า /r, /s)
+// เช่น e-workshop (เก็บไว้ active, 08:00–20:00): 07:00 → ใกล้ถึง | 13:40 → กำลังจัดงาน | 21:00 → จบแล้ว
+// สีป้ายจาก STATUS_LABEL (lib) · ข้อความ TH/EN จากพจนานุกรมของหน้านี้
+function Header({ event, lang, t, langToggle }: { event: Event; lang: Lang; t: Text; langToggle: React.ReactNode }) {
+  const live = useLiveStatus()(event);
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -156,10 +164,11 @@ function Header({ event, t, langToggle }: { event: Event; t: Text; langToggle: R
       </div>
       <div className="mt-3 flex items-center gap-3">
         <h1 className="text-3xl font-bold">{t.title}</h1>
-        <Badge className={status.color}>{status.text}</Badge>
+        <Badge className={STATUS_LABEL[live].color}>{t.status[live]}</Badge>
       </div>
+      {/* ชื่อ Event ตามภาษาที่เลือก (ไม่มีชื่อ EN → ใช้ชื่อไทย) · ชื่อในรูป PNG ของ QrCard ยังเป็นไทยเหมือนเดิม */}
       <p className="mt-1 text-sm text-slate-500">
-        {event.name.th} · {event.code} · {t.subtitle}
+        {tr(event.name, lang)} · {event.code} · {t.subtitle}
       </p>
     </div>
   );

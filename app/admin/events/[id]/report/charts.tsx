@@ -9,18 +9,26 @@
 //  10:30 11:00 13:00
 // ความสูงแท่ง = value ÷ ค่ามากสุด × ความสูงกราฟ (แท่งที่มากสุดสูงเต็ม)
 // state: "normal" สีอ่อน | "peak" สีเข้ม (ช่วงที่มากสุด) | "future" เส้นประ
-export type VBar = { label: string; value: number; state: "normal" | "peak" | "future" };
+// hideLabel (ไม่บังคับ): true = ไม่แสดงป้ายเวลาใต้แท่งนี้ (แต่ยังเว้นความสูงไว้ แท่งจึงตรงแนวกัน)
+export type VBar = { label: string; value: number; state: "normal" | "peak" | "future"; hideLabel?: boolean };
 
-export function VBars({ bars, height = 112 }: { bars: VBar[]; height?: number }) {
+// dense (ไม่บังคับ, ค่าเริ่มต้น false = หน้าตาเดิมทุกอย่าง) ใช้ตอนแท่งเยอะ เช่น 24 แท่ง:
+// - ช่องว่างแคบลง gap-3 → gap-1 และทุกคอลัมน์กว้างอย่างน้อย 20px (min-w-5)
+// - ไม่แสดงตัวเลข 0 (แท่งยังสูง 4px) ลดตัวเลข 0 ซ้ำๆ ที่รกตา
+// - ป้ายเวลาไม่ตัดบรรทัด ล้นไปทับที่ว่างของคอลัมน์ข้างๆ ได้ (คอลัมน์ข้างๆ ซ่อนป้ายอยู่)
+// - px-2 = เผื่อที่ซ้าย/ขวา ให้ป้ายตัวแรก/ตัวสุดท้ายที่กว้างกว่าคอลัมน์ ไม่ล้นขอบ
+export function VBars({ bars, height = 112, dense = false }: { bars: VBar[]; height?: number; dense?: boolean }) {
   const max = Math.max(0, ...bars.filter((b) => b.state !== "future").map((b) => b.value));
   return (
-    <div className="flex items-end gap-3">
-      {bars.map((b) => {
+    <div className={`flex items-end ${dense ? "gap-1 px-2" : "gap-3"}`}>
+      {bars.map((b, i) => {
         // แท่งค่า 0 ยังสูง 4px ให้เห็นว่ามีช่วงนี้ | future สูงคงที่ 12px
         const barHeight = b.state === "future" ? 12 : max > 0 ? Math.max(4, (b.value / max) * height) : 4;
+        // ตัวเลขบนแท่ง: future ไม่มีตัวเลข | dense + ค่า 0 ก็ไม่แสดง
+        const showValue = b.state !== "future" && !(dense && b.value === 0);
         return (
-          <div key={b.label} className="flex flex-1 flex-col items-center gap-1">
-            <span className="h-4 text-xs font-semibold text-slate-700">{b.state === "future" ? "" : b.value}</span>
+          <div key={i} className={`flex flex-1 flex-col items-center gap-1 ${dense ? "min-w-5" : ""}`}>
+            <span className="h-4 text-xs font-semibold text-slate-700">{showValue ? b.value : ""}</span>
             <div className="flex w-full items-end justify-center" style={{ height }}>
               <div
                 className={`w-full max-w-11 rounded-md ${
@@ -33,7 +41,8 @@ export function VBars({ bars, height = 112 }: { bars: VBar[]; height?: number })
                 style={{ height: barHeight }}
               />
             </div>
-            <span className="text-xs text-slate-500">{b.label}</span>
+            {/* h-4 คงที่: ซ่อนป้ายแล้วความสูงไม่หาย | whitespace-nowrap: "08:00" ไม่ตัดเป็น 2 บรรทัด */}
+            <span className="h-4 whitespace-nowrap text-xs text-slate-500">{b.hideLabel ? "" : b.label}</span>
           </div>
         );
       })}
@@ -93,17 +102,21 @@ export function Donut({
       {/* -rotate-90: ให้เริ่มวาดจากด้านบน (12 นาฬิกา) แทนด้านขวา (3 นาฬิกา) */}
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
         <circle cx="60" cy="60" r={r} fill="none" stroke="#F1F5F9" strokeWidth="14" />
-        {arcs.map((a, i) => (
+        {/* วาดย้อนหลัง (ส่วนสุดท้ายก่อน ส่วนแรกทีหลัง): ส่วนแรกอยู่บนสุด
+            ถ้ามีขอบปลายของส่วนสุดท้ายล้ำข้ามจุด 12 นาฬิกา ส่วนแรกจะทับไว้ ไม่เป็นลิ่มแหว่ง
+            เช่น Dashboard: วาดเทา (ยังไม่ตอบ 15) ก่อน แล้วน้ำเงิน (ตอบแล้ว 31) ทับ */}
+        {arcs.map((a, i) => ({ ...a, i })).reverse().map((a) => (
           <circle
-            key={i}
+            key={a.i}
             cx="60"
             cy="60"
             r={r}
             fill="none"
             stroke={a.color}
             strokeWidth="14"
-            // "ยาวเส้น ช่องว่าง": วาดเส้นยาว len แล้วเว้นที่เหลือของวง
-            strokeDasharray={`${a.len} ${C - a.len}`}
+            // "ยาวเส้น ช่องว่าง": วาดเส้นยาว len แล้วเว้นช่องว่าง C*2 (ยาวกว่าทั้งวง)
+            // → dash ไม่วนกลับมาโผล่ซ้ำที่จุดเริ่ม path (เดิมใช้ C − len ซึ่งจบพอดีเส้นรอบวง ทำให้ปลายล้ำ)
+            strokeDasharray={`${a.len} ${C * 2}`}
             // เลื่อนจุดเริ่มไปข้างหน้าเท่ากับความยาวของช่วงก่อนหน้า (ค่าติดลบ = เลื่อนไปตามเข็ม)
             strokeDashoffset={-a.start}
           />
