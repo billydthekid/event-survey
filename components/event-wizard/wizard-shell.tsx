@@ -9,13 +9,20 @@ import { LockedArea, PublishConfirm } from "./lock-dialogs";
 
 // ไม่มีเมนูขั้นตอนด้านบนแล้ว: เดินได้ทีละขั้นด้วยปุ่ม "ถัดไป" (ล็อกจนกว่าขั้นนั้นจะครบ) / "ย้อนกลับ"
 // ช่วงเวลาเปิด–ปิด ย้ายไปอยู่ในขั้นฟอร์มลงทะเบียน และขั้น Survey แล้ว
+// slug = ชื่อโฟลเดอร์หน้าของขั้นนั้น (app/admin/events/[id]/edit/<slug>/page.tsx) · ขึ้นต้น "setup-" กันชื่อซ้ำกับหน้าของเพื่อน
 export const STEPS = [
-  { n: 1, label: "ข้อมูลทั่วไป" },
-  { n: 2, label: "Branding" },
-  { n: 3, label: "ฟอร์มลงทะเบียน" },
-  { n: 4, label: "Survey" },
-  { n: 5, label: "Preview" },
+  { n: 1, label: "ข้อมูลทั่วไป", slug: "setup-info" },
+  { n: 2, label: "Branding", slug: "setup-branding" },
+  { n: 3, label: "ฟอร์มลงทะเบียน", slug: "setup-form" },
+  { n: 4, label: "Survey", slug: "setup-survey" },
+  { n: 5, label: "Preview", slug: "setup-preview" },
 ] as const;
+
+/** URL ของขั้นที่ n เช่น stepHref("e-career", 2) → "/admin/events/e-career/edit/setup-branding" */
+export function stepHref(eventId: string, n: number): string {
+  const s = STEPS[Math.min(Math.max(n, 1), STEPS.length) - 1];
+  return `/admin/events/${eventId}/edit/${s.slug}`;
+}
 
 interface Props {
   eventName: string;
