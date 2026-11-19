@@ -9,13 +9,12 @@ import { useEffect, useState } from "react";
 import { ImageIcon, QrCode } from "lucide-react";
 import { eventTypeLabel } from "@/lib/event-types";
 import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
-import { previewColors } from "@/lib/theme-presets";
+import { BG_LAYER, bgStyle, previewColors } from "@/lib/theme-presets";
 import type { EventDraft } from "@/types/event";
 
+// พื้นหน้า: สี + รูปพื้นหลัง (เบลอได้) · ใช้คู่กับ className BG_LAYER
 function pageStyle(c: ReturnType<typeof previewColors>): React.CSSProperties {
-  return c.pageImage
-    ? { backgroundColor: c.page, backgroundImage: `url(${c.pageImage})`, backgroundSize: "cover", backgroundPosition: "center", color: c.text }
-    : { backgroundColor: c.page, color: c.text };
+  return bgStyle(c.page, c.pageImage, c.pageBlur, c.text);
 }
 
 function Logo({ d, size }: { d: EventDraft; size: number }) {
@@ -40,7 +39,7 @@ export function PhonePreview({ d }: { d: EventDraft }) {
   const g = d.general;
   const c = previewColors(d.theme);
   return (
-    <div className="mx-auto w-full max-w-[300px] overflow-hidden rounded-[2rem] border shadow-lg" style={pageStyle(c)}>
+    <div className={`mx-auto w-full max-w-[300px] overflow-hidden rounded-[2rem] border shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
       <div className="flex items-center justify-between px-4 pt-4 text-[11px]" style={{ color: c.muted }}>
         <Logo d={d} size={26} />
         <span>TH</span>
@@ -178,7 +177,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
   // ===== แนวนอน + 3:4 (แบบ B) =====
   if (landscape && ratio === "3:4") {
     return (
-      <div className="mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg" style={pageStyle(c)}>
+      <div className={`mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
         {media("aspect-[3/4] h-full shrink-0")}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           {header}
@@ -201,7 +200,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
   // ===== แนวนอน + 16:9 (แบบ A) =====
   if (landscape) {
     return (
-      <div className="mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg" style={pageStyle(c)}>
+      <div className={`mx-auto flex aspect-video w-full max-w-[640px] gap-4 overflow-hidden rounded-2xl border p-4 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
         <div className="flex min-w-0 flex-[1.6] flex-col justify-center gap-3">
           {header}
           {media("aspect-video w-full")}
@@ -219,7 +218,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
 
   // ===== แนวตั้ง (เดิม) =====
   return (
-    <div className="mx-auto flex aspect-[9/16] w-full max-w-[260px] flex-col gap-3 overflow-hidden rounded-2xl border p-3 shadow-lg" style={pageStyle(c)}>
+    <div className={`mx-auto flex aspect-[9/16] w-full max-w-[260px] flex-col gap-3 overflow-hidden rounded-2xl border p-3 shadow-lg ${BG_LAYER}`} style={pageStyle(c)}>
       {header}
       {ratio === "3:4" ? media("mx-auto aspect-[3/4] w-4/5 shrink-0") : media("aspect-video shrink-0")}
       {name("text-sm")}

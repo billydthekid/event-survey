@@ -34,11 +34,23 @@ export function StepGeneral() {
       <WizardSection title={tr("ชื่อและรายละเอียด", "Name and description")}>
         <div className="space-y-1.5">
           <Label>{tr("ชื่อ Event", "Event name")} <span className="text-destructive">*</span></Label>
-          <Input value={g.nameTh} onChange={(e) => set({ nameTh: e.target.value })} />
+          <Input
+            placeholder={tr("เช่น Workshop ออกแบบ UX/UI สำหรับมือใหม่", "e.g. UX/UI Design Workshop for Beginners")}
+            value={g.nameTh}
+            onChange={(e) => set({ nameTh: e.target.value })}
+          />
         </div>
         <div className="space-y-1.5">
           <Label>{tr("รายละเอียด", "Description")} <span className="text-destructive">*</span></Label>
-          <Textarea rows={3} value={g.descTh} onChange={(e) => set({ descTh: e.target.value })} />
+          <Textarea
+            rows={3}
+            placeholder={tr(
+              "เช่น เรียนรู้พื้นฐานการออกแบบ UX/UI ผ่าน Figma พร้อมลงมือทำจริง เหมาะสำหรับนักศึกษาทุกชั้นปี",
+              "e.g. Learn UX/UI basics in Figma with hands-on practice. Open to students of all years."
+            )}
+            value={g.descTh}
+            onChange={(e) => set({ descTh: e.target.value })}
+          />
         </div>
         <div className="space-y-1.5">
           <Label>{tr("ประเภทงาน", "Event type")} <span className="text-destructive">*</span></Label>
@@ -85,13 +97,25 @@ export function StepGeneral() {
         />
         <div className="space-y-1.5">
           <Label>{g.mode === "onsite" ? tr("สถานที่", "Venue") : tr("ลิงก์เข้าร่วม", "Joining link")} <span className="text-destructive">*</span></Label>
-          <Input value={g.venue} onChange={(e) => set({ venue: e.target.value })} />
+          <Input
+            placeholder={
+              g.mode === "onsite"
+                ? tr("เช่น ห้องประชุม 301 อาคาร 3", "e.g. Meeting room 301, Building 3")
+                : tr("เช่น https://zoom.us/j/123456789", "e.g. https://zoom.us/j/123456789")
+            }
+            value={g.venue}
+            onChange={(e) => set({ venue: e.target.value })}
+          />
         </div>
         {g.mode === "onsite" && (
           <>
             <div className="space-y-1.5">
               <Label>{tr("จุดนัดพบ", "Meeting point")} <span className="text-xs text-muted-foreground">{tr("(ไม่บังคับ)", "(optional)")}</span></Label>
-              <Input value={g.spot} onChange={(e) => set({ spot: e.target.value })} />
+              <Input
+                placeholder={tr("เช่น หน้าลิฟต์ชั้น 3", "e.g. In front of the 3rd-floor lift")}
+                value={g.spot}
+                onChange={(e) => set({ spot: e.target.value })}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>{tr("ลิงก์แผนที่", "Map link")} <span className="text-xs text-muted-foreground">{tr("(ไม่บังคับ)", "(optional)")}</span></Label>
@@ -107,7 +131,11 @@ export function StepGeneral() {
       >
         <div className="space-y-1.5">
           <Label>{tr("ชื่อผู้จัด / หน่วยงาน", "Organizer / unit")} <span className="text-destructive">*</span></Label>
-          <Input value={g.organizer} onChange={(e) => set({ organizer: e.target.value })} />
+          <Input
+            placeholder={tr("เช่น ชมรมคอมพิวเตอร์ คณะเทคโนโลยีสารสนเทศ", "e.g. Computer Club, Faculty of IT")}
+            value={g.organizer}
+            onChange={(e) => set({ organizer: e.target.value })}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -116,7 +144,7 @@ export function StepGeneral() {
           </div>
           <div className="space-y-1.5">
             <Label>{tr("อีเมล", "Email")} <span className="text-xs text-muted-foreground">{tr("(ไม่บังคับ)", "(optional)")}</span></Label>
-            <Input type="email" value={g.email} onChange={(e) => set({ email: e.target.value })} />
+            <Input type="email" placeholder="name@example.com" value={g.email} onChange={(e) => set({ email: e.target.value })} />
           </div>
         </div>
         <div className="flex items-center justify-between">

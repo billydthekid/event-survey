@@ -120,6 +120,7 @@ export function AdsEditor() {
           type="number"
           min={MIN_SECONDS}
           max={MAX_SECONDS}
+          placeholder="6"
           value={ads.seconds}
           onChange={(e) => patch("ads", { seconds: Number(e.target.value) })}
           onBlur={() => patch("ads", { seconds: Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Math.round(ads.seconds) || 6)) })}

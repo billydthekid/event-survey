@@ -7,7 +7,7 @@ import { Calendar, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeQuestion } from "@/lib/survey-types";
 import type { SurveyQuestion } from "@/types/event";
-import { lookStyle, type PageLook } from "@/lib/theme-presets";
+import { BG_LAYER, lookStyle, type PageLook } from "@/lib/theme-presets";
 import { useTr } from "@/lib/wizard-lang";
 
 const box = "rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground";
@@ -140,7 +140,7 @@ export function SurveyPreview({
   const label = (q: SurveyQuestion) => (lang === "en" && q.titleEn ? q.titleEn : q.titleTh) || tr("(ยังไม่ตั้งชื่อคำถาม)", "(Untitled question)");
 
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
+    <div className={cn("mx-auto w-full max-w-sm overflow-hidden rounded-[2rem] border bg-background p-5 shadow-lg", look && BG_LAYER)} style={look ? lookStyle(look) : undefined}>
       {/* แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
       {look?.banner && (
         // eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว
