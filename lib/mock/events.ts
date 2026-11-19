@@ -1,4 +1,5 @@
 // lib/mock/events.ts
+import { MOCK_DATES } from "./dates";
 import { Event } from "@/types";
 
 // สร้าง Event เปล่าสถานะ "ฉบับร่าง"
@@ -34,15 +35,15 @@ export function makeDraftEvent(id: string, name: string, adminId: string | null,
 // รูปโฆษณาตัวอย่างของ Workshop Figma (แสดงบนจอ Kiosk) — ไฟล์อยู่ใน public/kiosk/ads
 export const WORKSHOP_AD = "/kiosk/ads/workshop-figma.png";
 
-// Event ตัวอย่างเริ่มต้น
+// Event ตัวอย่างเริ่มต้น (วันที่คิดจากวันนี้ ดู lib/mock/dates.ts)
 export const mockEvents: Event[] = [
   {
     ...makeDraftEvent("e-workshop", "Workshop Figma เบื้องต้น", "u-organizer-1", "u-admin-1"),
     code: "FIG-1017",
     status: "active",
-    date: "2026-10-23",
-    startTime: "10:00",
-    endTime: "15:00",
+    date: MOCK_DATES.workshop,
+    startTime: "08:00", // ช่วงกว้าง: เปิดเดโม่ช่วงกลางวันเมื่อไหร่ก็ "กำลังจัดงาน"
+    endTime: "20:00",
     venue: "ห้อง Lab 4 อาคาร 11",
     organizerName: "คณะ IT",
     adImage: WORKSHOP_AD,
@@ -51,18 +52,24 @@ export const mockEvents: Event[] = [
     ...makeDraftEvent("e-openhouse", "วันเปิดบ้าน 2569", "u-organizer-2", "u-admin-1"),
     code: "OPH-2569",
     status: "ended",
-    date: "2026-10-20",
+    date: MOCK_DATES.openhouse,
+    startTime: "08:00",
+    endTime: "16:00",
   },
   {
     ...makeDraftEvent("e-career", "เส้นทางอาชีพดิจิทัล", "u-organizer-2", "u-admin-1"),
     code: "CAR-1025",
     status: "scheduled",
-    date: "2026-10-25",
+    date: MOCK_DATES.career,
+    startTime: "13:00",
+    endTime: "16:00",
   },
   {
     ...makeDraftEvent("e-comm", "การสื่อสารยุคดิจิทัล", "u-organizer-3", "u-admin-1"),
     code: "COM-1018",
     status: "ended",
-    date: "2026-10-18",
+    date: MOCK_DATES.comm,
+    startTime: "09:00",
+    endTime: "12:00",
   },
 ];

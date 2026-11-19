@@ -2,6 +2,7 @@
 // หน้ารวม Survey ทุก Event (Super Admin) — เลือก Event ก่อน แล้วไปหน้า Survey (สรุป) ของงานนั้น
 // ตาม Figma "Admin · Survey ทุก Event (รวม)"
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -27,6 +28,7 @@ export default function SurveyAllPage() {
   const events = useStore((s) => s.events);
   const registrations = useStore((s) => s.registrations);
   const responses = useStore((s) => s.responses);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
 
   const [search, setSearch] = useState("");
   const [chip, setChip] = useState("all");
@@ -47,7 +49,7 @@ export default function SurveyAllPage() {
 
   const columns: EventColumn[] = [
     { key: "date", header: "วันที่จัด", render: (e) => formatThaiDate(e.date) },
-    { key: "status", header: "สถานะ", render: (e) => <Badge {...STATUS_LABEL[e.status]} /> },
+    { key: "status", header: "สถานะ", render: (e) => <Badge {...STATUS_LABEL[statusOf(e)]} /> },
     {
       key: "survey", header: "Survey",
       render: (e) => <span className={surveyState(e) === "none" ? "text-slate-400" : ""}>{surveyLabel(e)}</span>,

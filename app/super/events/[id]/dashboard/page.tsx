@@ -1,5 +1,6 @@
 // app/super/events/[id]/dashboard/page.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -26,6 +27,7 @@ function EventDashboard() {
   // ดึงทั้งก้อนแล้วค่อยกรอง — ถ้า .filter() ใน useStore จะได้ array ใหม่ทุกครั้ง → render วนไม่จบ
   const allRegistrations = useStore((s) => s.registrations);
   const allResponses = useStore((s) => s.responses);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   const now = useNow();   // อัปเดตทุก 1 นาที → เหลือเวลา / ข้อมูลถึง / ช่องประ ขยับเอง
 
   if (!event) {
@@ -51,7 +53,7 @@ function EventDashboard() {
   const satisfaction = satisfactionSummary(responses, ratingId);
   const timeLeft = countdown(event, now);
 
-  const s = STATUS_LABEL[event.status];
+  const s = STATUS_LABEL[statusOf(event)];
   const eventPage = `/super/events/${event.id}/event`;   // หน้า Event (ข้อมูล + QR) — ทำใน ④
 
   return (

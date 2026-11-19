@@ -1,5 +1,6 @@
 // app/super/events/[id]/event/page.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ function EventDetail() {
   const event = useStore((s) => s.events.find((e) => e.id === id && e.status !== "deleted"));
   const users = useStore((s) => s.users);
   const deleteEvent = useStore((s) => s.deleteEvent);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   const origin = useOrigin();
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -47,7 +49,7 @@ function EventDetail() {
     );
   }
 
-  const s = STATUS_LABEL[event.status];
+  const s = STATUS_LABEL[statusOf(event)];
   const locked = isEditLocked(event);
   const day = formatDayMonth(event.date);
   // บรรทัดใต้ชื่อ: วันเวลา · สถานที่ (ส่วนที่ยังไม่กำหนดไม่ต้องโชว์)

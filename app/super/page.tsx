@@ -1,5 +1,6 @@
 // app/super/page.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ClipboardCheck, Download, UserPlus, Users } from "lucide-react";
@@ -21,6 +22,7 @@ export default function SuperDashboard() {
   const users = useStore((s) => s.users);
   const registrations = useStore((s) => s.registrations);
   const responses = useStore((s) => s.responses);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
 
   // ============ คิดตัวเลข (ทุกตัวมาจาก store ไม่มีเลขพิมพ์ตายตัว) ============
   const list = visibleEvents(events);                          // ไม่รวม Event ที่ถูกลบ
@@ -43,7 +45,7 @@ export default function SuperDashboard() {
         e.name.th,
         e.code,
         formatThaiDate(e.date),
-        STATUS_LABEL[e.status].text,
+        STATUS_LABEL[statusOf(e)].text,
         adminNames(e, users),
         reg,
         res,
