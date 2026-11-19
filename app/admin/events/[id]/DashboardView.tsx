@@ -15,6 +15,9 @@ import { STATUS_LABEL } from "@/lib/utils/status";
 import { Event, EventStatus, Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useLiveStatus } from "@/lib/utils/live-status";
+import { buildPublicEvent, getRegisterPhase, type RegisterPhase } from "@/lib/public-event";
+import { useWizardStore } from "@/lib/wizard-store";
 import { useEventAccess } from "./eventAccess";
 import { ReportData } from "./report/mockData";
 import { pct, satisfactionQuestion, summarize, tr } from "./report/summary";
@@ -65,6 +68,8 @@ const TEXT = {
     rows: { qr: "QR ลงทะเบียน", survey: "Survey", kiosk: "จอ Kiosk", team: "ทีมดูแล", edit: "แก้ไขข้อมูล Event" },
     regOpen: "เปิดรับอยู่",
     regClosed: "ปิดรับแล้ว",
+    regNotOpen: "ยังไม่เปิดรับ",
+    regFull: "เต็มแล้ว",
     surveyState: (enabled: boolean, n: number, locked: boolean) =>
       `${enabled ? "เปิดใช้" : "ปิดใช้"} · ${n} ข้อ${locked ? " · ล็อกแล้ว" : ""}`,
     kioskScreen: { both: "แสดง QR ทั้งคู่", register: "แสดง QR ลงทะเบียน", survey: "แสดง QR Survey" },
@@ -117,6 +122,8 @@ const TEXT = {
     rows: { qr: "Registration QR", survey: "Survey", kiosk: "Kiosk screen", team: "Team", edit: "Edit event info" },
     regOpen: "Open",
     regClosed: "Closed",
+    regNotOpen: "Not open yet",
+    regFull: "Full",
     surveyState: (enabled: boolean, n: number, locked: boolean) =>
       `${enabled ? "Enabled" : "Disabled"} · ${n} question${n === 1 ? "" : "s"}${locked ? " · Locked" : ""}`,
     kioskScreen: { both: "Shows both QR codes", register: "Shows registration QR", survey: "Shows survey QR" },
@@ -201,12 +208,15 @@ export function DashboardView({ params }: { params: Promise<{ id: string }> }) {
 // ============ ส่วนหัว ============
 // ชื่อ Event / ป้ายสถานะ + ข้อความ "คุณดูในฐานะ ..."
 // (ไม่มี breadcrumb "Event ของฉัน ›" แล้ว — 1 Event Admin ดูแล 1 Event จึงไม่มีหน้ารายการให้กลับไป)
+// ป้ายสถานะใช้ "สถานะตามเวลาจริง" (useLiveStatus ตัวเดียวกับฝั่ง Super / หน้า /r, /s, Kiosk)
+// เช่น e-workshop (เก็บไว้ active, 08:00–20:00): 07:00 → ใกล้ถึง | 13:40 → กำลังจัดงาน | 21:00 → จบแล้ว
 function Header({ event, lang, t }: { event: Event; lang: Lang; t: Text }) {
+  const statusOf = useLiveStatus();
   return (
     <div>
       <h1 className="text-3xl font-bold">{tr(event.name, lang)}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-        <StatusBadge status={event.status} t={t} />
+        <StatusBadge status={statusOf(event)} t={t} />
         <span>{t.viewingAs}</span>
       </div>
     </div>
@@ -317,7 +327,7 @@ function RemainingCell({ event, t }: { event: Event; t: Text }) {
   let sub = closesText;
   if (r.kind === "countdown") value = formatCountdown(r.ms);          // วันงาน ยังไม่ถึงเวลาปิด → "1:20:04"
   else if (r.kind === "days") value = t.inDays(r.days);                // ยังไม่ถึงวันงาน → "อีก 3 วัน"
-  else if (r.kind === "closed") sub = event.endTime ? closesText : t.closed; // ปิดแล้ว → "—"
+  else if (r.kind === "closed") sub = t.closed;                        // ปิดแล้ว → "—" + "ปิดงานแล้ว" (ไม่โชว์ "ปิดงาน 20:00" ที่อ่านเหมือนยังไม่ปิด)
   // "unset" (ไม่มีวัน/เวลาปิด) และ "pending" (ยังไม่รู้เวลา) → "—"
 
   return <KpiCell label={t.remaining} value={value} sub={sub} />;
@@ -388,20 +398,29 @@ function SlotChart({ event, data, t }: { event: Event; data: ReportData; t: Text
   const isFuture = (slot: number) =>
     nowMs !== null && event.date !== "" && localDateTime(event.date, toHHMM(slot)).getTime() > nowMs;
 
+  // แท่งเยอะ (เกิน 12 แท่ง = เกิน 6 ชม.) → โหมด dense: แสดงป้ายเวลาเฉพาะชั่วโมงเต็ม
+  // เช่น 08:00–20:00 = 24 แท่ง → ป้าย 08:00, 09:00 … 19:00 (ช่วง :30 ซ่อนป้าย)
+  // Event สั้น 3–6 ชม. (6–12 แท่ง) → ไม่ dense หน้าตาเหมือนเดิมทุกอย่าง
+  const dense = slotStarts.length > 12;
+
   const bars: VBar[] = slotStarts.map((s, i) => ({
     label: toHHMM(s),
     value: counts[i],
     state: isFuture(s) ? "future" : i === peakIndex ? "peak" : "normal",
+    hideLabel: dense && s % 60 !== 0, // s = นาทีของวัน: 480 (08:00) % 60 = 0 → แสดง | 510 (08:30) → ซ่อน
   }));
 
   return (
-    <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-3">
+    // min-w-0: ให้การ์ดใน grid หดได้ ไม่ถูกกราฟดันให้กว้างเกินคอลัมน์ (ไม่งั้น overflow-x-auto ด้านล่างไม่ทำงาน)
+    <div className="min-w-0 rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-semibold">{t.perSlot}</p>
         {peakIndex >= 0 && <span className="text-xs text-slate-500">{t.peak(toHHMM(slotStarts[peakIndex]), maxCount)}</span>}
       </div>
-      <div className="mt-6">
-        <VBars bars={bars} />
+      {/* overflow-x-auto: จอแคบที่ใส่ไม่พอ → เลื่อนแนวนอนได้ "ในการ์ด" แทนที่จะล้นทั้งหน้า
+          pb-2 (เฉพาะ dense): เว้นที่ให้แถบเลื่อนบนมือถือ ไม่ทับป้ายเวลา */}
+      <div className={`mt-6 overflow-x-auto ${dense ? "pb-2" : ""}`}>
+        <VBars bars={bars} dense={dense} />
       </div>
     </div>
   );
@@ -492,17 +511,33 @@ function LatestRegistrations({ eventId, data, lang, t }: { eventId: string; data
 
 // ============ ตาราง "สถานะ Event" ============
 // ทุกค่าคิดจากข้อมูลจริง:
-// - QR ลงทะเบียน: active → เปิดรับอยู่ | อื่นๆ → ปิดรับแล้ว (registration.opensAt/closesAt ใน mock ยังว่าง)
+// - QR ลงทะเบียน: getRegisterPhase ตัวเดียวกับหน้า /r และ Kiosk (เวลาที่ตั้งใน Wizard มาก่อน
+//   ไม่ได้ตั้ง → เปิดตอนงานเริ่ม ปิดตอนงานจบ) เช่น e-workshop 08:00–20:00:
+//   07:00 → ยังไม่เปิดรับ | 13:40 → เปิดรับอยู่ | 21:00 → ปิดรับแล้ว | ครบจำนวนรับ → เต็มแล้ว
 // - Survey: data.survey (enabled + จำนวนข้อ) และ "ล็อกแล้ว" เมื่อเลยช่วงที่แก้ได้ (Draft/Scheduled)
+// - แก้ไขข้อมูล Event / "ล็อกแล้ว": ยังใช้ event.status ที่เก็บไว้ (ไม่ใช่ live) ให้ตรงกับ Wizard
+//   ที่ล็อกทันทีเมื่อกดเผยแพร่ (เผยแพร่แล้ว = active) — ถ้าใช้ live ก่อน 08:00 จะขึ้น "แก้ไขได้" แต่ Wizard ล็อกอยู่
 // - จอ Kiosk: event.kiosk.screen | ทีมดูแล: event.adminIds.length
 const EDITABLE: EventStatus[] = ["draft", "scheduled"]; // Event Admin แก้ได้เฉพาะก่อน Active
 
 function StatusTable({ event, data, t }: { event: Event; data: ReportData; t: Text }) {
   const locked = !EDITABLE.includes(event.status);
+  const draft = useWizardStore((s) => s.drafts[event.id]); // เวลาลงทะเบียนที่ตั้งใน Wizard (ถ้ามี)
+  const nowMs = useNow(60_000);
+  // ยังไม่รู้เวลา (ตอน render ฝั่ง server / ก่อน hydrate) → ใช้กฎเดิมจากสถานะที่เก็บไว้ชั่วคราว
+  // จำนวนคนลงทะเบียน (เช็ก "เต็มแล้ว") นับแบบเดียวกับหน้า /r: ผู้ลงทะเบียนของ Event นี้ใน store
+  const regPhase: RegisterPhase =
+    nowMs === null
+      ? event.status === "active" ? "open" : "closed"
+      : getRegisterPhase(buildPublicEvent(event, draft), new Date(nowMs), data.registrations.length);
+  const regText: Record<RegisterPhase, string> = {
+    open: t.regOpen,
+    notOpen: t.regNotOpen,
+    closed: t.regClosed,
+    full: t.regFull,
+  };
   const rows: { label: string; value: string; tone?: "green" }[] = [
-    event.status === "active"
-      ? { label: t.rows.qr, value: t.regOpen, tone: "green" }
-      : { label: t.rows.qr, value: t.regClosed },
+    { label: t.rows.qr, value: regText[regPhase], tone: regPhase === "open" ? "green" : undefined },
     { label: t.rows.survey, value: t.surveyState(data.survey.enabled, data.survey.questions.length, locked) },
     { label: t.rows.kiosk, value: t.kioskScreen[event.kiosk.screen] },
     { label: t.rows.team, value: t.team(event.adminIds.length) },
