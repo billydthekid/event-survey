@@ -1,0 +1,172 @@
+"use client";
+// "ปรับแต่งเอง" ในขั้น Branding แยกตามหน้า: Kiosk / ฟอร์มลงทะเบียน / Survey
+// - Kiosk: สีหลัก · สีตัวอักษร · พื้นหลัง (สี / รูป · รูปย่อตามแนวจอ: แนวตั้ง 1080×1920, แนวนอน 1920×1080)
+// - ฟอร์ม / Survey: เปิด "ตั้งสีแยก" → สีหลัก · สีตัวอักษร · พื้นหลัง ของหน้านั้นเอง (ปิด = ใช้แบบเดียวกับ Kiosk)
+// แก้สีของ Kiosk = ไม่ใช่ธีมสำเร็จรูปแล้ว (preset ว่าง) · แก้สีฟอร์ม / Survey ไม่กระทบธีมสำเร็จรูป
+
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useWizardStore } from "@/lib/wizard-store";
+import { dataUrlKB, readFileAsDataUrl, resizeToDataUrl } from "@/lib/image-crop";
+import { pageThemeFromKiosk, type PageKey } from "@/lib/theme-presets";
+import { whiteTextContrast } from "@/lib/utils/color";
+import type { EventDraft, PageTheme, UploadedAsset } from "@/types/event";
+import { ColorField } from "./color-field";
+import { ImageSlot } from "./image-slot";
+import { useTr } from "@/lib/wizard-lang";
+
+type Theme = EventDraft["theme"];
+export type ColorTarget = "kiosk" | PageKey;
+
+const PRIMARY = ["#2563EB", "#7C3AED", "#0F766E", "#C2410C", "#BE185D", "#1E1B2E"];
+const BG = ["#FFFFFF", "#F8FAFC", "#FEF3C7", "#E0F2FE", "#FDF2F8", "#0F172A"];
+const TEXT = ["#0F172A", "#334155", "#1E1B2E", "#7C2D12", "#FFFFFF", "#F8FAFC"];
+
+const PAGE_NAME: Record<PageKey, string> = { form: "ฟอร์มลงทะเบียน", survey: "Survey" };
+const PAGE_NAME_EN: Record<PageKey, string> = { form: "registration form", survey: "survey" };
+
+/** ชุดช่องตั้งสี 1 หน้า (ใช้ร่วมกัน Kiosk / ฟอร์ม / Survey) */
+interface Values {
+  primary: string;
+  textColor?: string;
+  bgType: "color" | "image";
+  bgColor?: string;
+  bg: UploadedAsset | null;
+}
+
+export function CustomColors({ target }: { target: ColorTarget }) {
+  const t = useWizardStore((s) => s.draft.theme);
+  const patch = useWizardStore((s) => s.patch);
+  const tr = useTr();
+
+  if (target === "kiosk") {
+    const landscape = t.kiosk === "landscape";
+    return (
+      <ColorEditor
+        values={t}
+        bgHint={landscape ? tr("จอ Kiosk แนวนอน + หน้า Event", "Landscape Kiosk + event page") : tr("จอ Kiosk แนวตั้ง + หน้า Event", "Portrait Kiosk + event page")}
+        landscapeBg={landscape}
+        // แก้สีเอง → ไม่ใช่ธีมสำเร็จรูปแล้ว
+        onChange={(v) => patch("theme", { ...(v as Partial<Theme>), preset: "" })}
+      />
+    );
+  }
+
+  const own = t.pages?.[target];
+  const setOwn = (next: PageTheme | undefined) => patch("theme", { pages: { ...t.pages, [target]: next } });
+
+  return (
+    <div className="space-y-5">
+      <label className="flex items-center justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+        <span>
+          {tr(`ตั้งสีหน้า${PAGE_NAME[target]}แยก`, `Own colors for the ${PAGE_NAME_EN[target]} page`)}
+          <span className="block text-xs text-muted-foreground">
+            {own ? tr("ใช้สีที่ตั้งด้านล่าง", "Uses the colors set below") : tr("ปิดอยู่ = ใช้สีเดียวกับ Kiosk", "Off = uses the Kiosk colors")}
+          </span>
+        </span>
+        <Switch checked={!!own} onCheckedChange={(on) => setOwn(on ? pageThemeFromKiosk(t) : undefined)} />
+      </label>
+      {own && (
+        <ColorEditor
+          values={own}
+          bgHint={tr(`หน้า${PAGE_NAME[target]}บนมือถือ`, `The ${PAGE_NAME_EN[target]} page on mobile`)}
+          landscapeBg={false}
+          onChange={(v) => setOwn({ ...own, ...v })}
+        />
+      )}
+    </div>
+  );
+}
+
+function ColorEditor({
+  values: v,
+  onChange,
+  bgHint,
+  landscapeBg,
+}: {
+  values: Values;
+  onChange: (v: Partial<Values>) => void;
+  bgHint: string;
+  landscapeBg: boolean; // รูปพื้นหลังแนวนอน (Kiosk แนวนอน) หรือแนวตั้ง
+}) {
+  const orientation = landscapeBg ? "landscape" : "portrait";
+  const bgOrientation = v.bg?.orientation ?? "portrait"; // รูปเก่าไม่มีค่านี้ = แนวตั้ง
+  const tr = useTr();
+  return (
+    <>
+      <Section title={tr("สีหลัก", "Primary color")} hint={tr("ปุ่ม ป้าย กรอบ QR", "Buttons, badges, QR frame")}>
+        <ColorField value={v.primary} presets={PRIMARY} onChange={(c) => onChange({ primary: c })} label={tr("สีหลัก", "Primary color")} />
+        {whiteTextContrast(v.primary) < 4.5 && (
+          <p className="text-xs text-amber-700">{tr("ตัวหนังสือสีขาวบนสีนี้อ่านยาก ลองสีเข้มขึ้น", "White text is hard to read on this color, try a darker one")}</p>
+        )}
+      </Section>
+
+      <Section title={tr("สีตัวอักษร", "Text color")} hint={tr("ชื่องาน รายละเอียด คำถาม", "Event name, details, questions")}>
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup
+            value={[v.textColor ? "custom" : "auto"]}
+            onValueChange={(x) => x[0] && onChange({ textColor: x[0] === "auto" ? "" : v.textColor || "#0F172A" })}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="auto">{tr("อัตโนมัติ", "Auto")}</ToggleGroupItem>
+            <ToggleGroupItem value="custom">{tr("เลือกเอง", "Custom")}</ToggleGroupItem>
+          </ToggleGroup>
+          {!v.textColor && <span className="text-xs text-muted-foreground">{tr("เข้ม / ขาว ตามพื้นหลัง", "Dark / white to match the background")}</span>}
+        </div>
+        {v.textColor && <ColorField value={v.textColor} presets={TEXT} onChange={(c) => onChange({ textColor: c })} label={tr("สีตัวอักษร", "Text color")} />}
+      </Section>
+
+      <Section title={tr("พื้นหลัง", "Background")} hint={bgHint}>
+        <ToggleGroup
+          value={[v.bgType]}
+          onValueChange={(x) => x[0] && onChange({ bgType: x[0] as Values["bgType"] })}
+          variant="outline"
+          size="sm"
+          className="justify-start"
+        >
+          <ToggleGroupItem value="color">{tr("สี", "Color")}</ToggleGroupItem>
+          <ToggleGroupItem value="image">{tr("รูปภาพ", "Image")}</ToggleGroupItem>
+        </ToggleGroup>
+        {v.bgType === "color" ? (
+          <ColorField value={v.bgColor || "#FFFFFF"} presets={BG} onChange={(c) => onChange({ bgColor: c })} label={tr("สีพื้นหลัง", "Background color")} />
+        ) : (
+          <>
+            <ImageSlot
+              asset={v.bg}
+              hint={landscapeBg ? tr("แนวนอน · ย่อเหลือ 1920×1080 px", "Landscape · resized to 1920×1080 px") : tr("แนวตั้ง · ย่อเหลือ 1080×1920 px", "Portrait · resized to 1080×1920 px")}
+              onPick={async (file) => {
+                // รูปพื้นหลังใช้ JPEG (ไฟล์เล็ก) · ย่อให้อยู่ในกรอบตามแนวจอ
+                const [w, h] = landscapeBg ? [1920, 1080] : [1080, 1920];
+                const url = await resizeToDataUrl(await readFileAsDataUrl(file), w, h, "image/jpeg");
+                onChange({ bg: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url, orientation } });
+              }}
+              onRemove={() => onChange({ bg: null })}
+              className={landscapeBg ? "aspect-video w-40" : "aspect-[9/16] w-24"}
+            />
+            {v.bg?.dataUrl && bgOrientation !== orientation && (
+              <p className="text-xs text-amber-700">
+                {tr(
+                  `รูปนี้ทำไว้สำหรับจอ${bgOrientation === "portrait" ? "แนวตั้ง" : "แนวนอน"} · อัปโหลดรูป${landscapeBg ? "แนวนอน" : "แนวตั้ง"}ใหม่ให้พอดีจอ`,
+                  `This image was made for a ${bgOrientation} screen · upload a ${landscapeBg ? "landscape" : "portrait"} image to fit`
+                )}
+              </p>
+            )}
+          </>
+        )}
+      </Section>
+    </>
+  );
+}
+
+function Section({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2 border-b pb-5 last:border-0 last:pb-0">
+      <p className="text-sm font-semibold">
+        {title} <span className="ml-1 text-xs font-normal text-muted-foreground">· {hint}</span>
+      </p>
+      {children}
+    </section>
+  );
+}
+

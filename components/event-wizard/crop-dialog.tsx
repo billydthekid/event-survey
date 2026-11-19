@@ -1,27 +1,38 @@
 "use client";
-// หน้าต่าง Crop รูปโฆษณาเป็น 16:9 (1920 × 1080 px)
+// หน้าต่าง Crop รูปปก / โฆษณา ตามสัดส่วน: 16:9 (1920 × 1080 px) หรือ 3:4 (1080 × 1440 px) สำหรับจอ Kiosk แนวนอน
 // - ลากรูปเพื่อเลื่อนตำแหน่ง · เลื่อนแถบ Zoom เพื่อขยาย
-// - กรอบ 16:9 อยู่กับที่ รูปต้องเต็มกรอบเสมอ (เลื่อนออกนอกกรอบไม่ได้)
-// - กด "ใช้รูปนี้" → ตัดด้วย canvas ได้ JPEG 1920×1080 (lib/image-crop.ts)
+// - กรอบตามสัดส่วนอยู่กับที่ รูปต้องเต็มกรอบเสมอ (เลื่อนออกนอกกรอบไม่ได้)
+// - กด "ใช้รูปนี้" → ตัดด้วย canvas ได้ JPEG ตามขนาดของสัดส่วน (lib/image-crop.ts)
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Move, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AD_HEIGHT, AD_RATIO, AD_WIDTH, cropToDataUrl, loadImage } from "@/lib/image-crop";
+import { MEDIA_SIZE, cropToDataUrl, loadImage } from "@/lib/image-crop";
+import type { CropRatio } from "@/types/event";
+import { useTr } from "@/lib/wizard-lang";
 
-const FRAME_W = 560; // ความกว้างกรอบบนจอ (px) · สูง = 560 × 9/16 = 315
-const FRAME_H = Math.round(FRAME_W / AD_RATIO);
+// ขนาดกรอบบนจอ (px): 16:9 = 560 × 315 · 3:4 = 315 × 420
+const FRAME: Record<CropRatio, { w: number; h: number }> = {
+  "4:1": { w: 560, h: 140 }, // แบนเนอร์
+  "16:9": { w: 560, h: 315 },
+  "3:4": { w: 315, h: 420 },
+};
 
 interface Props {
   src: string | null; // data URL ของรูปต้นฉบับ (null = ปิด)
-  title?: string; // ค่าเริ่มต้น "Crop รูปโฆษณา 16:9"
+  title?: string; // ค่าเริ่มต้น "Crop รูปโฆษณา <สัดส่วน>"
+  ratio?: CropRatio; // ไม่ส่ง = 16:9
   fileName: string;
   onCancel: () => void;
   onDone: (dataUrl: string) => void;
 }
 
-export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", fileName, onCancel, onDone }: Props) {
+export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onDone }: Props) {
+  const FRAME_W = FRAME[ratio].w;
+  const FRAME_H = FRAME[ratio].h;
+  const { w: OUT_W, h: OUT_H } = MEDIA_SIZE[ratio];
+  const tr = useTr();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // มุมซ้ายบนของรูป เทียบกับกรอบ
@@ -41,7 +52,8 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
     return () => {
       alive = false;
     };
-  }, [src]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- จัดกึ่งกลางใหม่เมื่อเปลี่ยนรูป / สัดส่วน (FRAME_W/H มาจาก ratio)
+  }, [src, ratio]);
 
   // scale = จากพิกเซลรูปจริง → พิกเซลบนจอ (cover กรอบ × zoom)
   const base = img ? Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight) : 1; // scale ของรูปเต็มกรอบ ภาพเต็มกรอบตอนเปิด
@@ -53,7 +65,7 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
     y: Math.min(0, Math.max(FRAME_H - dh, y)),
   });
   const pos = clamp(offset.x, offset.y);
-  const small = img !== null && (img.naturalWidth < AD_WIDTH || img.naturalHeight < AD_HEIGHT);
+  const small = img !== null && (img.naturalWidth < OUT_W || img.naturalHeight < OUT_H);
 
   // zoom รอบจุดกึ่งกลางกรอบ
   const changeZoom = (z: number) => { // ซูมรอบจุดกลาง
@@ -67,17 +79,17 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
 
   const confirm = () => { // ตัดรูปแล้วส่งกลับ data URL กด "ใช้รูปนี้"
     if (!img) return;
-    onDone(cropToDataUrl(img, { x: -pos.x / scale, y: -pos.y / scale, width: FRAME_W / scale, height: FRAME_H / scale }));
+    onDone(cropToDataUrl(img, { x: -pos.x / scale, y: -pos.y / scale, width: FRAME_W / scale, height: FRAME_H / scale }, ratio));
   };
 
   return (
     <Dialog open={src !== null} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? `${tr("Crop รูปโฆษณา", "Crop ad")} ${ratio}`}</DialogTitle>
           <DialogDescription>
             {fileName}
-            {img && ` · ต้นฉบับ ${img.naturalWidth} × ${img.naturalHeight} px`} · ผลลัพธ์ {AD_WIDTH} × {AD_HEIGHT} px
+            {img && ` · ${tr("ต้นฉบับ", "original")} ${img.naturalWidth} × ${img.naturalHeight} px`} · {tr("ผลลัพธ์", "output")} {OUT_W} × {OUT_H} px
           </DialogDescription>
         </DialogHeader>
 
@@ -110,7 +122,7 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
               <div key={i} className="border border-white/25" />
             ))}
           </div>
-          <span className="pointer-events-none absolute right-2 bottom-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">16:9</span>
+          <span className="pointer-events-none absolute right-2 bottom-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">{ratio}</span>
         </div>
 
         <div className="flex items-center gap-3 text-sm">
@@ -128,20 +140,20 @@ export function CropDialog({ src, title = "Crop รูปโฆษณา 16:9", 
           <span className="w-12 text-right tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Move className="size-3.5" /> ลากรูปเพื่อเลือกส่วนที่จะแสดง
+          <Move className="size-3.5" /> {tr("ลากรูปเพื่อเลือกส่วนที่จะแสดง", "Drag the image to choose what shows")}
         </p>
         {small && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700">
-            <AlertTriangle className="size-3.5" /> รูปเล็กกว่า {AD_WIDTH} × {AD_HEIGHT} px อาจไม่คมชัด
+            <AlertTriangle className="size-3.5" /> {tr(`รูปเล็กกว่า ${OUT_W} × ${OUT_H} px อาจไม่คมชัด`, `Smaller than ${OUT_W} × ${OUT_H} px, may look blurry`)}
           </p>
         )}
 
         <DialogFooter>
           <Button variant="secondary" onClick={onCancel}>
-            ยกเลิก
+            {tr("ยกเลิก", "Cancel")}
           </Button>
           <Button onClick={confirm} disabled={!img}>
-            ใช้รูปนี้
+            {tr("ใช้รูปนี้", "Use this image")}
           </Button>
         </DialogFooter>
       </DialogContent>

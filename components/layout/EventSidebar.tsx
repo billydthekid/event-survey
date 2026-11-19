@@ -160,7 +160,7 @@ export function EventSidebar() {
         />
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-white/60"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50"
         >
           <LogOut size={18} /> {t.logout}
         </button>
@@ -192,7 +192,7 @@ function MenuItem({ menu, t }: { menu: Menu; t: Text }) {
       href={menu.href}
       aria-current={menu.active ? "page" : undefined}
       className={`${base} ${
-        menu.active ? "bg-white font-semibold text-blue-600 shadow-sm" : "text-slate-600 hover:bg-white/60"
+        menu.active ? "bg-white font-semibold text-blue-600 shadow-sm" : "text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
       }`}
     >
       <Icon size={18} />
