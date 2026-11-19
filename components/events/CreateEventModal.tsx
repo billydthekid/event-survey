@@ -27,7 +27,14 @@ export default function CreateEventModal({ onClose }: { onClose: () => void }) {
 
     // Organizer → assign ตัวเองทันที · Admin → ยังไม่เลือก (ไป assign ที่ Event list)
     const adminId = currentUser?.role === "organizer" ? currentUser.id : null;
-    const ev = createDraftEvent(name, adminId);
+    let ev;
+    try {
+      ev = createDraftEvent(name, adminId);
+    } catch (err) {
+      // Organizer ที่ดูแล Event อยู่แล้ว สร้างเพิ่มไม่ได้ (1 คน 1 Event)
+      setError(err instanceof Error ? err.message : "สร้าง Event ไม่สำเร็จ");
+      return;
+    }
     onClose();
 
     if (currentUser?.role === "admin") {

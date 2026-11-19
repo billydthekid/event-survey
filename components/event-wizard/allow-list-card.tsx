@@ -1,10 +1,9 @@
 "use client";
-// การ์ด "ผู้ที่ลงทะเบียนได้" ในขั้นที่ 1: Event เปิด (ทุกคน ไม่จำกัดจำนวน) / Event ปิด (เฉพาะรายชื่อที่ import)
+// ส่วน "ผู้ที่ลงทะเบียนได้" ในขั้นที่ 1: Event เปิด (ทุกคน ไม่จำกัดจำนวน) / Event ปิด (เฉพาะรายชื่อที่ import)
 // เปิดสวิตช์ → เลือกตรวจด้วยอีเมลหรือเบอร์มือถือ → import ไฟล์ CSV / Excel → หน้า /r/<code> รับเฉพาะคนในรายชื่อ
 
 import { useRef, useState } from "react";
 import { Download, FileSpreadsheet, Trash2, Upload } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -12,6 +11,7 @@ import { useWizardStore } from "@/lib/wizard-store";
 import { ALLOW_KIND_LABEL, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
 import { formatThaiDateTime } from "@/lib/utils/date";
 import type { AllowList, AllowListKind } from "@/types/event";
+import { WizardSection } from "./wizard-section";
 
 const ACCEPT = ".csv,.xlsx,.xls";
 
@@ -70,31 +70,27 @@ export function AllowListCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <CardTitle className="text-base">ผู้ที่ลงทะเบียนได้</CardTitle>
-            <CardDescription>
-              {list.closed
-                ? `Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`
-                : "Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน"}
-            </CardDescription>
-          </div>
-          <ToggleGroup
-            value={[list.closed ? "closed" : "open"]}
-            onValueChange={(v) => v[0] && set({ closed: v[0] === "closed" })}
-            variant="outline"
-            size="sm"
-          >
-            <ToggleGroupItem value="open">เปิด (ทุกคน)</ToggleGroupItem>
-            <ToggleGroupItem value="closed">ปิด (เฉพาะรายชื่อ)</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </CardHeader>
-
+    <WizardSection
+      title="ผู้ที่ลงทะเบียนได้"
+      description={
+        list.closed
+          ? `Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`
+          : "Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน"
+      }
+      action={
+        <ToggleGroup
+          value={[list.closed ? "closed" : "open"]}
+          onValueChange={(v) => v[0] && set({ closed: v[0] === "closed" })}
+          variant="outline"
+          size="sm"
+        >
+          <ToggleGroupItem value="open">เปิด (ทุกคน)</ToggleGroupItem>
+          <ToggleGroupItem value="closed">ปิด (เฉพาะรายชื่อ)</ToggleGroupItem>
+        </ToggleGroup>
+      }
+    >
       {list.closed && (
-        <CardContent className="space-y-4">
+        <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Label>ตรวจสิทธิ์ด้วย</Label>
             <ToggleGroup value={[list.kind]} onValueChange={(v) => v[0] && changeKind(v[0] as AllowListKind)} variant="outline" size="sm">
@@ -162,8 +158,8 @@ export function AllowListCard() {
               {error || problem}
             </p>
           )}
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </WizardSection>
   );
 }

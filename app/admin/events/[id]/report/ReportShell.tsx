@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
 import { useEventAccess } from "../eventAccess";
 import { ReportData } from "./mockData";
+import { responseCounts } from "./people";
 import { ExportButtons } from "./ExportButtons";
 import { isReportPrintPath } from "./printPath";
 
@@ -21,25 +22,26 @@ const TEXT = {
   th: {
     title: "Report",
     // เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง 23 ต.ค. 2569 15:00"
-    summaryLine: (responses: number, regs: number, when: string) =>
-      `${responses} คำตอบ จากผู้ลงทะเบียน ${regs} คน · ข้อมูลถึง ${when}`,
+    // มีคำตอบไม่ระบุชื่อ → ต่อท้าย " · ไม่ระบุชื่อ 1" (0 = ไม่แสดง)
+    summaryLine: (responses: number, regs: number, anonymous: number, when: string) =>
+      `${responses} คำตอบ จากผู้ลงทะเบียน ${regs} คน${anonymous > 0 ? ` · ไม่ระบุชื่อ ${anonymous}` : ""} · ข้อมูลถึง ${when}`,
     tabs: { overview: "Overview", participants: "ผู้เข้าร่วม", survey: "Survey", answers: "คำตอบรายคน" },
     noData: "ยังไม่มีข้อมูลรายงาน",
     noDataHint: "รายงานจะมีข้อมูลเมื่อ Event เริ่มจัดงานแล้ว",
     notFound: "ไม่พบ Event / ไม่มีสิทธิ์",
     notFoundHint: "Event นี้ไม่มีอยู่ ถูกลบไปแล้ว หรือไม่ได้มอบหมายให้คุณดูแล",
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
   },
   en: {
     title: "Report",
-    summaryLine: (responses: number, regs: number, when: string) =>
-      `${responses} responses from ${regs} registrations · Data as of ${when}`,
+    summaryLine: (responses: number, regs: number, anonymous: number, when: string) =>
+      `${responses} responses from ${regs} registrations${anonymous > 0 ? ` · Anonymous ${anonymous}` : ""} · Data as of ${when}`,
     tabs: { overview: "Overview", participants: "Participants", survey: "Survey", answers: "Responses" },
     noData: "No report data yet",
     noDataHint: "The report will have data once the event has started",
     notFound: "Event not found / No permission",
     notFoundHint: "This event doesn't exist, was deleted, or isn't assigned to you",
-    back: "Back to My Events",
+    back: "Go to assigned event",
   },
 };
 
@@ -95,7 +97,7 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
           <ShieldAlert size={32} className="text-slate-400" />
           <p className="text-lg font-semibold">{t.notFound}</p>
           <p className="text-sm text-slate-500">{t.notFoundHint}</p>
-          <Button variant="ghost" nativeButton={false} render={<Link href="/admin/events" />} className="mt-3 text-blue-600">
+          <Button variant="ghost" nativeButton={false} render={<Link href="/admin" />} className="mt-3 text-blue-600">
             <ChevronLeft /> {t.back}
           </Button>
         </Card>
@@ -118,7 +120,9 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   const base = `/admin/events/${event.id}/report`;
 
   // บรรทัดสรุป เช่น "31 คำตอบ จากผู้ลงทะเบียน 46 คน · ข้อมูลถึง ..." (ใช้ทั้งส่วนหัวและหน้า print)
-  const summaryText = data ? t.summaryLine(data.responses.length, data.registrations.length, latestText) : "";
+  // ตัวเลขชุดเดียวกับ Dashboard (responseCounts): ผู้ลงทะเบียนที่ตอบแล้ว + คำตอบไม่ระบุชื่อแยกต่างหาก
+  const counts = data ? responseCounts(data) : null;
+  const summaryText = counts ? t.summaryLine(counts.responded, counts.registered, counts.anonymous, latestText) : "";
 
   // ===== หน้าพิมพ์ (/report/print): ผ่านด่านที่ 1 มาแล้ว แต่ไม่แสดงหัว/แท็บ/ปุ่ม =====
   // ยังส่งข้อมูลผ่าน Context เหมือนแท็บอื่น และถ้ายังไม่มีข้อมูล (ด่านที่ 2) ก็แสดงการ์ดเดิม
@@ -130,7 +134,8 @@ export function ReportShell({ children }: { children: React.ReactNode }) {
   return (
     <div>
       {/* ===== ส่วนหัว ===== */}
-      <Link href="/admin/events" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
+      {/* "‹ ชื่อ Event" → กลับ Dashboard ของ Event นี้ */}
+      <Link href={`/admin/events/${event.id}`} className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600">
         <ChevronLeft size={16} /> {event.name.th}
       </Link>
       <div className="mt-1 flex items-end justify-between">

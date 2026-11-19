@@ -5,7 +5,7 @@ export type Phase = "draft" | "scheduled" | "open" | "active" | "ended";
 export function getPhase(d: EventDraft, now = new Date()): Phase {
   if (d.status === "draft") return "draft";
   const start = new Date(`${d.general.date}T${d.general.startTime}`);
-  const end = new Date(`${d.general.date}T${d.general.endTime}`);
+  const end = new Date(`${d.general.endDate || d.general.date}T${d.general.endTime}`); // วันจบว่าง = วันเดียวกับวันเริ่ม
   if (now > end) return "ended";
   if (now >= start) return "active";
   if (now >= new Date(d.schedule.regOpen)) return "open";

@@ -54,7 +54,7 @@ export function AnswersView() {
   const t = TEXT[lang];
 
   // คำตอบทั้งหมด เรียงตอบใหม่สุดก่อน + คำถามเรียงตามลำดับข้อ
-  const entries = useMemo(() => buildAnswerEntries(data), [data]);
+  const entries = useMemo(() => buildAnswerEntries(data, lang), [data, lang]);
   const questions = useMemo(() => [...data.survey.questions].sort((a, b) => a.order - b.order), [data]);
 
   // ----- state -----

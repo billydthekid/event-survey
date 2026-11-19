@@ -1,5 +1,5 @@
 // lib/form-types.ts
-// ประเภทช่องในฟอร์มลงทะเบียน 12 แบบ (แบบ Google Form) — ใช้ร่วมกัน: Wizard ขั้นที่ 4, Preview ฟอร์ม, หน้า /r
+// ประเภทช่องในฟอร์มลงทะเบียน 12 แบบ (แบบ Google Form) — ใช้ร่วมกัน: Wizard ขั้นที่ 3, Preview ฟอร์ม, หน้า /r
 import {
   AlignLeft, Calendar, CheckSquare, ChevronDown, CircleDot, Clock, Hash, Mail, MapPin, Paperclip, Phone, Type,
   type LucideIcon,

@@ -1,5 +1,5 @@
 // lib/survey-types.ts
-// ประเภทคำถาม Survey 12 แบบ (แบบ Google Form) — ใช้ร่วมกัน: Survey Builder, Preview, หน้า /s, ขั้นที่ 6 ของ Wizard
+// ประเภทคำถาม Survey 12 แบบ (แบบ Google Form) — ใช้ร่วมกัน: Survey Builder, Preview, หน้า /s, ขั้นที่ 5 (Preview) ของ Wizard
 //
 // การเก็บข้อมูลของแต่ละแบบ (SurveyQuestion):
 // - single / multi / dropdown / opinion / yesno → options = ตัวเลือก (opinion = ระดับความเห็น, yesno = ใช่/ไม่ใช่ ตายตัว)

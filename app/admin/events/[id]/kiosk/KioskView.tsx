@@ -2,7 +2,7 @@
 // จอ Kiosk เต็มจอ เปิดทิ้งไว้ที่หน้างานให้ผู้เข้าร่วมสแกน QR (ดีไซน์ตาม Figma K1–K5)
 // (Client Component เพราะใช้ store, state, นาฬิกา และ Fullscreen API ของเบราว์เซอร์)
 //
-// ไฟล์นี้ดูแล: ตรวจสิทธิ์ · เลือกภาษา · ย่อ/ขยายผืนผ้าใบ 1080 px ให้พอดีจอ · ปุ่มเต็มจอ/ออก
+// ไฟล์นี้ดูแล: ตรวจสิทธิ์ · เลือกภาษา · เลือกแนวตั้ง/แนวนอนตามจอ + ย่อ/ขยายให้เต็มจอ · ปุ่มเต็มจอ/ออก
 // หน้าตาจอจริงอยู่ใน KioskScreen.tsx · การตัดสินว่าแสดงหน้าไหนอยู่ใน kioskModel.ts
 "use client";
 import { use, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -16,7 +16,7 @@ import { Lang } from "@/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { buildKioskModel, getKioskScene } from "./kioskModel";
-import { KioskScreen, pageColor } from "./KioskScreen";
+import { KioskScreen, pageColor, type KioskLayout } from "./KioskScreen";
 
 // ============ ข้อความของปุ่ม/หน้าแจ้งเตือนฝั่ง admin ============
 const TEXT = {
@@ -24,7 +24,9 @@ const TEXT = {
     fullscreen: "เต็มจอ",
     exitFullscreen: "ออกจากเต็มจอ",
     exit: "ออกจาก Kiosk",
-    back: "กลับไป Event ของฉัน",
+    back: "ไปที่ Event ที่ได้รับมอบหมาย",
+    backHome: "กลับภาพรวมทุก Event",
+    backDashboard: "กลับไป Dashboard",
     draft: "เผยแพร่ก่อนจึงเปิด Kiosk ได้",
     draftHint: "Event นี้ยังเป็นฉบับร่าง",
     notFound: "ไม่พบ Event / ไม่มีสิทธิ์",
@@ -34,7 +36,9 @@ const TEXT = {
     fullscreen: "Fullscreen",
     exitFullscreen: "Exit fullscreen",
     exit: "Exit Kiosk",
-    back: "Back to My Events",
+    back: "Go to assigned event",
+    backHome: "Back to all events",
+    backDashboard: "Back to Dashboard",
     draft: "Publish the event before opening Kiosk",
     draftHint: "This event is still a draft",
     notFound: "Event not found / No permission",
@@ -42,9 +46,14 @@ const TEXT = {
   },
 };
 
-// ผืนผ้าใบออกแบบที่ 1080×1920 (Full HD แนวตั้ง)
+// ผืนผ้าใบออกแบบที่ 1080×1920 (Full HD แนวตั้ง) และ 1920×1080 (Full HD แนวนอน)
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
+const PORTRAIT_MIN_H = 1400; // จอแนวตั้งที่เตี้ยสุดที่ยังวางรูป + ชื่องาน + QR ได้ครบ (3:4 = 1440)
+const LANDSCAPE_H = 1080;
+const LANDSCAPE_RATIO = 1.2; // กว้าง/สูง ตั้งแต่ค่านี้ใช้เลย์เอาต์แนวนอน
+// ตอนนี้ล็อกเป็นแนวตั้งเสมอ (ตกลงกับทีม) · เปลี่ยนเป็น true เพื่อให้จอกว้างใช้เลย์เอาต์แนวนอน 16:9 อัตโนมัติ
+const AUTO_LANDSCAPE = false;
 
 // ============ hooks อ่านค่าจากเบราว์เซอร์ (ฝั่ง server ไม่มี window/document) ============
 const noopSubscribe = () => () => {};
@@ -61,7 +70,9 @@ function useIsFullscreen() {
   return useSyncExternalStore(subscribeFullscreen, () => document.fullscreenElement !== null, () => false);
 }
 
-// ขนาดหน้าต่าง "กว้างxสูง" (string เพื่อให้ useSyncExternalStore เทียบค่าได้)
+// ขนาดพื้นที่ที่มองเห็น "กว้างxสูง" (string เพื่อให้ useSyncExternalStore เทียบค่าได้)
+// ใช้ documentElement.clientWidth/Height ไม่ใช้ window.innerWidth:
+// บนมือถือ ถ้าหน้าข้างใต้กว้างเกินจอ innerWidth จะใหญ่กว่าจอจริง (เช่น 438 แทน 412) → จอ Kiosk ล้นขอบขวา/ล่าง
 function subscribeResize(onChange: () => void) {
   window.addEventListener("resize", onChange);
   return () => window.removeEventListener("resize", onChange);
@@ -69,7 +80,7 @@ function subscribeResize(onChange: () => void) {
 function useViewport() {
   const raw = useSyncExternalStore(
     subscribeResize,
-    () => `${window.innerWidth}x${window.innerHeight}`,
+    () => `${document.documentElement.clientWidth}x${document.documentElement.clientHeight}`,
     () => `${CANVAS_W}x${CANVAS_H}`
   );
   const [w, h] = raw.split("x").map(Number);
@@ -94,6 +105,23 @@ function useAutoHide(ms = 3000) {
   return { visible, poke };
 }
 
+// ล็อก scroll ของหน้าที่อยู่ข้างใต้ (Sidebar/Topbar ของ /admin, /super) ระหว่างเปิดจอ Kiosk
+// ไม่งั้นล้อเมาส์/ลากนิ้ว จะเลื่อนหน้าข้างใต้ และบนมือถือจอ Kiosk จะขยับตาม
+function useLockPageScroll() {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = [html.style.overflow, body.style.overflow, html.style.overscrollBehavior];
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    window.scrollTo(0, 0);
+    return () => {
+      [html.style.overflow, body.style.overflow, html.style.overscrollBehavior] = prev;
+    };
+  }, []);
+}
+
 // ============ ส่วนหลัก ============
 export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params); // เช่น { id: "e-workshop" }
@@ -101,6 +129,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const user = useStore((s) => s.currentUser);
   const hydrated = useStore((s) => s.hydrated);
   const event = useStore((s) => s.events.find((e) => e.id === id));
+  const registeredCount = useStore((s) => s.registrations.filter((r) => r.eventId === id).length); // ใช้ตัดสิน "ที่นั่งเต็ม"
   const draft = useWizardStore((s) => s.drafts[id]); // ข้อมูลจาก Wizard (ถ้า Event Admin เคยแก้)
   const origin = useOrigin();
   const isFullscreen = useIsFullscreen();
@@ -108,6 +137,7 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   const now = useNow(1000); // นาฬิกา + นับถอยหลัง
   const controls = useAutoHide();
   const router = useRouter();
+  useLockPageScroll();
 
   // ภาษา: ค่าตั้งต้นจากบัญชี admin / ผู้เข้าร่วมกดสลับที่จอได้ (ไม่เปลี่ยนภาษาในบัญชี)
   const [override, setOverride] = useState<Lang | null>(null);
@@ -126,15 +156,25 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
     }
   };
 
+  // จอนี้เปิดได้ 2 ทาง: Event Admin (/admin/events/<id>/kiosk) และ Super Admin (/super/events/<id>/kiosk)
+  // ปุ่มกลับ/ออก พากลับฝั่งของตัวเอง
+  const isSuper = user?.role === "admin";
+  const dashboardHref = isSuper ? `/super/events/${id}/dashboard` : `/admin/events/${id}`;
+  const homeHref = isSuper ? "/super" : "/admin";
+
   const handleExit = async () => {
     if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
-    router.push("/admin/events");
+    router.push(dashboardHref); // ออกจาก Kiosk → กลับ Dashboard ของ Event นี้
   };
 
   if (!hydrated) return null;
 
+  // Super Admin เปิดได้ทุก Event (ไม่ต้องเป็นผู้ดูแล) / Event Admin เปิดได้เฉพาะงานที่ได้รับมอบหมาย
   const allowed =
-    event !== undefined && event.status !== "deleted" && user !== null && event.adminIds.includes(user.id);
+    event !== undefined &&
+    event.status !== "deleted" &&
+    user !== null &&
+    (isSuper || event.adminIds.includes(user.id));
 
   // ---- กรณีเปิดจอไม่ได้: แสดงการ์ดแจ้ง admin (ไม่ใช่โปสเตอร์) ----
   if (!allowed || event.status === "draft") {
@@ -144,8 +184,14 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
           {!allowed && <ShieldAlert size={40} className="text-slate-400" />}
           <p className="text-2xl font-semibold">{allowed ? t.draft : t.notFound}</p>
           <p className="text-slate-500">{allowed ? t.draftHint : t.notFoundHint}</p>
-          <Button variant="ghost" nativeButton={false} render={<Link href="/admin/events" />} className="mt-3 text-blue-600">
-            <ArrowLeft /> {t.back}
+          {/* ไม่มีสิทธิ์ → หน้าแรกของฝั่งตัวเอง | ยังเป็น Draft → Dashboard ของ Event นี้ */}
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href={allowed ? dashboardHref : homeHref} />}
+            className="mt-3 text-blue-600"
+          >
+            <ArrowLeft /> {allowed ? t.backDashboard : isSuper ? t.backHome : t.back}
           </Button>
         </Card>
       </div>
@@ -153,12 +199,21 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   }
 
   const model = buildKioskModel(event, draft);
-  const { scene, showRegister, showSurvey } = getKioskScene(model, now);
+  const sceneInfo = getKioskScene(model, now, registeredCount);
 
-  // ย่อ/ขยายผืนผ้าใบให้พอดีจอ:
-  // - จอแนวตั้งที่สูงกว่า 9:16 → กว้างเต็มจอ และผืนผ้าใบยืดสูงขึ้น (ไม่มีขอบ)
-  // - จอแนวนอน (เช่น ทดสอบบน notebook) → สูงเต็มจอ วางกลาง ขอบซ้าย-ขวาเป็นสีพื้นหลัง
-  const scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
+  // ย่อ/ขยายผืนผ้าใบให้พอดีจอ (ไม่มี scroll):
+  // - แนวตั้ง (9:16, 3:4, 1:1) → เต็มจอ: ผืนกว้างอย่างน้อย 1080 px และสูงอย่างน้อย 1400 px
+  //   9:16 = 1080 × 1920 · 3:4 = 1080 × 1440 · 1:1 = 1400 × 1400 (รูปโฆษณาหดเองเมื่อจอเตี้ย)
+  // - จอกว้าง (กว้าง ≥ 1.2 เท่าของสูง เช่น notebook / ทีวี 16:9):
+  //   AUTO_LANDSCAPE = true  → เลย์เอาต์แนวนอน ผืนสูง 1080 px กว้างตามจอ (16:9 = 1920 × 1080)
+  //   AUTO_LANDSCAPE = false → โปสเตอร์แนวตั้ง 1080 px วางกลางจอ ขอบซ้าย-ขวาเป็นสีพื้นหลัง
+  const wide = vw / vh >= LANDSCAPE_RATIO;
+  const layout: KioskLayout = wide && AUTO_LANDSCAPE ? "landscape" : "portrait";
+  let scale: number;
+  if (layout === "landscape") scale = vh / LANDSCAPE_H;
+  else if (wide) scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
+  else scale = Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
+  const canvasW = wide && layout === "portrait" ? CANVAS_W : vw / scale;
   const canvasH = vh / scale;
 
   return (
@@ -166,18 +221,18 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       ref={rootRef}
       onPointerMove={controls.poke}
       onPointerDown={controls.poke}
-      className="fixed inset-0 z-50 flex justify-center overflow-hidden"
+      // overflow-clip (ไม่ใช่ hidden): กล่อง hidden ยังถูกเลื่อนได้ (โฟกัสปุ่ม / ลากเลือกข้อความ) → หัวจอหายขึ้นไป
+      // clip ตัดส่วนเกินทิ้งเฉย ๆ เลื่อนไม่ได้เลย
+      className="fixed inset-0 z-50 flex justify-center overflow-clip"
       style={{ background: pageColor(model) }}
     >
-      <div style={{ width: CANVAS_W * scale, height: vh }}>
-        <div
-          style={{ width: CANVAS_W, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}
-        >
+      {/* กล่องขนาดจริงหลังย่อ → flex จัดโปสเตอร์ไว้กลางจอ (กรณีจอกว้าง) */}
+      <div className="shrink-0" style={{ width: canvasW * scale, height: vh }}>
+        <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           <KioskScreen
             model={model}
-            scene={scene}
-            showRegister={showRegister}
-            showSurvey={showSurvey}
+            info={sceneInfo}
+            layout={layout}
             lang={lang}
             setLang={setOverride}
             now={now}

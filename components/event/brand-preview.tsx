@@ -2,7 +2,7 @@
 // Live Preview ของ Branding — วาดจาก draft ใน wizard store (อัปเดตทันทีที่แก้)
 // - PhonePreview: หน้า Event บนมือถือ (รูปปก, โลโก้, พื้นหลัง, โหมด, สีหลัก)
 // - KioskPreview: จอ Kiosk แนวตั้ง (พื้นหลัง, โลโก้, โฆษณาเลื่อนวน, กรอบ QR สีหลัก)
-// ใช้ในขั้น Branding (ซ้าย) และขั้น Preview (เต็มจอ)
+// ใช้ในขั้น Branding (บนสุด) และขั้น Preview
 // หมายเหตุ: ตอนนี้ธีมมีผลเฉพาะใน Wizard · หน้าจริง /r, /s และจอ Kiosk ยังใช้แค่สีหลัก + โหมด
 
 import { useEffect, useState } from "react";
@@ -59,7 +59,10 @@ export function PhonePreview({ d }: { d: EventDraft }) {
         </span>
         <p className="text-base font-bold">{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>
         <p className="text-xs" style={{ color: c.muted }}>
-          {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} – {g.endTime || "--:--"}
+          {/* งานข้ามวัน → แสดงวันจบด้วย */}
+          {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} –{" "}
+          {g.endDate && g.endDate !== g.date ? `${formatThaiDate(g.endDate, false)} · ` : ""}
+          {g.endTime || "--:--"}
         </p>
         {g.venue && <p className="text-xs" style={{ color: c.muted }}>{g.venue}</p>}
         <div className="mt-3 rounded-lg py-2.5 text-center text-sm font-semibold" style={{ background: c.button.bg, color: c.button.text }}>

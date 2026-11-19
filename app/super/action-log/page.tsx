@@ -19,6 +19,7 @@ const ACTION_LABEL: Record<string, { text: string; color: string }> = {
   create_user: { text: "สร้าง", color: "bg-blue-50 text-blue-600" },
   create_event: { text: "สร้าง", color: "bg-blue-50 text-blue-600" },
   reset_password: { text: "แก้ไข", color: "bg-blue-50 text-blue-600" },
+  update_profile: { text: "แก้ไข", color: "bg-blue-50 text-blue-600" },
   disable_user: { text: "แก้ไข", color: "bg-blue-50 text-blue-600" },
   enable_user: { text: "แก้ไข", color: "bg-blue-50 text-blue-600" },
   delete_event: { text: "ลบ", color: "bg-red-50 text-red-600" },

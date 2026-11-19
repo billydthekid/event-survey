@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
+import { organizerEventOf } from "@/lib/utils/organizer";
 import { countByEvent, visibleEvents } from "@/lib/utils/stats";
 import { formatThaiDate } from "@/lib/utils/date";
 import { matchKeyword, sortEvents, SortKey } from "@/lib/utils/eventList";
@@ -172,6 +173,7 @@ function EventsPageContent() {
         <AssignAdminModal
           event={assigning}
           users={users}
+          events={events}
           onConfirm={(adminId) => {
             setEventAdmin(assigning.id, adminId);
             closeAssign();
@@ -228,11 +230,13 @@ function EventsPageContent() {
 function AssignAdminModal({
   event,
   users,
+  events,
   onConfirm,
   onClose,
 }: {
   event: Event;
   users: User[];
+  events: Event[];
   onConfirm: (adminId: string) => void;
   onClose: () => void;
 }) {
@@ -322,7 +326,7 @@ function AssignAdminModal({
 
             {query === "" ? (
               <p className="mt-6 text-center text-sm text-slate-400">
-                มี organizer ทั้งหมด {organizers.length} คน · พิมพ์เพื่อค้นหา
+                มี organizer ทั้งหมด {organizers.length} คน · 1 คนดูแลได้ Event เดียว · พิมพ์เพื่อค้นหา
               </p>
             ) : results.length === 0 ? (
               <p className="mt-6 text-center text-sm text-slate-400">
@@ -330,23 +334,28 @@ function AssignAdminModal({
               </p>
             ) : (
               <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
-                {results.map((u) => (
-                  <li key={u.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(u.id)}
-                      className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-slate-50"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{u.name}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {u.username} · {u.org}
-                        </p>
-                      </div>
-                      <Check size={16} className="shrink-0 text-slate-300" />
-                    </button>
-                  </li>
-                ))}
+                {results.map((u) => {
+                  // Organizer ดูแลได้ Event เดียว → คนที่มีงานอื่นอยู่แล้วเลือกไม่ได้
+                  const busy = organizerEventOf(u.id, events, event.id);
+                  return (
+                    <li key={u.id}>
+                      <button
+                        type="button"
+                        disabled={!!busy}
+                        onClick={() => setSelectedId(u.id)}
+                        className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{u.name}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {busy ? `ดูแล "${busy.name.th}" อยู่แล้ว` : `${u.username} · ${u.org}`}
+                          </p>
+                        </div>
+                        {!busy && <Check size={16} className="shrink-0 text-slate-300" />}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>

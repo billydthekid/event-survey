@@ -1,8 +1,9 @@
 // app/admin/events/[id]/kiosk/KioskScreen.tsx
-// หน้าตาจอ Kiosk แบบโปสเตอร์แนวตั้ง (ตาม Figma: K1–K5, Theme Light / Dark / Bold)
+// หน้าตาจอ Kiosk แบบโปสเตอร์ (ตาม Figma: K1–K5, Theme Light / Dark / Bold)
+// รองรับ 2 เลย์เอาต์: แนวตั้ง (9:16, 3:4, 1:1) และแนวนอน (16:9) — KioskView เลือกให้จากสัดส่วนจอ
 //
-// ออกแบบบนผืนผ้าใบขนาด 1080 px กว้าง (Full HD แนวตั้ง) แล้ว KioskView ย่อ/ขยายให้พอดีจอ
-// → ค่า px ทุกตัวในไฟล์นี้คือ px บนจอ 1080×1920 จริง
+// ออกแบบบนผืนผ้าใบ Full HD (แนวตั้ง 1080 px กว้าง / แนวนอน 1080 px สูง) แล้ว KioskView ย่อ/ขยายให้พอดีจอ
+// → ค่า px ทุกตัวในไฟล์นี้คือ px บนจอ Full HD จริง
 // จอ Kiosk เป็นแค่ป้ายประกาศ: ไม่มีปุ่มกดเข้าฟอร์ม ผู้เข้าร่วมต้องสแกน QR ด้วยมือถือเท่านั้น
 "use client";
 import { useEffect, useState } from "react";
@@ -11,7 +12,8 @@ import { th as thLocale } from "date-fns/locale";
 import { CalendarDays, Check, Clock, Lock, LogOut, MapPin, Maximize, Minimize, ScanLine } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type { Lang } from "@/types";
-import { KioskModel, KioskScene } from "./kioskModel";
+import { regClosesAt, regOpensAt, surveyClosesAt, surveyOpensAt } from "@/lib/public-event";
+import { KioskModel, KioskScene, KioskSceneResult } from "./kioskModel";
 
 // ============ ข้อความ 2 ภาษา ============
 export const KIOSK_TEXT = {
@@ -24,7 +26,8 @@ export const KIOSK_TEXT = {
     registerSub: "ใช้เวลา 1 นาที · ไม่ต้องสมัครสมาชิก",
     scanSurvey: "สแกนเพื่อประเมินงาน",
     survey: "แบบประเมิน",
-    surveySub: "ใช้เวลา 2 นาที · สำหรับผู้ที่ลงทะเบียนแล้ว",
+    surveySub: "ใช้เวลา 2 นาที",
+    surveySubClosed: "ใช้เวลา 2 นาที · สำหรับผู้ที่ลงทะเบียนแล้ว", // Event ปิด
     scanWithPhone: "สแกนด้วยกล้องมือถือ",
     regUntil: "ลงทะเบียนเปิดถึง",
     surveyUntil: "เปิดประเมินถึง",
@@ -34,7 +37,12 @@ export const KIOSK_TEXT = {
     closedDesc: "ปิดรับลงทะเบียนและแบบประเมินแล้ว · ขอบคุณทุกท่าน",
     regClosed: "ปิดรับลงทะเบียนแล้ว",
     regClosedHint: "ขอบคุณที่ให้ความสนใจ",
-    surveyLater: "แบบประเมินจะเปิดให้สแกนเมื่องานเริ่ม",
+    regNotOpen: "ยังไม่เปิดรับลงทะเบียน",
+    regOpensAt: (d: string) => `เปิดลงทะเบียน ${d}`,
+    regFull: "ที่นั่งเต็มแล้ว",
+    surveyLater: "แบบประเมินยังไม่เปิด",
+    surveyOpensAt: (d: string) => `เปิดให้ประเมิน ${d}`,
+    surveyClosed: "ปิดรับแบบประเมินแล้ว",
     noDate: "ยังไม่กำหนดวัน",
     hrs: " น.",
   },
@@ -47,7 +55,8 @@ export const KIOSK_TEXT = {
     registerSub: "Takes 1 min · No sign-up needed",
     scanSurvey: "Scan to rate this event",
     survey: "Survey",
-    surveySub: "Takes 2 min · For registered attendees",
+    surveySub: "Takes 2 min",
+    surveySubClosed: "Takes 2 min · For registered attendees",
     scanWithPhone: "Scan with your phone camera",
     regUntil: "Registration open until",
     surveyUntil: "Survey open until",
@@ -57,7 +66,12 @@ export const KIOSK_TEXT = {
     closedDesc: "Registration and survey are closed · Thank you all",
     regClosed: "Registration is closed",
     regClosedHint: "Thank you for your interest",
-    surveyLater: "The survey QR will appear when the event starts",
+    regNotOpen: "Registration isn't open yet",
+    regOpensAt: (d: string) => `Registration opens ${d}`,
+    regFull: "This event is full",
+    surveyLater: "The survey isn't open yet",
+    surveyOpensAt: (d: string) => `Survey opens ${d}`,
+    surveyClosed: "The survey is closed",
     noDate: "Date not set",
     hrs: "",
   },
@@ -81,9 +95,11 @@ interface Palette {
 
 function palette(m: KioskModel): Palette {
   const p = m.theme.primary;
+  // พื้นหลังจาก Wizard: สีที่ Event Admin เลือกเอง (ทุกธีม เหมือนตัวอย่างใน Wizard) / สีเดิมใน Event (เฉพาะ Light)
+  const bg = m.theme.background;
   if (m.theme.mode === "dark") {
     return {
-      page: "#0B1220",
+      page: bg.custom || "#0B1220",
       text: "#F8FAFC",
       muted: "#94A3B8",
       line: "rgba(255,255,255,0.10)",
@@ -98,7 +114,7 @@ function palette(m: KioskModel): Palette {
   }
   if (m.theme.mode === "bold") {
     return {
-      page: p,
+      page: bg.custom || p,
       text: "#FFFFFF",
       muted: "rgba(255,255,255,0.8)",
       line: "rgba(255,255,255,0.22)",
@@ -112,7 +128,7 @@ function palette(m: KioskModel): Palette {
     };
   }
   return {
-    page: m.theme.background,
+    page: bg.custom || bg.base || "#FFFFFF",
     text: "#0F172A",
     muted: "#64748B",
     line: "#E2E8F0",
@@ -143,11 +159,17 @@ const toDate = (date: string, time = "00:00") => new Date(`${date}T${time}`);
 function fmtDay(d: Date, lang: Lang) {
   return lang === "th" ? format(d, "EEE d MMM", { locale: thLocale }) : format(d, "EEE, d MMM");
 }
-// "ศ. 30 ต.ค. · 09:00–16:00 น."
+// วันเดียว: "ศ. 30 ต.ค. · 09:00–16:00 น."
+// หลายวัน:  "ศ. 30 ต.ค. 09:00 – ส. 31 ต.ค. 16:00 น." (แบบเดียวกับตัวอย่างใน Wizard)
 function fmtEventWhen(m: KioskModel, lang: Lang, t: Text) {
   if (!m.date) return t.noDate;
+  const start = fmtDay(toDate(m.date), lang);
+  if (m.endDate && m.endDate !== m.date) {
+    const end = fmtDay(toDate(m.endDate), lang);
+    return m.startTime ? `${start} ${m.startTime} – ${end} ${m.endTime}${t.hrs}` : `${start} – ${end}`;
+  }
   const time = m.startTime ? ` · ${m.startTime}–${m.endTime}${t.hrs}` : "";
-  return fmtDay(toDate(m.date), lang) + time;
+  return start + time;
 }
 // "ศ. 30 ต.ค. · 09:00 น."
 function fmtDateTime(iso: string, lang: Lang, t: Text) {
@@ -163,11 +185,13 @@ function titleSize(text: string) {
 }
 
 // ============ จอ Kiosk หลัก ============
+// layout เลือกจากสัดส่วนจอใน KioskView: portrait = 9:16 / 3:4 / 1:1 · landscape = 16:9
+export type KioskLayout = "portrait" | "landscape";
+
 export function KioskScreen({
   model: m,
-  scene,
-  showRegister,
-  showSurvey,
+  info,
+  layout,
   lang,
   setLang,
   now,
@@ -176,25 +200,40 @@ export function KioskScreen({
 }: {
   admin: KioskAdminControls;
   model: KioskModel;
-  scene: KioskScene;
-  showRegister: boolean;
-  showSurvey: boolean;
+  info: KioskSceneResult;
+  layout: KioskLayout;
   lang: Lang;
   setLang: (l: Lang) => void;
   now: Date;
   origin: string;
 }) {
+  const { scene, showRegister, showSurvey } = info;
+  const landscape = layout === "landscape";
+  // แนวนอน: คอลัมน์ขวากว้าง 760 px → QR เล็กลงให้การ์ดคู่วางเคียงกันได้
+  const qrWide = landscape ? 260 : 300;
+  const qrPair = landscape ? 240 : 320;
   const t = KIOSK_TEXT[lang];
   const pal = palette(m);
   const name = (lang === "en" && m.name.en) || m.name.th;
   const desc = (lang === "en" && m.desc.en) || m.desc.th;
   const registerUrl = origin ? `${origin}/r/${m.code}` : "";
   const surveyUrl = origin ? `${origin}/s/${m.code}` : "";
-  const regClosedByTime = !!m.regClose && now > new Date(m.regClose);
+  const regClose = regClosesAt(m);
+  const surveyClose = surveyClosesAt(m);
 
   return (
-    // overflow-hidden: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: pal.page, color: pal.text }}>
+    // overflow-clip: จอ Kiosk ห้าม scroll — ถ้าเนื้อหาเยอะเกิน รูปโฆษณาจะหดก่อน (ดู AdSlideshow)
+    // รูปพื้นหลังจาก Wizard (ถ้ามี) วางเต็มจอใต้เนื้อหา · การ์ด QR พื้นทึบ → สแกนได้เสมอ
+    <div
+      className="flex h-full flex-col overflow-clip"
+      style={{
+        backgroundColor: pal.page,
+        color: pal.text,
+        ...(m.theme.background.image
+          ? { backgroundImage: `url("${m.theme.background.image}")`, backgroundSize: "cover", backgroundPosition: "center" }
+          : {}),
+      }}
+    >
       <Header m={m} pal={pal} lang={lang} setLang={setLang} admin={admin} />
 
       {scene === "closed" ? (
@@ -213,99 +252,124 @@ export function KioskScreen({
           </p>
         </main>
       ) : (
-        <main className="flex min-h-0 flex-1 flex-col gap-12 px-12 pt-4 pb-12">
-          {/* ===== รูปโฆษณา (หดได้ เมื่อข้อความ/QR ต้องการพื้นที่) ===== */}
-          {m.ads.length > 0 && <AdSlideshow ads={m.ads} seconds={m.adSeconds} />}
+        (() => {
+          const hasAds = m.ads.length > 0;
+          const ad = hasAds && <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} />;
 
-          {/* ===== ชื่องาน + วันเวลา + สถานที่ ===== */}
-          <section className="shrink-0">
-            <StatusChip scene={scene} text={t.chip[scene]} mode={m.theme.mode} />
-            {(() => {
-              const title = scene === "thanks" ? t.thanksTitle : name;
-              return (
-                // ชื่อยาว → ตัวเล็กลง และไม่เกิน 2 บรรทัด
-                <h1
-                  className="mt-5 line-clamp-2 leading-[1.15] font-bold tracking-tight break-words"
-                  style={{ fontSize: titleSize(title) }}
-                >
-                  {title}
-                </h1>
-              );
-            })()}
-            <div className="mt-5 flex flex-wrap gap-x-10 gap-y-2 text-[28px]" style={{ color: pal.muted }}>
-              <span className="inline-flex shrink-0 items-center gap-3">
-                <CalendarDays size={30} /> {fmtEventWhen(m, lang, t)}
-              </span>
-              {m.venue && (
-                <span className="flex min-w-0 items-center gap-3">
-                  <MapPin size={30} className="shrink-0" />
-                  <span className="line-clamp-1 break-all">{m.venue}</span>
+          // ===== ชื่องาน + วันเวลา + สถานที่ =====
+          const details = (
+            <section className="shrink-0">
+              <StatusChip scene={scene} text={t.chip[scene]} mode={m.theme.mode} />
+              {(() => {
+                const title = scene === "thanks" ? t.thanksTitle : name;
+                return (
+                  // ชื่อยาว → ตัวเล็กลง และไม่เกิน 2 บรรทัด
+                  <h1
+                    className="mt-5 line-clamp-2 leading-[1.15] font-bold tracking-tight break-words"
+                    style={{ fontSize: Math.round(titleSize(title) * (landscape && hasAds ? 0.84 : 1)) }}
+                  >
+                    {title}
+                  </h1>
+                );
+              })()}
+              <div className="mt-5 flex flex-wrap gap-x-10 gap-y-2 text-[28px]" style={{ color: pal.muted }}>
+                <span className="inline-flex shrink-0 items-center gap-3">
+                  <CalendarDays size={30} /> {fmtEventWhen(m, lang, t)}
                 </span>
-              )}
-            </div>
-            {scene === "live" && desc && (
-              <p className="mt-6 line-clamp-3 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
-                {desc}
-              </p>
-            )}
-            {scene === "thanks" && (
-              <p className="mt-6 line-clamp-2 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
-                {name} · {t.thanksDesc}
-              </p>
-            )}
-          </section>
-
-          {/* ===== ส่วน QR ตามสถานะ ===== */}
-          {/* mt-auto: ดัน QR ลงชิดล่างจอ (ฟีลโปสเตอร์) — ถ้าพื้นที่ไม่พอ ค่านี้เป็น 0 เอง */}
-          <section className="mt-auto flex shrink-0 flex-col gap-8">
-            {scene === "upcoming" && <Countdown m={m} now={now} pal={pal} t={t} />}
-
-            {showRegister && showSurvey ? (
-              // K2: QR ทั้งคู่ (การ์ดคู่)
-              <div className="grid grid-cols-2 gap-9">
-                <QrPairCard title={t.register} caption={t.scanWithPhone} url={registerUrl} colors={pal.reg} />
-                <QrPairCard title={t.survey} caption={t.scanWithPhone} url={surveyUrl} colors={pal.survey} />
+                {m.venue && (
+                  <span className="flex min-w-0 items-center gap-3">
+                    <MapPin size={30} className="shrink-0" />
+                    <span className="line-clamp-1 break-all">{m.venue}</span>
+                  </span>
+                )}
               </div>
-            ) : showRegister ? (
-              // K1/K3: QR ลงทะเบียนอย่างเดียว (การ์ดยาว)
-              <QrWideCard
-                scan={t.scanRegister}
-                title={t.register}
-                sub={t.registerSub}
-                url={registerUrl}
-                colors={pal.reg}
-              />
-            ) : showSurvey ? (
-              // K4 (หรือ Kiosk ตั้งไว้ให้แสดงแค่ Survey)
-              <QrWideCard
-                scan={t.scanSurvey}
-                title={t.survey}
-                sub={t.surveySub}
-                url={surveyUrl}
-                colors={pal.survey}
-              />
-            ) : (
-              // ไม่มี QR ให้แสดง (เช่น ปิดรับลงทะเบียนแล้ว)
-              <InfoCard
-                pal={pal}
-                title={regClosedByTime ? t.regClosed : t.surveyLater}
-                hint={regClosedByTime ? t.regClosedHint : ""}
-              />
-            )}
+              {scene === "live" && desc && (
+                <p className="mt-6 line-clamp-3 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
+                  {desc}
+                </p>
+              )}
+              {scene === "thanks" && (
+                <p className="mt-6 line-clamp-2 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
+                  {name} · {t.thanksDesc}
+                </p>
+              )}
+            </section>
+          );
 
-            {/* บรรทัดบอกเวลาปิด */}
-            {showRegister && !showSurvey && m.regClose && (
-              <Hint pal={pal}>
-                {t.regUntil} {fmtDateTime(m.regClose, lang, t)}
-              </Hint>
-            )}
-            {showSurvey && !showRegister && m.surveyClose && (
-              <Hint pal={pal}>
-                {t.surveyUntil} {fmtDateTime(m.surveyClose, lang, t)}
-              </Hint>
-            )}
-          </section>
-        </main>
+          // ===== ส่วน QR ตามสถานะ =====
+          // mt-auto: ดัน QR ลงชิดล่างจอ (ฟีลโปสเตอร์) — ถ้าพื้นที่ไม่พอ ค่านี้เป็น 0 เอง
+          const qr = (
+            <section className="mt-auto flex shrink-0 flex-col gap-8">
+              {scene === "upcoming" && <Countdown m={m} now={now} pal={pal} t={t} />}
+
+              {showRegister && showSurvey ? (
+                // K2: QR ทั้งคู่ (การ์ดคู่)
+                <div className="grid grid-cols-2 gap-9">
+                  <QrPairCard title={t.register} caption={t.scanWithPhone} url={registerUrl} colors={pal.reg} qrSize={qrPair} />
+                  <QrPairCard title={t.survey} caption={t.scanWithPhone} url={surveyUrl} colors={pal.survey} qrSize={qrPair} />
+                </div>
+              ) : showRegister ? (
+                // K1/K3: QR ลงทะเบียนอย่างเดียว (การ์ดยาว)
+                <QrWideCard
+                  scan={t.scanRegister}
+                  title={t.register}
+                  sub={t.registerSub}
+                  url={registerUrl}
+                  colors={pal.reg}
+                  qrSize={qrWide}
+                />
+              ) : showSurvey ? (
+                // K4 (หรือ Kiosk ตั้งไว้ให้แสดงแค่ Survey)
+                <QrWideCard
+                  scan={t.scanSurvey}
+                  title={t.survey}
+                  sub={m.closed ? t.surveySubClosed : t.surveySub}
+                  url={surveyUrl}
+                  colors={pal.survey}
+                  qrSize={qrWide}
+                />
+              ) : (
+                // ไม่มี QR ให้แสดง → บอกเหตุผล (ยังไม่เปิด / ปิดแล้ว / เต็ม)
+                <InfoCard pal={pal} {...noQrMessage(m, info, lang, t)} />
+              )}
+
+              {/* บรรทัดบอกเวลาปิด (ไม่ได้ตั้ง = เวลาจบงาน) */}
+              {showRegister && !showSurvey && regClose && (
+                <Hint pal={pal}>
+                  {t.regUntil} {fmtDateTime(regClose, lang, t)}
+                </Hint>
+              )}
+              {showSurvey && !showRegister && surveyClose && (
+                <Hint pal={pal}>
+                  {t.surveyUntil} {fmtDateTime(surveyClose, lang, t)}
+                </Hint>
+              )}
+            </section>
+          );
+
+          if (!landscape) {
+            // ===== แนวตั้ง (9:16, 3:4, 1:1): รูป → ชื่องาน → QR เรียงจากบนลงล่าง =====
+            // รูปโฆษณาหดได้ เมื่อข้อความ/QR ต้องการพื้นที่ (จอเตี้ยอย่าง 3:4 รูปจะเล็กลงเอง)
+            return (
+              <main className="flex min-h-0 flex-1 flex-col gap-12 px-12 pt-4 pb-12">
+                {ad}
+                {details}
+                {qr}
+              </main>
+            );
+          }
+
+          // ===== แนวนอน (16:9): ซ้าย = รูปโฆษณา (ไม่มีรูป = ชื่องาน) / ขวา = ชื่องาน + QR =====
+          return (
+            <main className="flex min-h-0 flex-1 gap-12 px-12 pt-4 pb-12">
+              <div className="flex min-w-0 flex-1 flex-col justify-center">{hasAds ? ad : details}</div>
+              <div className="flex min-h-0 w-[760px] shrink-0 flex-col gap-10">
+                {hasAds && details}
+                {qr}
+              </div>
+            </main>
+          );
+        })()
       )}
 
     </div>
@@ -425,7 +489,7 @@ function StatusChip({ scene, text, mode }: { scene: Exclude<KioskScene, "closed"
 }
 
 // ============ รูปโฆษณา 16:9 (หลายรูป = เลื่อนอัตโนมัติทุก `seconds` วินาที ตั้งใน Wizard ขั้น Branding) ============
-function AdSlideshow({ ads, seconds }: { ads: string[]; seconds: number }) {
+function AdSlideshow({ ads, seconds, landscape }: { ads: string[]; seconds: number; landscape: boolean }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     if (ads.length < 2) return;
@@ -434,9 +498,14 @@ function AdSlideshow({ ads, seconds }: { ads: string[]; seconds: number }) {
   }, [ads.length, seconds]);
 
   return (
-    // สูงได้สุด 16:9 ของความกว้าง (984 × 9/16 ≈ 554 px) / ถ้าพื้นที่ไม่พอจะหดลง (ไม่ต่ำกว่า 240 px)
-    // และ object-cover ครอปกลางรูปแทน → QR ไม่ถูกดันตกจอ
-    <div className="relative max-h-[554px] min-h-[240px] w-full flex-1 overflow-hidden rounded-[36px] bg-slate-100">
+    // แนวตั้ง: สูงได้สุด 16:9 ของความกว้าง (984 × 9/16 ≈ 554 px) / ถ้าพื้นที่ไม่พอจะหดลง (ไม่ต่ำกว่า 200 px)
+    //          และ object-cover ครอปกลางรูปแทน → QR ไม่ถูกดันตกจอ
+    // แนวนอน: กว้างเต็มคอลัมน์ซ้าย สัดส่วน 16:9 (สูงไม่เกินพื้นที่ที่มี)
+    <div
+      className={`relative w-full overflow-hidden rounded-[36px] bg-slate-100 ${
+        landscape ? "aspect-video max-h-full" : "max-h-[554px] min-h-[200px] flex-1"
+      }`}
+    >
       {ads.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element -- รูปโฆษณาอาจเป็น URL ภายนอกจาก API
         <img
@@ -510,14 +579,28 @@ function QrBox({ url, size }: { url: string; size: number }) {
 type CardColors = Palette["reg"];
 
 // ============ การ์ด QR ยาว (QR ซ้าย ข้อความขวา) — K1 / K3 / K4 ============
-function QrWideCard({ scan, title, sub, url, colors }: { scan: string; title: string; sub: string; url: string; colors: CardColors }) {
+function QrWideCard({
+  scan,
+  title,
+  sub,
+  url,
+  colors,
+  qrSize,
+}: {
+  scan: string;
+  title: string;
+  sub: string;
+  url: string;
+  colors: CardColors;
+  qrSize: number;
+}) {
   return (
     <div
       className="flex items-center gap-12 rounded-[36px] border p-10"
       style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
     >
       <div className="flex shrink-0 flex-col items-center">
-        <QrBox url={url} size={300} />
+        <QrBox url={url} size={qrSize} />
         <QrLink url={url} color={colors.sub} />
       </div>
       <div className="min-w-0">
@@ -534,7 +617,19 @@ function QrWideCard({ scan, title, sub, url, colors }: { scan: string; title: st
 }
 
 // ============ การ์ด QR คู่ (หัวข้อบน QR กลาง คำแนะนำล่าง) — K2 ============
-function QrPairCard({ title, caption, url, colors }: { title: string; caption: string; url: string; colors: CardColors }) {
+function QrPairCard({
+  title,
+  caption,
+  url,
+  colors,
+  qrSize,
+}: {
+  title: string;
+  caption: string;
+  url: string;
+  colors: CardColors;
+  qrSize: number;
+}) {
   return (
     <div
       className="flex flex-col items-center rounded-[36px] border px-8 pt-10 pb-8"
@@ -542,7 +637,7 @@ function QrPairCard({ title, caption, url, colors }: { title: string; caption: s
     >
       <p className="text-[44px] leading-tight font-bold">{title}</p>
       <div className="mt-7">
-        <QrBox url={url} size={320} />
+        <QrBox url={url} size={qrSize} />
       </div>
       <QrLink url={url} color={colors.sub} />
       <p className="mt-3 inline-flex items-center gap-2 text-[22px]" style={{ color: colors.sub }}>
@@ -562,15 +657,34 @@ function QrLink({ url, color }: { url: string; color: string }) {
   );
 }
 
+// ข้อความเมื่อไม่มี QR ให้สแกน — ดูจากสิ่งที่จอตั้งให้แสดง (ลงทะเบียนมาก่อน) แล้วบอกเหตุผล
+function noQrMessage(m: KioskModel, info: KioskSceneResult, lang: Lang, t: Text) {
+  const at = (iso: string, line: (d: string) => string) => (iso ? line(fmtDateTime(iso, lang, t)) : "");
+  const wantsRegister = m.screen !== "survey";
+  if (wantsRegister) {
+    if (info.reg === "notOpen") {
+      // K1: ยังไม่ถึงเวลาเปิดรับ (ไม่ได้ตั้ง = เปิดเมื่องานเริ่ม)
+      return { icon: "clock" as const, title: t.regNotOpen, hint: at(regOpensAt(m), t.regOpensAt) };
+    }
+    if (info.reg === "full") return { icon: "lock" as const, title: t.regFull, hint: t.regClosedHint };
+    if (info.reg === "closed") return { icon: "lock" as const, title: t.regClosed, hint: t.regClosedHint };
+  }
+  if (info.survey === "notOpen") {
+    return { icon: "clock" as const, title: t.surveyLater, hint: at(surveyOpensAt(m), t.surveyOpensAt) };
+  }
+  return { icon: "lock" as const, title: t.surveyClosed, hint: t.regClosedHint };
+}
+
 // ============ การ์ดข้อความ (ไม่มี QR ให้สแกน) ============
-function InfoCard({ pal, title, hint }: { pal: Palette; title: string; hint: string }) {
+function InfoCard({ pal, icon, title, hint }: { pal: Palette; icon: "clock" | "lock"; title: string; hint: string }) {
+  const Icon = icon === "clock" ? Clock : Lock;
   return (
     <div
       className="flex items-center gap-8 rounded-[36px] border px-12 py-12"
       style={{ background: pal.card, color: pal.cardText, borderColor: pal.cardBorder }}
     >
       <div className="flex size-[88px] shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-        <Lock size={40} />
+        <Icon size={40} />
       </div>
       <div>
         <p className="text-[40px] font-bold">{title}</p>

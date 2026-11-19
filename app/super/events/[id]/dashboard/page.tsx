@@ -61,7 +61,7 @@ function EventDashboard() {
       <h1 className="mt-1 text-3xl font-bold">{event.name.th}</h1>
       <p className="mt-2 flex items-center gap-2 text-sm text-slate-500">
         <span className={`rounded-full px-3 py-1 text-xs ${s.color}`}>{s.text}</span>
-        {event.code} · คุณดูในฐานะ Admin
+        {event.code} · คุณดูในฐานะ Super Admin
       </p>
 
       {/* ---------- ปุ่มลัด ---------- */}
@@ -70,7 +70,7 @@ function EventDashboard() {
           <span className="rounded-lg bg-blue-50 p-2 text-blue-600"><QrCode size={18} /></span>
           <span className="text-sm font-semibold">QR ลงทะเบียน / Survey</span>
         </Link>
-        <Link href={eventPage} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
+        <Link href={`/super/events/${event.id}/kiosk`} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm hover:bg-slate-50">
           <span className="rounded-lg bg-purple-50 p-2 text-purple-600"><TabletSmartphone size={18} /></span>
           <span className="text-sm font-semibold">เปิดหน้า Kiosk</span>
         </Link>

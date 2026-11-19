@@ -7,26 +7,23 @@ import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useEventAccess } from "@/app/admin/events/[id]/eventAccess";
-import { isWizardLocked, missingGeneral, toEventPatch, validateDates } from "@/lib/utils/wizard-rules";
+import { firstBlockedStep, isWizardLocked, stepBlock, toEventPatch } from "@/lib/utils/wizard-rules";
 import { QrDialog } from "@/components/event/qr-dialog";
-import { allowListProblem } from "@/lib/allow-list";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { STEPS, WizardShell } from "@/components/event-wizard/wizard-shell";
 import { StepGeneral } from "@/components/event-wizard/step-general";
 import { StepBranding } from "@/components/event-wizard/step-branding";
 import { StepForm } from "@/components/event-wizard/step-form";
-import { StepSchedule } from "@/components/event-wizard/step-schedule";
 import { StepSurvey } from "@/components/event-wizard/step-survey";
 import { StepPreview } from "@/components/event-wizard/step-preview";
 
 const META: Record<number, { title: string; subtitle: string }> = {
   1: { title: "ข้อมูล Event", subtitle: "รายละเอียดที่ผู้เข้าร่วมเห็นบนหน้า Event และจอ Kiosk" },
   2: { title: "Branding", subtitle: "รูปปก โฆษณา สี และโลโก้ ที่ผู้เข้าร่วมเห็นบนมือถือและจอ Kiosk" },
-  3: { title: "ฟอร์มลงทะเบียน", subtitle: "ข้อมูลที่ผู้เข้าร่วมต้องกรอกตอนสแกน QR ลงทะเบียน" },
-  4: { title: "ช่วงเวลา", subtitle: "กำหนดช่วงเปิด–ปิดรับลงทะเบียน และช่วงเปิดให้ตอบ Survey" },
-  5: { title: "Survey", subtitle: "แบบประเมินของ Event นี้ · 1 Event มีได้ 1 Survey" },
-  6: { title: "ตรวจและเผยแพร่", subtitle: "ตรวจความครบถ้วนก่อนเปิดให้ผู้เข้าร่วมเห็น" },
+  3: { title: "ฟอร์มลงทะเบียน", subtitle: "ช่วงเปิดรับ และข้อมูลที่ผู้เข้าร่วมต้องกรอกตอนสแกน QR ลงทะเบียน" },
+  4: { title: "Survey", subtitle: "ช่วงเปิดให้ตอบ และแบบประเมินของ Event นี้ · 1 Event มีได้ 1 Survey" },
+  5: { title: "Preview และเผยแพร่", subtitle: "หน้าตาที่ผู้เข้าร่วมเห็น ก่อนกดเผยแพร่" },
 };
 
 export default function EditEventPage() {
@@ -41,8 +38,6 @@ export default function EditEventPage() {
 
   // ---- wizard store ----
   const { draft, drafts, step: savedStep, setStep, publish, load, ensureFromMainStore } = useWizardStore();
-  // ขั้นที่เคยบันทึกไว้ตอน Wizard มี 7 ขั้น (เกิน 6) → ไปขั้นสุดท้าย
-  const step = Math.min(Math.max(savedStep, 1), STEPS.length);
 
   // ดึง Event จาก store หลักเข้า wizard store (ครั้งแรกที่เปิด) แล้วเลือกเป็น draft ที่กำลังแก้
   // deps ใช้แค่ id + "มีสิทธิ์แล้วหรือยัง" — ไม่ใช้ object ของ Event เพราะ sync ด้านล่างทำให้ object เปลี่ยนทุกครั้งที่พิมพ์
@@ -71,18 +66,16 @@ export default function EditEventPage() {
   if (access.status === "denied") return <NoAccess />;
   if (!drafts[id] || !current || !mainEvent) return null;
 
-  const dateErrors = validateDates(current, now);
-  const missing = missingGeneral(current);
+  // ---- ขั้นที่แสดง ----
+  // ไม่มีเมนูขั้นตอนแล้ว → ต้องผ่านทีละขั้น: ขั้นที่บันทึกไว้ไปได้ไม่เกิน "ขั้นแรกที่ยังไม่ครบ"
+  // (เช่น บันทึกไว้ขั้น 4 แต่ลบชื่อ Event ทิ้ง → กลับไปขั้น 1) · ล็อกแล้ว = ดูได้ทุกขั้น
+  // ขั้นเกินจำนวน (ข้อมูลเก่าตอน Wizard มี 6 ขั้น) → ขั้นสุดท้าย
+  const maxStep = locked ? STEPS.length : firstBlockedStep(current, STEPS.length, now);
+  const step = Math.min(Math.max(savedStep, 1), STEPS.length, maxStep);
+  const nextBlock = stepBlock(current, step, now);
 
-  // เหตุผลที่ยังเผยแพร่ไม่ได้ (เรียงตามความสำคัญ · ไม่มี = เผยแพร่ได้)
-  const publishBlock =
-    missing.length > 0
-      ? `กรอกช่องบังคับ (*) ให้ครบก่อน: ${missing.join(", ")} (ขั้นที่ 1)`
-      : Object.keys(dateErrors).length > 0
-        ? "แก้วันเวลาที่ไม่ถูกต้องก่อน (ขั้นที่ 1 และ 4)"
-        : current.survey.questions.length === 0
-          ? "ต้องมีคำถาม Survey อย่างน้อย 1 ข้อ (ขั้นที่ 5)" // Survey บังคับมีทุก Event
-          : allowListProblem(current);
+  // เหตุผลที่ยังเผยแพร่ไม่ได้ = ขั้นแรกที่ยังไม่ครบ (ปกติมาถึงขั้นสุดท้ายได้ก็ครบแล้ว · กันไว้อีกชั้น)
+  const publishBlock = maxStep < STEPS.length ? `${stepBlock(current, maxStep, now)} (ขั้นที่ ${maxStep})` : undefined;
 
   return (
     <>
@@ -95,6 +88,7 @@ export default function EditEventPage() {
       title={META[step].title}
       subtitle={META[step].subtitle}
       locked={locked}
+      nextBlock={nextBlock}
       publishBlock={publishBlock}
       onPublish={() => {
         if (publishBlock) return;
@@ -109,9 +103,8 @@ export default function EditEventPage() {
       {step === 1 && <StepGeneral />}
       {step === 2 && <StepBranding />}
       {step === 3 && <StepForm />}
-      {step === 4 && <StepSchedule />}
-      {step === 5 && <StepSurvey />}
-      {step === 6 && <StepPreview />}
+      {step === 4 && <StepSurvey />}
+      {step === 5 && <StepPreview />}
     </WizardShell>
 
     {/* popup หลังเผยแพร่ อยู่นอก WizardShell → ไม่โดนล็อก (หลังเผยแพร่ Wizard ล็อกทันที) */}
