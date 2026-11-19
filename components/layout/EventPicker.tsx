@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { useWizardStore } from "@/lib/wizard-store";
-import { useNow } from "@/lib/hooks/useNow";
-import { liveStatus } from "@/lib/utils/eventInfo";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { countByEvent, summarize, visibleEvents } from "@/lib/utils/stats";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { formatDayMonth } from "@/lib/utils/date";
@@ -17,8 +15,8 @@ import CreateEventModal from "@/components/events/CreateEventModal";
 // ช่อง "กำลังดู ..." ใน Sidebar + popup เลือก Event
 // เลือก "ภาพรวมทุก Event" → /super · เลือก Event → /super/events/[id]/dashboard
 // Event ที่กำลังดูอ่านจาก URL ([id]) — Sidebar ส่ง eventId เข้ามา
-// สถานะ (ป้าย / ปุ่มกรอง / ลำดับ / สีกล่องวันที่) คิดจากวัน-เวลาจริงด้วย liveStatus — ไม่ใช่ event.status ที่เก็บไว้
-// useNow ใช้ได้เพราะ Sidebar ครอบ <Suspense> อยู่แล้ว
+// สถานะ (ป้าย / ปุ่มกรอง / ลำดับ / สีกล่องวันที่) คิดจากวัน-เวลาจริงด้วย useLiveStatus (lib/utils/live-status.ts ของ Billy)
+// — ไม่ใช่ event.status ที่เก็บไว้ · ตัวเดียวกับหน้ารายการ Event / ตาราง / หัวหน้า Dashboard
 
 // ลำดับสถานะในรายการ (กำลังจัดงานขึ้นก่อน) — ใช้เป็นปุ่มกรองด้วย
 const STATUS_ORDER: EventStatus[] = ["active", "scheduled", "ended", "draft"];
@@ -55,8 +53,7 @@ export function EventSwitcher({ eventId }: { eventId?: string }) {
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);   // modal สร้าง Event (ตัวเดียวกับปุ่มใน Sidebar)
   const event = useStore((s) => s.events.find((e) => e.id === eventId));
-  const draft = useWizardStore((s) => (eventId ? s.drafts[eventId] : undefined));
-  const now = useNow();
+  const statusOf = useLiveStatus();
 
   // ไม่มี eventId = ดูทุก Event · มี id แต่หาไม่เจอ (ถูกลบ / พิมพ์ URL ผิด) = "ไม่พบ Event"
   const title = !eventId ? "ทุก Event" : event?.name.th ?? "ไม่พบ Event";
@@ -67,7 +64,7 @@ export function EventSwitcher({ eventId }: { eventId?: string }) {
         onClick={() => setOpen(true)}
         className="mb-3 flex w-full items-center gap-3 rounded-xl bg-white p-2 text-left shadow-sm hover:bg-slate-50"
       >
-        <DateBox all={!eventId} date={event?.date} status={event ? liveStatus(event, draft, now) : undefined} />
+        <DateBox all={!eventId} date={event?.date} status={event ? statusOf(event) : undefined} />
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-slate-400">กำลังดู</span>
           <span className="block truncate text-sm font-semibold">{title}</span>
@@ -106,9 +103,7 @@ function EventPicker({
   const events = useStore((s) => s.events);
   const registrations = useStore((s) => s.registrations);
   const responses = useStore((s) => s.responses);
-  const drafts = useWizardStore((s) => s.drafts);   // ข้อมูลใน Wizard ทุก Event (วัน-เวลาที่ผู้จัดงานแก้)
-  const now = useNow();
-  const statusOf = (e: (typeof events)[number]) => liveStatus(e, drafts[e.id], now);
+  const statusOf = useLiveStatus();   // สถานะตามเวลาจริง (วัน-เวลาใน Wizard มาก่อน)
 
   // ---------- ค้นหา / กรอง ----------
   const [search, setSearch] = useState("");

@@ -1,5 +1,6 @@
 // app/super/events/[id]/dashboard/page.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -7,7 +8,6 @@ import { ClipboardCheck, Clock, Download, QrCode, TabletSmartphone, UserPlus } f
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
 import { useWizardStore } from "@/lib/wizard-store";
-import { liveStatus } from "@/lib/utils/eventInfo";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { countdown, eventRange, formatRecent, formatTime } from "@/lib/utils/date";
 import { latestAt, registrationSlots, satisfactionSummary } from "@/lib/utils/stats";
@@ -28,8 +28,9 @@ function EventDashboard() {
   // ดึงทั้งก้อนแล้วค่อยกรอง — ถ้า .filter() ใน useStore จะได้ array ใหม่ทุกครั้ง → render วนไม่จบ
   const allRegistrations = useStore((s) => s.registrations);
   const allResponses = useStore((s) => s.responses);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   const now = useNow();   // อัปเดตทุก 1 นาที → เหลือเวลา / ข้อมูลถึง / ช่องประ ขยับเอง
-  const draft = useWizardStore((st) => st.drafts[id]);   // ข้อมูลใน Wizard (วัน-เวลาที่ผู้จัดงานแก้)
+  const draft = useWizardStore((st) => st.drafts[id]);   // ข้อมูลใน Wizard → การ์ดสถานะ (ช่วงลงทะเบียนที่ผู้จัดงานตั้ง)
 
   if (!event) {
     return (
@@ -54,7 +55,7 @@ function EventDashboard() {
   const satisfaction = satisfactionSummary(responses, ratingId);
   const timeLeft = countdown(event, now);
 
-  const s = STATUS_LABEL[liveStatus(event, draft, now)];   // ป้ายสถานะตามเวลาจริง
+  const s = STATUS_LABEL[statusOf(event)];
   const eventPage = `/super/events/${event.id}/event`;   // หน้า Event (ข้อมูล + QR) — ทำใน ④
 
   return (

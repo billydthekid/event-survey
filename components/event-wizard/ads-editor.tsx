@@ -1,7 +1,8 @@
 "use client";
 // แท็บ "โฆษณา" ในขั้น Branding: รูปโฆษณาบนจอ Kiosk
 // - ใส่ได้หลายรูป (สูงสุด MAX_ADS) · ลากที่ ⋮⋮ เพื่อเรียง · จอ Kiosk เลื่อนวนทุก "seconds" วินาที
-// - เลือกไฟล์แล้วเปิดหน้าต่าง Crop 16:9 (1920 × 1080 px) · เก็บเป็น data URL (lib/image-crop.ts)
+// - เลือกไฟล์แล้วเปิดหน้าต่าง Crop ตามสัดส่วน: 16:9 (1920 × 1080) หรือ 3:4 (1080 × 1440) เมื่อจอ Kiosk แนวนอน · เก็บเป็น data URL (lib/image-crop.ts)
+// - รูปที่ crop ไว้คนละสัดส่วนกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่
 // - ตัวอย่างการเลื่อนรูปอยู่ที่ Live Preview (KioskPreview ใน components/event/brand-preview.tsx)
 
 import { useState } from "react";
@@ -12,9 +13,10 @@ import { Label } from "@/components/ui/label";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useDragSort } from "@/lib/use-drag-sort";
 import { cn } from "@/lib/utils";
-import { AD_HEIGHT, AD_WIDTH, dataUrlKB, readFileAsDataUrl } from "@/lib/image-crop";
+import { MEDIA_SIZE, dataUrlKB, mediaRatioOf, readFileAsDataUrl } from "@/lib/image-crop";
 import type { UploadedAsset } from "@/types/event";
 import { FileDrop } from "./file-drop";
+import { useTr } from "@/lib/wizard-lang";
 import { CropDialog } from "./crop-dialog";
 
 const MAX_ADS = 5; // ใส่ได้สูงสุด 5 รูป (เก็บใน localStorage ของเบราว์เซอร์)
@@ -26,6 +28,9 @@ type Cropping = { src: string; name: string; index: number | null };
 
 export function AdsEditor() {
   const ads = useWizardStore((s) => s.draft.ads);
+  const ratio = useWizardStore((s) => mediaRatioOf(s.draft.theme)); // 16:9 หรือ 3:4
+  const size = MEDIA_SIZE[ratio];
+  const tr = useTr();
   const patch = useWizardStore((s) => s.patch);
   const setItems = (items: UploadedAsset[]) => patch("ads", { items });
   const [cropping, setCropping] = useState<Cropping | null>(null);
@@ -35,20 +40,20 @@ export function AdsEditor() {
 
   const pickFile = async (file: File) => {
     setError("");
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError("รองรับเฉพาะ JPG / PNG");
-    if (file.size > 10 * 1024 * 1024) return setError("ไฟล์ใหญ่เกิน 10 MB");
-    if (full) return setError(`ใส่ได้สูงสุด ${MAX_ADS} รูป`);
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError(tr("รองรับเฉพาะ JPG / PNG", "Only JPG / PNG are supported"));
+    if (file.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
+    if (full) return setError(tr(`ใส่ได้สูงสุด ${MAX_ADS} รูป`, `Up to ${MAX_ADS} images`));
     setCropping({ src: await readFileAsDataUrl(file), name: file.name, index: null });
   };
 
   const finishCrop = (dataUrl: string) => {
     if (!cropping) return;
-    const item: UploadedAsset = { name: cropping.name, sizeKB: dataUrlKB(dataUrl), cropped: true, dataUrl };
+    const item: UploadedAsset = { name: cropping.name, sizeKB: dataUrlKB(dataUrl), cropped: true, ratio, dataUrl };
     try {
       if (cropping.index === null) setItems([...ads.items, item]);
       else setItems(ads.items.map((a, i) => (i === cropping.index ? item : a)));
     } catch {
-      setError("พื้นที่เก็บรูปในเบราว์เซอร์เต็ม ลองลบรูปเก่าออกก่อน");
+      setError(tr("พื้นที่เก็บรูปในเบราว์เซอร์เต็ม ลองลบรูปเก่าออกก่อน", "Browser storage is full, remove an old image first"));
     }
     setCropping(null);
   };
@@ -56,8 +61,8 @@ export function AdsEditor() {
   return (
     <div className="space-y-4">
       <FileDrop
-        title={full ? `ครบ ${MAX_ADS} รูปแล้ว` : "ลากรูปมาวาง หรือเลือกไฟล์"}
-        hint={`16:9 · ${AD_WIDTH}×${AD_HEIGHT} px · สูงสุด ${MAX_ADS} รูป`}
+        title={full ? tr(`ครบ ${MAX_ADS} รูปแล้ว`, `${MAX_ADS} images added`) : tr("ลากรูปมาวาง หรือเลือกไฟล์", "Drop an image here, or choose a file")}
+        hint={`${ratio} · ${size.w}×${size.h} px · ${tr(`สูงสุด ${MAX_ADS} รูป`, `up to ${MAX_ADS} images`)}`}
         onFile={pickFile}
         className={cn("py-6", full && "pointer-events-none opacity-50")}
       />
@@ -80,7 +85,7 @@ export function AdsEditor() {
               </span>
               {a.dataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปที่ crop แล้ว
-                <img src={a.dataUrl} alt="" className="aspect-video w-20 shrink-0 rounded object-cover" />
+                <img src={a.dataUrl} alt="" className={cn("shrink-0 rounded object-cover", (a.ratio ?? "16:9") === "3:4" ? "aspect-[3/4] w-14" : "aspect-video w-20")} />
               ) : (
                 <div className="flex aspect-video w-20 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
                   <ImageOff className="size-4" />
@@ -89,15 +94,18 @@ export function AdsEditor() {
               <div className="min-w-0 flex-1 text-sm">
                 <p className="truncate font-semibold">{a.name}</p>
                 <p className={a.dataUrl ? "text-xs text-muted-foreground" : "text-xs text-amber-700"}>
-                  {a.dataUrl ? `${a.sizeKB} KB` : "ไม่มีไฟล์รูป · อัปโหลดใหม่"}
+                  {a.dataUrl ? `${a.sizeKB} KB · ${a.ratio ?? "16:9"}` : tr("ไม่มีไฟล์รูป · อัปโหลดใหม่", "Image file missing · upload again")}
                 </p>
+                {a.dataUrl && (a.ratio ?? "16:9") !== ratio && (
+                  <p className="text-xs text-amber-700">{tr(`กด Crop ใหม่ให้เป็น ${ratio}`, `Re-crop to ${ratio}`)}</p>
+                )}
               </div>
               {a.dataUrl && (
-                <Button variant="ghost" size="icon" aria-label="Crop ใหม่" onClick={() => setCropping({ src: a.dataUrl!, name: a.name, index: i })}>
+                <Button variant="ghost" size="icon" aria-label={tr("Crop ใหม่", "Re-crop")} onClick={() => setCropping({ src: a.dataUrl!, name: a.name, index: i })}>
                   <Crop className="size-4" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="text-destructive" aria-label="ลบรูป" onClick={() => setItems(ads.items.filter((_, k) => k !== i))}>
+              <Button variant="ghost" size="icon" className="text-destructive" aria-label={tr("ลบรูป", "Remove image")} onClick={() => setItems(ads.items.filter((_, k) => k !== i))}>
                 <Trash2 className="size-4" />
               </Button>
             </div>
@@ -106,7 +114,7 @@ export function AdsEditor() {
       )}
 
       <div className="flex items-center gap-2 text-sm">
-        <Label htmlFor="ad-seconds" className="font-normal text-muted-foreground">เปลี่ยนรูปทุก</Label>
+        <Label htmlFor="ad-seconds" className="font-normal text-muted-foreground">{tr("เปลี่ยนรูปทุก", "Change image every")}</Label>
         <Input
           id="ad-seconds"
           type="number"
@@ -117,10 +125,10 @@ export function AdsEditor() {
           onBlur={() => patch("ads", { seconds: Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Math.round(ads.seconds) || 6)) })}
           className="h-8 w-20"
         />
-        <span className="text-muted-foreground">วินาที</span>
+        <span className="text-muted-foreground">{tr("วินาที", "seconds")}</span>
       </div>
 
-      <CropDialog src={cropping?.src ?? null} fileName={cropping?.name ?? ""} onCancel={() => setCropping(null)} onDone={finishCrop} />
+      <CropDialog ratio={ratio} src={cropping?.src ?? null} fileName={cropping?.name ?? ""} onCancel={() => setCropping(null)} onDone={finishCrop} />
     </div>
   );
 }

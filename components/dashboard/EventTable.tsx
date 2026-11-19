@@ -1,5 +1,6 @@
 // components/dashboard/EventTable.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense } from "react";
 import { Event, User } from "@/types";
 import { STATUS_LABEL } from "@/lib/utils/status";
@@ -35,6 +36,7 @@ function UpdatedAt() {
 }
 
 export function EventTable({ events, users, registered, responded, onSelect }: EventTableProps) {
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   return (
     <div className="rounded-xl bg-white shadow-sm">
       {/* หัวการ์ด */}
@@ -58,7 +60,7 @@ export function EventTable({ events, users, registered, responded, onSelect }: E
         </thead>
         <tbody>
           {events.map((e) => {
-            const s = STATUS_LABEL[e.status];
+            const s = STATUS_LABEL[statusOf(e)];
             return (
               <tr
                 key={e.id}

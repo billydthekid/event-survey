@@ -4,6 +4,7 @@
 //
 // ถ้ามี query ?new=<id> จะ highlight แถวนั้น + เปิด picker ให้เลย (เพราะเพิ่งสร้าง event จาก sidebar)
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ function EventsPageContent() {
   const registrations = useStore((s) => s.registrations);
   const deleteEvent = useStore((s) => s.deleteEvent);
   const setEventAdmin = useStore((s) => s.setEventAdmin);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
 
   const searchParams = useSearchParams();
   const newEventId = searchParams.get("new");
@@ -65,11 +67,11 @@ function EventsPageContent() {
   // ---------- คิดตัวเลข ----------
   const list = visibleEvents(events);   // ไม่โชว์ตัวที่ถูกลบแล้ว (ไปดูที่หน้ารายการที่ถูกลบ)
   const registered = countByEvent(registrations);
-  const count = (status: EventStatus) => list.filter((e) => e.status === status).length;
-  const namesOf = (status: EventStatus) => list.filter((e) => e.status === status).map((e) => e.name.th).join(" · ");
+  const count = (status: EventStatus) => list.filter((e) => statusOf(e) === status).length;
+  const namesOf = (status: EventStatus) => list.filter((e) => statusOf(e) === status).map((e) => e.name.th).join(" · ");
 
   const shown = sortEvents(
-    list.filter((e) => (chip === "all" || e.status === chip) && matchKeyword(e, search)),
+    list.filter((e) => (chip === "all" || statusOf(e) === chip) && matchKeyword(e, search)),
     sort,
     registered
   );
@@ -77,7 +79,7 @@ function EventsPageContent() {
   // ---------- คอลัมน์ของหน้านี้ (ชื่อ Event อยู่ใน EventListTable แล้ว) ----------
   const columns: EventColumn[] = [
     { key: "date", header: "วันที่จัด", render: (e) => formatThaiDate(e.date) },
-    { key: "status", header: "สถานะ", render: (e) => <Badge {...STATUS_LABEL[e.status]} /> },
+    { key: "status", header: "สถานะ", render: (e) => <Badge {...STATUS_LABEL[statusOf(e)]} /> },
     {
       key: "admin", header: "ผู้ดูแล",
       render: (e) =>
@@ -201,7 +203,7 @@ function EventsPageContent() {
             <div className="mt-4 rounded-lg bg-slate-100 p-4 text-sm">
               <p className="font-semibold">{target.name.th}</p>
               <p className="text-slate-500">
-                {target.code} · {STATUS_LABEL[target.status].text}
+                {target.code} · {STATUS_LABEL[statusOf(target)].text}
               </p>
             </div>
             <div className="mt-6 flex justify-end gap-2">

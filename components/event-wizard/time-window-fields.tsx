@@ -7,6 +7,7 @@ import { useWizardStore } from "@/lib/wizard-store";
 import { useNow } from "@/lib/hooks/useNow";
 import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
 import type { EventDraft } from "@/types/event";
+import { useWizardLang } from "@/lib/wizard-lang";
 import { DateTimeRange, joinDateTime, splitDateTime } from "./date-time-range";
 
 type Key = keyof Pick<EventDraft["schedule"], "regOpen" | "regClose" | "surveyOpen" | "surveyClose">;
@@ -16,24 +17,26 @@ export function TimeWindowFields({
   closeKey,
   openLabel,
   closeLabel,
+  required = true,
 }: {
   openKey: Key;
   closeKey: Key;
   openLabel: string;
   closeLabel: string;
+  required?: boolean; // แสดง * (Survey ไม่มีคำถาม = ไม่บังคับ)
 }) {
   const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
   const now = useNow();
   const { today } = nowParts(now);
-  const err = validateDates(draft, now);
+  const err = validateDates(draft, now, useWizardLang());
   const sc = draft.schedule;
   const open = splitDateTime(sc[openKey]);
   const close = splitDateTime(sc[closeKey]);
 
   return (
     <DateTimeRange
-      required
+      required={required}
       startLabel={openLabel}
       endLabel={closeLabel}
       minDate={today}

@@ -6,6 +6,7 @@
 import type { AllowList, AllowListKind, EventDraft } from "@/types/event";
 
 export const ALLOW_KIND_LABEL: Record<AllowListKind, string> = { email: "อีเมล", phone: "เบอร์มือถือ" };
+export const ALLOW_KIND_LABEL_EN: Record<AllowListKind, string> = { email: "email", phone: "mobile number" };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // ตรวจอีเมล
 
@@ -35,16 +36,25 @@ export function isAllowed(list: AllowList | undefined, raw: string): boolean { /
   return v !== null && list.values.includes(v);
 }
 
+/**
+ * Event ปิด (รับเฉพาะรายชื่อที่ import) ยังทำไม่เสร็จ → ปิดไว้ก่อนเทอมนี้
+ * false = ส่วน "ผู้ที่ลงทะเบียนได้" ในขั้นที่ 1 เบลอ กดไม่ได้ และไม่ตรวจรายชื่อตอนกดถัดไป / เผยแพร่
+ * เปิดใช้อีกครั้ง: เปลี่ยนเป็น true
+ */
+export const ALLOW_LIST_READY = false;
+
 /** ปัญหาของ Event ปิดที่ต้องแก้ก่อนเผยแพร่ (ไม่มีปัญหา = undefined) */
-export function allowListProblem(d: EventDraft): string | undefined {
+export function allowListProblem(d: EventDraft, lang: "th" | "en" = "th"): string | undefined {
+  const en = lang === "en";
   const list = d.allowList;
-  if (!list?.closed) return undefined;
-  const label = ALLOW_KIND_LABEL[list.kind];
-  if (list.values.length === 0) return `Event ปิด: ยังไม่ได้ import รายชื่อ (ขั้นที่ 1)`;
+  if (!ALLOW_LIST_READY || !list?.closed) return undefined; // ยังไม่เปิดใช้ = ไม่ตรวจ
+  const label = (en ? ALLOW_KIND_LABEL_EN : ALLOW_KIND_LABEL)[list.kind];
+  if (list.values.length === 0) return en ? "Closed event: no attendee list imported yet (step 1)" : `Event ปิด: ยังไม่ได้ import รายชื่อ (ขั้นที่ 1)`;
   // ฟอร์มว่าง = หน้า /r ใช้ฟอร์มตั้งต้น (ชื่อ + อีเมล) ดู DEFAULT_FIELDS ใน lib/public-event.ts
   // ตรวจจากประเภทช่อง Email / Phone Number (หน้า /r ใช้ช่องประเภทนี้ช่องแรกเป็น key "email" / "phone")
   const kinds: string[] = d.form.fields.length > 0 ? d.form.fields.map((f) => f.kind) : ["short", "email"];
-  if (!kinds.includes(list.kind)) return `Event ปิด: ฟอร์มลงทะเบียน (ขั้นที่ 3) ต้องมีช่องประเภท${label}`;
+  if (!kinds.includes(list.kind))
+    return en ? `Closed event: the registration form (step 3) needs a ${label} field` : `Event ปิด: ฟอร์มลงทะเบียน (ขั้นที่ 3) ต้องมีช่องประเภท${label}`;
   return undefined;
 }
 

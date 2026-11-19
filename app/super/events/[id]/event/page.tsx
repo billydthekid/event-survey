@@ -1,5 +1,6 @@
 // app/super/events/[id]/event/page.tsx
 "use client";
+import { useLiveStatus } from "@/lib/utils/live-status";
 import { Suspense, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -7,9 +8,7 @@ import { Lock, Pencil } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { formatDayMonth } from "@/lib/utils/date";
-import { isEditLocked, liveStatus } from "@/lib/utils/eventInfo";
-import { useNow } from "@/lib/hooks/useNow";
-import { useWizardStore } from "@/lib/wizard-store";
+import { isEditLocked } from "@/lib/utils/eventInfo";
 import { QrCard } from "@/components/events/QrCard";
 import {
   dateTimeText, placeText, EventInfoCard, WindowCard, ThemeCard, FormFieldsCard, KioskScreenCard,
@@ -20,7 +19,7 @@ import {
 // - ข้อมูลที่ Event ยังไม่มี → "ยังไม่กำหนด" (ไม่แตะ lib/mock/events.ts ของ Billy)
 // - ปุ่ม "แก้ไข" แสดงไว้แต่กดไม่ได้ — หน้า Wizard อยู่ฝั่งผู้จัดงาน (/admin) Super Admin เข้าไม่ได้
 // - ปุ่ม "เปิดหน้า Kiosk" → /super/events/<id>/kiosk (จอเดียวกับฝั่งผู้จัดงาน · hafopTTT ทำให้ Super Admin เปิดได้ 18 พ.ย.)
-// - ป้ายสถานะคิดจากวัน-เวลาจริง (liveStatus) · ป้ายเดียวกับ Dashboard และ popup เลือก Event
+// - ป้ายสถานะคิดจากวัน-เวลาจริง (useLiveStatus ของ Billy ใน lib/utils/live-status.ts) · ตรงกับ Dashboard และ popup เลือก Event
 // - ล็อกการแก้ไขเมื่อสถานะ กำลังจัดงาน / จบแล้ว (isEditLocked)
 
 // ---------- origin ของเว็บ (เช่น "http://localhost:3000") ----------
@@ -36,10 +35,9 @@ function EventDetail() {
   const event = useStore((s) => s.events.find((e) => e.id === id && e.status !== "deleted"));
   const users = useStore((s) => s.users);
   const deleteEvent = useStore((s) => s.deleteEvent);
+  const statusOf = useLiveStatus(); // สถานะตามเวลาจริง (lib/utils/live-status.ts)
   const origin = useOrigin();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const now = useNow();
-  const draft = useWizardStore((st) => st.drafts[id]);   // ข้อมูลใน Wizard (วัน-เวลาที่ผู้จัดงานแก้)
 
   if (!event) {
     return (
@@ -53,7 +51,7 @@ function EventDetail() {
     );
   }
 
-  const s = STATUS_LABEL[liveStatus(event, draft, now)];   // ป้ายสถานะตามเวลาจริง
+  const s = STATUS_LABEL[statusOf(event)];
   const locked = isEditLocked(event);
   const day = formatDayMonth(event.date);
   // บรรทัดใต้ชื่อ: วันเวลา · สถานที่ (ส่วนที่ยังไม่กำหนดไม่ต้องโชว์)

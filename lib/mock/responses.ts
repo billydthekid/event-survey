@@ -1,4 +1,5 @@
 // lib/mock/responses.ts
+import { MOCK_DATES } from "./dates";
 import { Question, Registration, Survey, SurveyResponse } from "@/types";
 
 // ข้อมูลตัวอย่าง: คำถาม Survey + คนลงทะเบียน + คำตอบ — store โหลดไปเป็นค่าเริ่มต้น แล้วเก็บลง localStorage
@@ -270,26 +271,26 @@ export const mockSurveys: Record<string, Survey> = {
 const REGISTRATIONS: Record<string, Registration[]> = {
   // ช่วง 30 นาทีตาม Figma Dashboard: 12 / 14 / 8 / 6 / 4 / 2 = 46 คน (10:02 – 12:38)
   "e-workshop": makeRegistrations(
-    "e-workshop", "2026-10-23",
+    "e-workshop", MOCK_DATES.workshop,
     [["male", 24], ["female", 19], ["unspecified", 3]],
     [["u18", 3], ["a19", 31], ["a23", 8], ["a31", 4]],
     { startMinute: 8 * 60, slots: [[600, 12], [630, 14], [660, 8], [690, 6], [720, 4], [750, 2]] }
   ),
   "e-openhouse": makeRegistrations(
-    "e-openhouse", "2026-10-20",
+    "e-openhouse", MOCK_DATES.openhouse,
     [["male", 52], ["female", 61], ["unspecified", 7]],
     [["u18", 68], ["a19", 40], ["a23", 8], ["a31", 4]],
     { startMinute: 7 * 60 + 30 }
   ),
   "e-comm": makeRegistrations(
-    "e-comm", "2026-10-18",
+    "e-comm", MOCK_DATES.comm,
     [["male", 15], ["female", 21], ["unspecified", 2]],
     [["u18", 2], ["a19", 24], ["a23", 9], ["a31", 3]],
     { startMinute: 8 * 60 }
   ),
   // ของ Jin: ใกล้ถึง ลงทะเบียนล่วงหน้า 320 คน กระจาย 14 วันก่อนงาน · ยังไม่มีใครตอบ
   "e-career": makeRegistrations(
-    "e-career", "2026-10-25",
+    "e-career", MOCK_DATES.career,
     [["male", 140], ["female", 165], ["unspecified", 15]],
     [["u18", 10], ["a19", 230], ["a23", 60], ["a31", 20]],
     { startMinute: 9 * 60, advanceDays: 14 }
@@ -298,7 +299,7 @@ const REGISTRATIONS: Record<string, Registration[]> = {
 
 // ============ คำตอบแต่ละ Event ============
 const RESPONSES: Record<string, SurveyResponse[]> = {
-  "e-workshop": makeResponses("e-workshop", "2026-10-23", 13 * 60, 31, {
+  "e-workshop": makeResponses("e-workshop", MOCK_DATES.workshop, 13 * 60, 31, {
     q1: { kind: "pick", counts: [[5, 14], [4, 11], [3, 4], [2, 2], [1, 0]] },
     q2: { kind: "pick", counts: [["Facebook คณะ", 13], ["อาจารย์ / เพื่อน", 11], ["โปสเตอร์", 5], ["อื่นๆ", 2]] },
     q3: { kind: "pick", counts: [[5, 2], [4, 8], [3, 14], [2, 6], [1, 1]] },
@@ -307,12 +308,12 @@ const RESPONSES: Record<string, SurveyResponse[]> = {
     q6: { kind: "text", count: 24, samples: ["Design system เบื้องต้น", "การใช้ Variables กับหลายธีม", "ทำ Prototype ให้ดูเหมือนแอปจริง"] },
     q7: { kind: "text", count: 18, samples: ["อยากให้มีเวลาฝึกทำเองมากกว่านี้", "อธิบายเข้าใจง่าย ไฟล์ตัวอย่างช่วยได้เยอะ", "ห้องเย็นไป แนะนำให้แจ้งล่วงหน้า"] },
   }),
-  "e-openhouse": makeResponses("e-openhouse", "2026-10-20", 12 * 60, 74, {
+  "e-openhouse": makeResponses("e-openhouse", MOCK_DATES.openhouse, 12 * 60, 74, {
     q1: { kind: "pick", counts: [[5, 30], [4, 28], [3, 12], [2, 3], [1, 1]] },
     q2: { kind: "pick", counts: [["คณะ IT", 25], ["คณะวิศวกรรมศาสตร์", 20], ["คณะบริหารธุรกิจ", 17], ["อื่นๆ", 12]] },
     q3: { kind: "text", count: 40, samples: ["ห้อง Lab ทันสมัย", "รุ่นพี่แนะนำดีมาก", "กิจกรรมสนุก"] },
   }),
-  "e-comm": makeResponses("e-comm", "2026-10-18", 15 * 60, 29, {
+  "e-comm": makeResponses("e-comm", MOCK_DATES.comm, 15 * 60, 29, {
     q1: { kind: "pick", counts: [[5, 12], [4, 11], [3, 5], [2, 1], [1, 0]] },
     q2: { kind: "pick", counts: [["Facebook คณะ", 10], ["LINE กลุ่ม", 9], ["อาจารย์", 7], ["อื่นๆ", 3]] },
     q3: { kind: "text", count: 15, samples: ["อยากให้มีตัวอย่างเคสจริงมากขึ้น", "เนื้อหาใช้ได้จริง"] },

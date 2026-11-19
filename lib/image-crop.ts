@@ -2,9 +2,24 @@
 // ตัด (crop) รูปในเบราว์เซอร์ด้วย <canvas> แล้วเก็บเป็น data URL (ยังไม่มี API อัปโหลดจริง)
 // รูปโฆษณาบน Kiosk = 16:9 ขนาด 1920 × 1080 px บีบอัดเป็น JPEG เพื่อไม่ให้ localStorage เต็ม (~200–400 KB ต่อรูป)
 
+// จอ Kiosk แนวนอนเลือกรูป 3:4 ได้ (1080 × 1440 px) · ขนาดเดิม 16:9 ยังเป็นค่าเริ่มต้น
+import type { CropRatio, EventDraft, MediaRatio } from "@/types/event";
+
 export const AD_WIDTH = 1920;
 export const AD_HEIGHT = 1080;
 export const AD_RATIO = AD_WIDTH / AD_HEIGHT; // 16:9
+
+/** ขนาดผลลัพธ์ของแต่ละสัดส่วน (px) */
+export const MEDIA_SIZE: Record<CropRatio, { w: number; h: number }> = {
+  "16:9": { w: AD_WIDTH, h: AD_HEIGHT },
+  "3:4": { w: 1080, h: 1440 },
+  "4:1": { w: 1600, h: 400 }, // แบนเนอร์หัวฟอร์ม / Survey
+};
+
+/** สัดส่วนรูปที่ใช้ตอนนี้: ตามที่เลือก (ไม่มี = 16:9) · ได้ทั้งจอแนวตั้งและแนวนอน */
+export function mediaRatioOf(theme: EventDraft["theme"]): MediaRatio {
+  return theme.mediaRatio ?? "16:9";
+}
 
 export function readFileAsDataUrl(file: File): Promise<string> { // อ่านไฟล์ → data URL
   return new Promise((resolve, reject) => {
@@ -32,17 +47,18 @@ export interface CropRect {
   height: number;
 }
 
-/** ตัดรูปตาม rect แล้วย่อ/ขยายเป็น 1920×1080 → data URL (JPEG) */
-export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, quality = 0.85): string {
+/** ตัดรูปตาม rect แล้วย่อ/ขยายเป็นขนาดของสัดส่วนนั้น (16:9 = 1920×1080, 3:4 = 1080×1440) → data URL (JPEG) */
+export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, ratio: CropRatio = "16:9", quality = 0.85): string {
+  const { w, h } = MEDIA_SIZE[ratio];
   const canvas = document.createElement("canvas");
-  canvas.width = AD_WIDTH;
-  canvas.height = AD_HEIGHT;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("เบราว์เซอร์ไม่รองรับ canvas");
   ctx.fillStyle = "#FFFFFF"; // PNG พื้นใส → พื้นขาว (JPEG ไม่มีความโปร่งใส)
-  ctx.fillRect(0, 0, AD_WIDTH, AD_HEIGHT);
+  ctx.fillRect(0, 0, w, h);
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, AD_WIDTH, AD_HEIGHT); // ตัดแล้วย่อ/ขยาย ตัดเป็น 1920×1080
+  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, w, h); // ตัดแล้วย่อ/ขยายตามขนาดของสัดส่วน
   return canvas.toDataURL("image/jpeg", quality); // data URL ของ JPEG ได้ไฟล์ JPEG 85%
 }
 

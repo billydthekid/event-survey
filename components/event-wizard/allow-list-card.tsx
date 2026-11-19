@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { ALLOW_KIND_LABEL, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
+import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, ALLOW_LIST_READY, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
 import { formatThaiDateTime } from "@/lib/utils/date";
+import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import type { AllowList, AllowListKind } from "@/types/event";
 import { WizardSection } from "./wizard-section";
 
@@ -22,10 +23,14 @@ export function AllowListCard() {
   const [report, setReport] = useState<(ParseResult & { fileName: string }) | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // ยังไม่เปิดใช้ Event ปิด: กด "ปิด" แค่ "แอบดู" (ไม่บันทึก closed ลงข้อมูล → หน้า /r ยังรับทุกคน)
+  const [peekClosed, setPeekClosed] = useState(false);
 
   const list: AllowList = draft.allowList ?? { closed: false, kind: "email", values: [], fileName: "", importedAt: "" };
-  const label = ALLOW_KIND_LABEL[list.kind];
-  const problem = allowListProblem(draft);
+  const lang = useWizardLang();
+  const tr = useTr();
+  const label = (lang === "en" ? ALLOW_KIND_LABEL_EN : ALLOW_KIND_LABEL)[list.kind];
+  const problem = allowListProblem(draft, lang);
   const set = (v: Partial<AllowList>) => patch("allowList", { ...list, ...v });
 
   // เปลี่ยนชนิด → รายชื่อเดิมใช้ไม่ได้ ต้อง import ใหม่
@@ -40,7 +45,7 @@ export function AllowListCard() {
     setError("");
     setReport(null);
     if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
-      setError("รองรับเฉพาะไฟล์ .csv, .xlsx หรือ .xls");
+      setError(tr("รองรับเฉพาะไฟล์ .csv, .xlsx หรือ .xls", "Only .csv, .xlsx or .xls files are supported"));
       return;
     }
     setBusy(true);
@@ -48,12 +53,12 @@ export function AllowListCard() {
       const result = parseRows(list.kind, await readRows(file));
       setReport({ ...result, fileName: file.name });
       if (result.values.length === 0) {
-        setError(`ไม่พบ${label}ที่ถูกต้องในไฟล์`);
+        setError(tr(`ไม่พบ${label}ที่ถูกต้องในไฟล์`, `No valid ${label} found in the file`));
         return;
       }
       set({ values: result.values, fileName: file.name, importedAt: new Date().toISOString() });
     } catch {
-      setError("อ่านไฟล์ไม่ได้ ตรวจว่าไฟล์ไม่เสียหายและเป็น CSV / Excel");
+      setError(tr("อ่านไฟล์ไม่ได้ ตรวจว่าไฟล์ไม่เสียหายและเป็น CSV / Excel", "Couldn't read the file. Check it's a valid CSV / Excel file"));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = ""; // เลือกไฟล์เดิมซ้ำได้
@@ -69,13 +74,56 @@ export function AllowListCard() {
     URL.revokeObjectURL(url);
   };
 
+  // ยังไม่เปิดใช้ (ALLOW_LIST_READY = false): ปุ่ม เปิด / ปิด กดได้ตามปกติ
+  // กด "ปิด" → ส่วนตั้งค่า Event ปิดแสดงแบบเบลอ กดไม่ได้ + ป้ายแจ้ง (ไม่บันทึกอะไร) · กด "เปิด" → กลับเป็น Event เปิด
+  if (!ALLOW_LIST_READY) {
+    return (
+      <WizardSection
+        title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
+        description={
+          peekClosed
+            ? tr("Event ปิด · รับเฉพาะคนที่อยู่ในรายชื่อที่ import", "Closed event · only people in the imported list")
+            : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
+        }
+        action={
+          <ToggleGroup
+            value={[peekClosed ? "closed" : "open"]}
+            onValueChange={(v) => {
+              if (!v[0]) return;
+              setPeekClosed(v[0] === "closed");
+              if (list.closed) set({ closed: false }); // ข้อมูลเก่าที่เคยตั้งเป็น Event ปิด → กลับเป็น Event เปิด
+            }}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
+            <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
+          </ToggleGroup>
+        }
+      >
+        {peekClosed && (
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none space-y-4 select-none blur-[3px]">
+              <AllowListPreview tr={tr} />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <p className="rounded-xl border bg-background/95 px-5 py-3 text-center text-sm font-semibold shadow-sm">
+                {tr("วัยรุ่นกำลังสร้างมองข้ามไปเทอมนี้ก่อนนะจ๊ะ", "Still under construction · skip this for this term 😉")}
+              </p>
+            </div>
+          </div>
+        )}
+      </WizardSection>
+    );
+  }
+
   return (
     <WizardSection
-      title="ผู้ที่ลงทะเบียนได้"
+      title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
       description={
         list.closed
-          ? `Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`
-          : "Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน"
+          ? tr(`Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`, `Closed event · only people whose ${label} is in the imported file`)
+          : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
       }
       action={
         <ToggleGroup
@@ -84,18 +132,18 @@ export function AllowListCard() {
           variant="outline"
           size="sm"
         >
-          <ToggleGroupItem value="open">เปิด (ทุกคน)</ToggleGroupItem>
-          <ToggleGroupItem value="closed">ปิด (เฉพาะรายชื่อ)</ToggleGroupItem>
+          <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
+          <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
         </ToggleGroup>
       }
     >
       {list.closed && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Label>ตรวจสิทธิ์ด้วย</Label>
+            <Label>{tr("ตรวจสิทธิ์ด้วย", "Check by")}</Label>
             <ToggleGroup value={[list.kind]} onValueChange={(v) => v[0] && changeKind(v[0] as AllowListKind)} variant="outline" size="sm">
-              <ToggleGroupItem value="email">อีเมล</ToggleGroupItem>
-              <ToggleGroupItem value="phone">เบอร์มือถือ</ToggleGroupItem>
+              <ToggleGroupItem value="email">{tr("อีเมล", "Email")}</ToggleGroupItem>
+              <ToggleGroupItem value="phone">{tr("เบอร์มือถือ", "Mobile number")}</ToggleGroupItem>
             </ToggleGroup>
           </div>
 
@@ -104,14 +152,16 @@ export function AllowListCard() {
             <div className="min-w-0 flex-1 text-sm">
               {list.values.length > 0 ? (
                 <>
-                  <p className="font-semibold">{list.fileName} · {list.values.length} รายชื่อ</p>
-                  <p className="text-xs text-muted-foreground">import เมื่อ {formatThaiDateTime(list.importedAt)}</p>
+                  <p className="font-semibold">{list.fileName} · {list.values.length} {tr("รายชื่อ", "names")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "en" ? `Imported ${fmtDate(list.importedAt, lang)}` : `import เมื่อ ${formatThaiDateTime(list.importedAt)}`}
+                  </p>
                 </>
               ) : (
                 <>
-                  <p className="font-semibold">ยังไม่มีรายชื่อ</p>
+                  <p className="font-semibold">{tr("ยังไม่มีรายชื่อ", "No list yet")}</p>
                   <p className="text-xs text-muted-foreground">
-                    ไฟล์ .csv / .xlsx · มีคอลัมน์หัวตาราง &quot;{list.kind}&quot; หรือใส่{label}ไว้คอลัมน์แรก
+                    {tr(`ไฟล์ .csv / .xlsx · มีคอลัมน์หัวตาราง "${list.kind}" หรือใส่${label}ไว้คอลัมน์แรก`, `.csv / .xlsx file · a "${list.kind}" header column, or ${label} in the first column`)}
                   </p>
                 </>
               )}
@@ -124,17 +174,17 @@ export function AllowListCard() {
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
             <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="size-4" /> ไฟล์ตัวอย่าง
+              <Download className="size-4" /> {tr("ไฟล์ตัวอย่าง", "Sample file")}
             </Button>
             <Button type="button" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-              <Upload className="size-4" /> {busy ? "กำลังอ่าน…" : list.values.length > 0 ? "Import ใหม่" : "Import ไฟล์"}
+              <Upload className="size-4" /> {busy ? tr("กำลังอ่าน…", "Reading…") : list.values.length > 0 ? tr("Import ใหม่", "Re-import") : tr("Import ไฟล์", "Import file")}
             </Button>
             {list.values.length > 0 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="ล้างรายชื่อ"
+                aria-label={tr("ล้างรายชื่อ", "Clear list")}
                 className="text-red-600"
                 onClick={() => {
                   set({ values: [], fileName: "", importedAt: "" });
@@ -148,9 +198,11 @@ export function AllowListCard() {
 
           {report && !error && (
             <p className="text-sm text-muted-foreground">
-              ใช้คอลัมน์ &quot;{report.column}&quot; · นำเข้า {report.values.length} รายชื่อ
-              {report.duplicates > 0 && ` · ตัดซ้ำ ${report.duplicates}`}
-              {report.invalid.length > 0 && ` · ข้าม ${report.invalid.length} แถวที่รูปแบบผิด (${report.invalid.slice(0, 3).join(", ")}${report.invalid.length > 3 ? ", …" : ""})`}
+              {tr(`ใช้คอลัมน์ "${report.column}" · นำเข้า ${report.values.length} รายชื่อ`, `Column "${report.column}" · imported ${report.values.length} names`)}
+              {report.duplicates > 0 && tr(` · ตัดซ้ำ ${report.duplicates}`, ` · ${report.duplicates} duplicates removed`)}
+              {report.invalid.length > 0 &&
+                tr(` · ข้าม ${report.invalid.length} แถวที่รูปแบบผิด`, ` · skipped ${report.invalid.length} invalid rows`) +
+                  ` (${report.invalid.slice(0, 3).join(", ")}${report.invalid.length > 3 ? ", …" : ""})`}
             </p>
           )}
           {(error || problem) && (
@@ -161,5 +213,32 @@ export function AllowListCard() {
         </div>
       )}
     </WizardSection>
+  );
+}
+
+// หน้าตาของส่วนตั้งค่า "Event ปิด" แบบอ่านอย่างเดียว (ใช้ตอนยังไม่เปิดใช้ · อยู่ใต้ชั้นเบลอ ไม่มีปุ่มที่ทำงานจริง)
+function AllowListPreview({ tr }: { tr: (th: string, en: string) => string }) {
+  const pill = "rounded-md border px-2.5 py-1 text-sm";
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium">{tr("ตรวจสิทธิ์ด้วย", "Check by")}</span>
+        <span className={`${pill} bg-foreground text-background`}>{tr("อีเมล", "Email")}</span>
+        <span className={pill}>{tr("เบอร์มือถือ", "Mobile number")}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-4">
+        <FileSpreadsheet className="size-8 text-muted-foreground" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-semibold">{tr("ยังไม่มีรายชื่อ", "No list yet")}</p>
+          <p className="text-xs text-muted-foreground">{tr(".csv / .xlsx · คอลัมน์ \"email\"", ".csv / .xlsx · \"email\" column")}</p>
+        </div>
+        <span className={pill}>
+          <Download className="mr-1 inline size-4" /> {tr("ไฟล์ตัวอย่าง", "Sample file")}
+        </span>
+        <span className={`${pill} bg-foreground text-background`}>
+          <Upload className="mr-1 inline size-4" /> {tr("Import ไฟล์", "Import file")}
+        </span>
+      </div>
+    </>
   );
 }

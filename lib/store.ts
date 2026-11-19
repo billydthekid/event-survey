@@ -411,6 +411,33 @@ export const useStore = create<StoreState>()(
 
         return s as StoreState;
       },
+      // ทุกครั้งที่โหลดข้อมูลจาก localStorage: ขยับวันที่ของ "ข้อมูลตัวอย่าง" ให้คิดจากวันนี้เสมอ (lib/mock/dates.ts)
+      // ไม่งั้นเครื่องที่เคยเปิดแอปจะค้างวันที่เดิม แล้วงานตัวอย่างกลายเป็น "จบแล้ว" หมด
+      // - แตะเฉพาะ Event ตัวอย่าง 4 งาน (วัน/เวลาจัดงาน) + คนลงทะเบียน/คำตอบตัวอย่าง
+      // - Event, ผู้ลงทะเบียน, คำตอบที่ผู้ใช้สร้างเองไม่ถูกแตะ
+      // ⚠️ ถ้าแก้วันจัดงานของ Event ตัวอย่างใน Wizard จะถูกตั้งกลับทุกครั้งที่รีเฟรช
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<StoreState>;
+        const merged = { ...current, ...p } as StoreState;
+        const seedEvents = new Map(mockEvents.map((e) => [e.id, e]));
+        const seedReg = new Set(mockRegistrations.map((r) => r.id));
+        const seedRes = new Set(mockResponses.map((r) => r.id));
+        const isSeed = (id: string, seed: Set<string>, prefix: string) => seed.has(id) || id.startsWith(prefix);
+
+        if (Array.isArray(p.events)) {
+          merged.events = p.events.map((e) => {
+            const seed = seedEvents.get(e.id);
+            return seed ? { ...e, date: seed.date, startTime: seed.startTime, endTime: seed.endTime } : e;
+          });
+        }
+        if (Array.isArray(p.registrations)) {
+          merged.registrations = [...mockRegistrations, ...p.registrations.filter((r) => !isSeed(r.id, seedReg, "reg-e-"))];
+        }
+        if (Array.isArray(p.responses)) {
+          merged.responses = [...mockResponses, ...p.responses.filter((r) => !isSeed(r.id, seedRes, "res-e-"))];
+        }
+        return merged;
+      },
       partialize: (s) => ({
         currentUser: s.currentUser,
         users: s.users,
