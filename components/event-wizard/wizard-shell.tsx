@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Lock, X } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LockedArea, PublishConfirm } from "./lock-dialogs";
+import { SaveStatus } from "./save-status";
 
 // ไม่มีเมนูขั้นตอนด้านบนแล้ว: เดินได้ทีละขั้นด้วยปุ่ม "ถัดไป" (ล็อกจนกว่าขั้นนั้นจะครบ) / "ย้อนกลับ"
 // ช่วงเวลาเปิด–ปิด ย้ายไปอยู่ในขั้นฟอร์มลงทะเบียน และขั้น Survey แล้ว
@@ -25,6 +26,7 @@ export function stepHref(eventId: string, n: number): string {
 }
 
 interface Props {
+  eventId: string; // ใช้ดูการบันทึกอัตโนมัติของ Event นี้ (SaveStatus)
   eventName: string;
   assignedBy: string;
   status: string;
@@ -68,9 +70,8 @@ export function WizardShell(p: Props) {
             <p className="font-semibold">{p.eventName}</p>
           </div>
         </div>
-        <span className="flex items-center gap-1 text-xs text-emerald-700">
-          <Check className="size-3.5" /> บันทึกอัตโนมัติแล้ว
-        </span>
+        {/* เปลี่ยนทุกครั้งที่แก้: กำลังบันทึก… → บันทึกแล้ว · เวลา */}
+        <SaveStatus eventId={p.eventId} locked={p.locked} />
       </header>
 
       {/* Body */}

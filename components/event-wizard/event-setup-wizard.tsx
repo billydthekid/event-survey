@@ -90,6 +90,7 @@ export function EventSetupWizard({ step }: { step: number }) {
   return (
     <>
     <WizardShell
+      eventId={id}
       eventName={current.general.nameTh}
       assignedBy={current.assignedBy}
       status={locked ? STATUS_LABEL[mainEvent.status].text : PHASE_META[getPhase(current)].th}
