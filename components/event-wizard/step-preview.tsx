@@ -9,6 +9,7 @@ import { KioskPreview } from "@/components/event/brand-preview";
 import { useWizardStore } from "@/lib/wizard-store";
 import { eventTypeLabel } from "@/lib/event-types";
 import { hasRegistration, hasSurvey } from "@/lib/utils/wizard-rules";
+import { pageLook } from "@/lib/theme-presets";
 import { WizardSection } from "./wizard-section";
 
 export function StepPreview() {
@@ -21,7 +22,7 @@ export function StepPreview() {
         title="จอ Kiosk"
         description={!hasRegistration(d) && !hasSurvey(d) ? "ไม่มีฟอร์มและ Survey → จอ Kiosk แสดงแค่รายละเอียดงาน ไม่มี QR" : undefined}
       >
-        <div className="mx-auto w-full max-w-sm">
+        <div className={d.theme.kiosk === "landscape" ? "mx-auto w-full max-w-2xl" : "mx-auto w-full max-w-sm"}>
           <KioskPreview d={d} />
         </div>
       </WizardSection>
@@ -29,7 +30,7 @@ export function StepPreview() {
       <WizardSection title="ฟอร์มลงทะเบียน" description="หน้าที่ผู้เข้าร่วมเห็นเมื่อสแกน QR ลงทะเบียน">
         {hasRegistration(d) ? (
           <div className="mx-auto w-full max-w-md">
-            <FormPreview fields={d.form.fields} primary={d.theme.primary} eventName={g.nameTh} />
+            <FormPreview fields={d.form.fields} primary={d.theme.primary} eventName={g.nameTh} look={pageLook(d.theme, "form")} />
           </div>
         ) : (
           <EmptyPreview text="ไม่ได้เพิ่มฟอร์มลงทะเบียน · Event นี้ไม่รับลงทะเบียน จึงไม่มี Preview ฟอร์ม และไม่มี QR ลงทะเบียน" />
@@ -43,6 +44,7 @@ export function StepPreview() {
               questions={d.survey.questions}
               lang="th"
               primary={d.theme.primary}
+              look={pageLook(d.theme, "survey")}
               title={`แบบประเมินงาน ${eventTypeLabel(g.type, g.typeOther)}`}
             />
           </div>

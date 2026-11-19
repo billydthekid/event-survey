@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldSample, FormPreview } from "@/components/event/form-preview";
+import { pageLook } from "@/lib/theme-presets";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useDragSort } from "@/lib/use-drag-sort";
 import { DEFAULT_OPTIONS, FORM_KINDS, formKind } from "@/lib/form-types";
@@ -235,7 +236,7 @@ export function StepForm() {
           <DialogHeader>
             <DialogTitle>Preview ฟอร์มลงทะเบียน</DialogTitle>
           </DialogHeader>
-          <FormPreview fields={fields} primary={draft.theme.primary} eventName={draft.general.nameTh} />
+          <FormPreview fields={fields} primary={draft.theme.primary} eventName={draft.general.nameTh} look={pageLook(draft.theme, "form")} />
         </DialogContent>
       </Dialog>
     </>

@@ -6,6 +6,7 @@
 import { Calendar, ChevronDown, Clock, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FormField } from "@/types/event";
+import { lookStyle, type PageLook } from "@/lib/theme-presets";
 
 const box = "rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground";
 
@@ -65,20 +66,24 @@ export function FieldSample({ f, className }: { f: FormField; className?: string
 
 export function FormPreview({
   fields,
-  primary,
+  primary: primaryProp,
   eventName,
+  look,
 }: {
   fields: FormField[];
   primary: string;
   eventName: string;
+  /** สีของหน้าฟอร์ม (ขั้น Branding → ปรับแต่งเอง แท็บ ฟอร์ม) · ไม่ส่ง = พื้นขาวแบบเดิม */
+  look?: PageLook;
 }) {
+  const primary = look?.primary ?? primaryProp;
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg">
+    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
       <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: `${primary}1A`, color: primary }}>
         ลงทะเบียนเข้าร่วม
       </span>
       <p className="mt-2 mb-4 text-base font-bold">{eventName || "(ยังไม่ตั้งชื่อ Event)"}</p>
-      {fields.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีช่องในฟอร์ม</p>}
+      {fields.length === 0 && <p className="text-sm text-muted-foreground" style={{ color: look?.muted }}>ยังไม่มีช่องในฟอร์ม</p>}
       <div className="space-y-5">
         {fields.map((f) => (
           <div key={f.id} className="space-y-2">

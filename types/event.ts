@@ -15,10 +15,27 @@ export type SurveyQType =
   | "short" | "long" | "single" | "multi" | "dropdown"
   | "linear" | "rating" | "opinion" | "mcgrid" | "cbgrid" | "yesno" | "date";
 
+/** สัดส่วนรูปปก / โฆษณา · เลือกได้ 16:9 หรือ 3:4 (ทั้งจอแนวตั้งและแนวนอน) */
+export type MediaRatio = "16:9" | "3:4";
+export type KioskOrientation = "portrait" | "landscape";
+
+/** สีของหน้าฟอร์ม / Survey ที่ตั้งแยกเอง (ขั้น Branding → ปรับแต่งเอง แท็บ ฟอร์ม / Survey) */
+export interface PageTheme {
+  primary: string; // ปุ่ม ป้าย ตัวเลือกที่เลือก
+  bgType: "color" | "image";
+  bgColor?: string;
+  bg: UploadedAsset | null; // รูปพื้นหลังแนวตั้ง (มือถือ) ย่อเหลือ 1080×1920
+  textColor?: string; // ว่าง = อัตโนมัติตามความเข้มของพื้นหลัง
+}
+
 export interface UploadedAsset {
   name: string;
   sizeKB: number;
   cropped?: boolean;
+  /** สัดส่วนที่ crop ไว้ (ไม่มี = 16:9 ของเดิม) · ไม่ตรงกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่ */
+  ratio?: MediaRatio;
+  /** รูปพื้นหลัง Kiosk: ทำไว้สำหรับจอแนวไหน (ไม่มี = แนวตั้ง) · ไม่ตรงกับจอตอนนี้ → เตือนให้อัปโหลดใหม่ */
+  orientation?: KioskOrientation;
   /** ตัวรูปจริง (data URL) — ตอนนี้เก็บเฉพาะรูปโฆษณาที่ crop เป็น 16:9 แล้ว · ไม่มี = เก็บแค่ชื่อไฟล์ (mock) */
   dataUrl?: string;
 }
@@ -92,6 +109,14 @@ export interface EventDraft {
     bg: UploadedAsset | null; // พื้นหลังแบบรูป (dataUrl ย่อเหลือ 1080×1920)
     logo: UploadedAsset | null; // dataUrl ย่อเหลือไม่เกิน 256px
     preset?: string; // ธีมสำเร็จรูปที่เลือก (แก้สีเองแล้ว = ว่าง)
+    /** จอ Kiosk แนวตั้ง / แนวนอน (ไม่มี = แนวตั้ง) · ตอนนี้มีผลแค่ Preview ใน Wizard (จอ Kiosk จริงเป็นของเพื่อน) */
+    kiosk?: KioskOrientation;
+    /** สัดส่วนรูปปก / โฆษณา (ไม่มี = 16:9) · ใช้ได้ทั้งจอแนวตั้งและแนวนอน */
+    mediaRatio?: MediaRatio;
+    /** สีตัวอักษร (ชื่องาน รายละเอียด) ของ Kiosk / หน้า Event · ว่าง = อัตโนมัติตามโหมด */
+    textColor?: string;
+    /** สีของหน้าฟอร์มลงทะเบียน / Survey แยกจาก Kiosk · ไม่มี = ใช้แบบเดียวกับ Kiosk */
+    pages?: { form?: PageTheme; survey?: PageTheme };
   };
   ads: AdSettings;
   form: { fields: FormField[] };

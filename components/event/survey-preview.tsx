@@ -7,6 +7,7 @@ import { Calendar, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeQuestion } from "@/lib/survey-types";
 import type { SurveyQuestion } from "@/types/event";
+import { lookStyle, type PageLook } from "@/lib/theme-presets";
 
 const box = "rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground";
 
@@ -121,20 +122,24 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
 export function SurveyPreview({
   questions,
   lang,
-  primary,
+  primary: primaryProp,
   title,
+  look,
 }: {
   questions: SurveyQuestion[];
   lang: "th" | "en";
   primary: string;
   title: string;
+  /** สีของหน้า Survey (ขั้น Branding → ปรับแต่งเอง แท็บ Survey) · ไม่ส่ง = พื้นขาวแบบเดิม */
+  look?: PageLook;
 }) {
+  const primary = look?.primary ?? primaryProp;
   const label = (q: SurveyQuestion) => (lang === "en" && q.titleEn ? q.titleEn : q.titleTh) || "(ยังไม่ตั้งชื่อคำถาม)";
 
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg">
+    <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
       <p className="mb-4 text-base font-bold">{title}</p>
-      {questions.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีคำถาม</p>}
+      {questions.length === 0 && <p className="text-sm text-muted-foreground" style={{ color: look?.muted }}>ยังไม่มีคำถาม</p>}
       <div className="space-y-5">
         {questions.map((q, i) => (
           <div key={q.id} className="space-y-2">

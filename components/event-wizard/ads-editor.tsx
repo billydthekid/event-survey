@@ -1,7 +1,8 @@
 "use client";
 // แท็บ "โฆษณา" ในขั้น Branding: รูปโฆษณาบนจอ Kiosk
 // - ใส่ได้หลายรูป (สูงสุด MAX_ADS) · ลากที่ ⋮⋮ เพื่อเรียง · จอ Kiosk เลื่อนวนทุก "seconds" วินาที
-// - เลือกไฟล์แล้วเปิดหน้าต่าง Crop 16:9 (1920 × 1080 px) · เก็บเป็น data URL (lib/image-crop.ts)
+// - เลือกไฟล์แล้วเปิดหน้าต่าง Crop ตามสัดส่วน: 16:9 (1920 × 1080) หรือ 3:4 (1080 × 1440) เมื่อจอ Kiosk แนวนอน · เก็บเป็น data URL (lib/image-crop.ts)
+// - รูปที่ crop ไว้คนละสัดส่วนกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่
 // - ตัวอย่างการเลื่อนรูปอยู่ที่ Live Preview (KioskPreview ใน components/event/brand-preview.tsx)
 
 import { useState } from "react";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useWizardStore } from "@/lib/wizard-store";
 import { useDragSort } from "@/lib/use-drag-sort";
 import { cn } from "@/lib/utils";
-import { AD_HEIGHT, AD_WIDTH, dataUrlKB, readFileAsDataUrl } from "@/lib/image-crop";
+import { MEDIA_SIZE, dataUrlKB, mediaRatioOf, readFileAsDataUrl } from "@/lib/image-crop";
 import type { UploadedAsset } from "@/types/event";
 import { FileDrop } from "./file-drop";
 import { CropDialog } from "./crop-dialog";
@@ -26,6 +27,8 @@ type Cropping = { src: string; name: string; index: number | null };
 
 export function AdsEditor() {
   const ads = useWizardStore((s) => s.draft.ads);
+  const ratio = useWizardStore((s) => mediaRatioOf(s.draft.theme)); // 16:9 หรือ 3:4
+  const size = MEDIA_SIZE[ratio];
   const patch = useWizardStore((s) => s.patch);
   const setItems = (items: UploadedAsset[]) => patch("ads", { items });
   const [cropping, setCropping] = useState<Cropping | null>(null);
@@ -43,7 +46,7 @@ export function AdsEditor() {
 
   const finishCrop = (dataUrl: string) => {
     if (!cropping) return;
-    const item: UploadedAsset = { name: cropping.name, sizeKB: dataUrlKB(dataUrl), cropped: true, dataUrl };
+    const item: UploadedAsset = { name: cropping.name, sizeKB: dataUrlKB(dataUrl), cropped: true, ratio, dataUrl };
     try {
       if (cropping.index === null) setItems([...ads.items, item]);
       else setItems(ads.items.map((a, i) => (i === cropping.index ? item : a)));
@@ -57,7 +60,7 @@ export function AdsEditor() {
     <div className="space-y-4">
       <FileDrop
         title={full ? `ครบ ${MAX_ADS} รูปแล้ว` : "ลากรูปมาวาง หรือเลือกไฟล์"}
-        hint={`16:9 · ${AD_WIDTH}×${AD_HEIGHT} px · สูงสุด ${MAX_ADS} รูป`}
+        hint={`${ratio} · ${size.w}×${size.h} px · สูงสุด ${MAX_ADS} รูป`}
         onFile={pickFile}
         className={cn("py-6", full && "pointer-events-none opacity-50")}
       />
@@ -80,7 +83,7 @@ export function AdsEditor() {
               </span>
               {a.dataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปที่ crop แล้ว
-                <img src={a.dataUrl} alt="" className="aspect-video w-20 shrink-0 rounded object-cover" />
+                <img src={a.dataUrl} alt="" className={cn("shrink-0 rounded object-cover", (a.ratio ?? "16:9") === "3:4" ? "aspect-[3/4] w-14" : "aspect-video w-20")} />
               ) : (
                 <div className="flex aspect-video w-20 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
                   <ImageOff className="size-4" />
@@ -89,8 +92,11 @@ export function AdsEditor() {
               <div className="min-w-0 flex-1 text-sm">
                 <p className="truncate font-semibold">{a.name}</p>
                 <p className={a.dataUrl ? "text-xs text-muted-foreground" : "text-xs text-amber-700"}>
-                  {a.dataUrl ? `${a.sizeKB} KB` : "ไม่มีไฟล์รูป · อัปโหลดใหม่"}
+                  {a.dataUrl ? `${a.sizeKB} KB · ${a.ratio ?? "16:9"}` : "ไม่มีไฟล์รูป · อัปโหลดใหม่"}
                 </p>
+                {a.dataUrl && (a.ratio ?? "16:9") !== ratio && (
+                  <p className="text-xs text-amber-700">กด Crop ใหม่ให้เป็น {ratio}</p>
+                )}
               </div>
               {a.dataUrl && (
                 <Button variant="ghost" size="icon" aria-label="Crop ใหม่" onClick={() => setCropping({ src: a.dataUrl!, name: a.name, index: i })}>
@@ -120,7 +126,7 @@ export function AdsEditor() {
         <span className="text-muted-foreground">วินาที</span>
       </div>
 
-      <CropDialog src={cropping?.src ?? null} fileName={cropping?.name ?? ""} onCancel={() => setCropping(null)} onDone={finishCrop} />
+      <CropDialog ratio={ratio} src={cropping?.src ?? null} fileName={cropping?.name ?? ""} onCancel={() => setCropping(null)} onDone={finishCrop} />
     </div>
   );
 }
