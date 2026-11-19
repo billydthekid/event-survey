@@ -68,8 +68,9 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
     },
     logo: pub.logo,
     closed: pub.closed,
-    // รูปโฆษณา: Wizard (รูปที่ crop 16:9 แล้ว) → รูปเดิมใน store หลัก
-    ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : []),
+    // รูปโฆษณา: Wizard (รูปที่ crop 16:9 แล้ว) → รูปเดิมใน store หลัก → ไม่มีโฆษณาเลย ใช้รูปปกแทน
+    // (เหมือนตัวอย่างจอ Kiosk ใน Wizard) · ไม่มีทั้งโฆษณาและรูปปก = ไม่แสดงกรอบรูป
+    ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : pub.cover ? [pub.cover] : []),
     adSeconds: draft?.ads?.seconds || 6,
     screen: event.kiosk.screen,
     status: event.status,

@@ -226,6 +226,11 @@ export function EventInfo({
       className="border-b px-5 pt-4 pb-5"
       style={{ background: pal.head.bg, color: pal.head.text, borderColor: pal.head.line }}
     >
+      {/* รูปปก 16:9 จาก Wizard (เหมือนตัวอย่างหน้า Event บนมือถือใน Wizard) · ไม่มีรูป = ไม่แสดงกรอบ */}
+      {event.cover && (
+        // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก
+        <img src={event.cover} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />
+      )}
       <span className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: pal.chip.bg, color: pal.chip.text }}>
         {chip}
       </span>
