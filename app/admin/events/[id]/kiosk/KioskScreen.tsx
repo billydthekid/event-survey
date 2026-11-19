@@ -274,7 +274,7 @@ export function KioskScreen({
         (() => {
           const hasAds = m.ads.length > 0;
           const ad = hasAds && (
-            <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} ratio={m.mediaRatio} compact={compact} />
+            <AdSlideshow ads={m.ads} seconds={m.adSeconds} landscape={landscape} ratio={m.mediaRatio} compact={compact} border={pal.line} />
           );
           const tallMedia = m.mediaRatio === "3:4";
           // แนวนอน + รูป 16:9: ใต้รูปทางซ้ายยังมีที่ว่าง → ย้ายนับถอยหลังไปไว้ตรงนั้น (คอลัมน์ขวาเหลือที่ให้ QR)
@@ -554,12 +554,14 @@ function AdSlideshow({
   landscape,
   ratio,
   compact,
+  border,
 }: {
   ads: string[];
   seconds: number;
   landscape: boolean;
   ratio: MediaRatio;
   compact: boolean; // จอที่ความสูงจำกัด → รูปหดได้จนหาย (QR สำคัญกว่า)
+  border: string; // เส้นขอบรอบรูป (สีเส้นของธีม) → รูปสีอ่อน/สีเดียวกับพื้น ไม่กลืนไปกับพื้นหลัง
 }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -580,6 +582,7 @@ function AdSlideshow({
             ? "aspect-[3/4] h-full max-w-full"
             : `max-h-[554px] ${compact ? "min-h-0" : "min-h-[200px]"} w-full flex-1`
       }`}
+      style={{ border: `3px solid ${border}`, boxShadow: "0 12px 40px rgba(15,23,42,0.12)" }}
     >
       {/* โชว์รูปเต็มทั้งรูปเสมอ (object-contain) ไม่ตัดขอบ — เช่นรูป 16:9 ในกรอบ 3:4
           ส่วนที่ว่างรอบรูป เติมด้วยรูปเดียวกันแบบเบลอ (ไม่เป็นขอบโล่ง) · รูปสัดส่วนตรงกรอบ = เหมือนเดิม */}
