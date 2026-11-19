@@ -3,6 +3,7 @@
 // แสดงหน้าตาที่ผู้เข้าร่วมเห็น เรียงลงมาเต็มความกว้าง: จอ Kiosk → ฟอร์มลงทะเบียน → แบบประเมิน
 // ฟอร์ม / Survey ไม่บังคับ → ไม่ได้สร้าง = ขึ้นข้อความว่าไม่มี (แทนตัวอย่างว่าง ๆ)
 
+import { Lock } from "lucide-react";
 import { FormPreview } from "@/components/event/form-preview";
 import { SurveyPreview } from "@/components/event/survey-preview";
 import { KioskPreview } from "@/components/event/brand-preview";
@@ -53,7 +54,16 @@ export function StepPreview() {
         )}
       </WizardSection>
 
-      <p className="py-4 text-xs text-muted-foreground">กดเผยแพร่แล้ว สถานะจะเปลี่ยนเป็น Active และแก้ไข Event / Survey ไม่ได้อีก</p>
+      {/* คำเตือนสำคัญก่อนกดเผยแพร่: เน้นด้วยกล่องสีส้ม + ไอคอนกุญแจ */}
+      <div className="py-5">
+        <div role="note" className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <Lock className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <span className="font-semibold">ตรวจให้ครบก่อนกดเผยแพร่</span> · เผยแพร่แล้วสถานะจะเปลี่ยนเป็น{" "}
+            <span className="font-semibold">Active</span> และ<span className="font-semibold">แก้ไข Event / Survey ไม่ได้อีก</span>
+          </p>
+        </div>
+      </div>
     </>
   );
 }
