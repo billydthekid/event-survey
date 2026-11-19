@@ -165,9 +165,10 @@ export function StepForm() {
                       )}
                       <input
                         value={o}
+                        placeholder={tr(`ตัวเลือก ${n + 1} เช่น รอบเช้า`, `Option ${n + 1}, e.g. Morning session`)}
                         onChange={(e) => update(f.id, { options: options.map((x, m) => (m === n ? e.target.value : x)) })}
                         aria-label={tr(`ตัวเลือก ${n + 1}`, `Option ${n + 1}`)}
-                        className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
                       />
                       <button
                         type="button"

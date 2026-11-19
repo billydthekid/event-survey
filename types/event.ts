@@ -28,6 +28,7 @@ export interface PageTheme {
   bgColor?: string;
   bg: UploadedAsset | null; // รูปพื้นหลังแนวตั้ง (มือถือ) ย่อเหลือ 1080×1920
   textColor?: string; // ว่าง = อัตโนมัติตามความเข้มของพื้นหลัง
+  bgBlur?: number; // เบลอรูปพื้นหลัง (px · 0 / ไม่มี = ไม่เบลอ)
 }
 
 export interface UploadedAsset {
@@ -108,6 +109,7 @@ export interface EventDraft {
     mode: "light" | "dark" | "bold"; // สีตัวหนังสือ/หัวหน้า
     bgType: "color" | "image";
     bgColor?: string; // พื้นหลังแบบสี (ไม่มี = ขาว)
+    bgBlur?: number; // เบลอรูปพื้นหลัง Kiosk / หน้า Event (px · 0 / ไม่มี = ไม่เบลอ)
     bg: UploadedAsset | null; // พื้นหลังแบบรูป (dataUrl ย่อเหลือ 1080×1920)
     logo: UploadedAsset | null; // dataUrl ย่อเหลือไม่เกิน 256px
     preset?: string; // ธีมสำเร็จรูปที่เลือก (แก้สีเองแล้ว = ว่าง)

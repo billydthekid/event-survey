@@ -82,8 +82,8 @@ export function AllowListCard() {
         title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
         description={
           peekClosed
-            ? tr("Event ปิด · รับเฉพาะคนที่อยู่ในรายชื่อที่ import", "Closed event · only people in the imported list")
-            : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
+            ? tr("Private · รับเฉพาะคนที่อยู่ในรายชื่อที่ import", "Private · only people in the imported list")
+            : tr("Public · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Public · anyone who scans the QR can register, no limit")
         }
         action={
           <ToggleGroup
@@ -96,8 +96,8 @@ export function AllowListCard() {
             variant="outline"
             size="sm"
           >
-            <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
-            <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
+            <ToggleGroupItem value="open">Public</ToggleGroupItem>
+            <ToggleGroupItem value="closed">Private</ToggleGroupItem>
           </ToggleGroup>
         }
       >
@@ -122,8 +122,8 @@ export function AllowListCard() {
       title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
       description={
         list.closed
-          ? tr(`Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`, `Closed event · only people whose ${label} is in the imported file`)
-          : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
+          ? tr(`Private · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`, `Private · only people whose ${label} is in the imported file`)
+          : tr("Public · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Public · anyone who scans the QR can register, no limit")
       }
       action={
         <ToggleGroup
@@ -132,8 +132,8 @@ export function AllowListCard() {
           variant="outline"
           size="sm"
         >
-          <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
-          <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
+          <ToggleGroupItem value="open">Public</ToggleGroupItem>
+          <ToggleGroupItem value="closed">Private</ToggleGroupItem>
         </ToggleGroup>
       }
     >
