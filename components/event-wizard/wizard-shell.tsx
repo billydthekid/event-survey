@@ -11,7 +11,6 @@ import { ResetEventButton } from "./reset-event-button";
 import { setMyLang } from "@/app/admin/settings/accountActions";
 import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
-// ฟ้าใส: ไม่มีเมนูขั้นตอนด้านบนแล้ว: เดินได้ทีละขั้นด้วยปุ่ม "ถัดไป" (ล็อกจนกว่าขั้นนั้นจะครบ) / "ย้อนกลับ"
 // ฟ้าใส: ช่วงเวลาเปิด–ปิด ย้ายไปอยู่ในขั้นฟอร์มลงทะเบียน และขั้น Survey แล้ว
 // ฟ้าใส: slug = ชื่อโฟลเดอร์หน้าของขั้นนั้น (app/admin/events/[id]/edit/<slug>/page.tsx) · ขึ้นต้น "setup-" กันชื่อซ้ำกับหน้าของเพื่อน
 export const STEPS = [
