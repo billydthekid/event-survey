@@ -1,8 +1,10 @@
 // lib/utils/eventInfo.ts
 // ตัวช่วยของหน้า Event (ข้อมูล + QR) — /super/events/<id>/event
 // รับ Event เข้ามาแล้วคืนข้อความ/ค่าที่หน้าจอใช้ ไม่อ่าน store เอง
-import { Event, EventType } from "@/types";
+import { Event, EventStatus, EventType } from "@/types";
+import type { EventDraft } from "@/types/event";
 import { eventRange } from "@/lib/utils/date";
+import { buildPublicEvent, getEventPhase } from "@/lib/public-event";
 
 // ---------- ชื่อประเภทงาน (ชุดเดียวกับ Wizard ของพิชชาภา) ----------
 export const TYPE_LABEL: Record<EventType, string> = {
@@ -31,6 +33,20 @@ export const KIOSK_OPTIONS: { value: Event["kiosk"]["screen"]; label: string }[]
 // ใช้สถานะ ไม่ใช้วัน+เวลา เพราะ Event ตัวอย่างบางงานไม่มีเวลาเริ่ม (จะไม่ล็อกทั้งที่จบแล้ว)
 export function isEditLocked(event: Event): boolean {
   return event.status === "active" || event.status === "ended";
+}
+
+// ---------- สถานะตามเวลาจริง (ใช้แสดงป้ายสถานะ) ----------
+// event.status ที่เก็บไว้ไม่เปลี่ยนเองเมื่อเวลาผ่านไป (เช่น Workshop 23 ต.ค. ยังเก็บเป็น "กำลังจัดงาน")
+// → คิดใหม่จากวัน-เวลาจัดงานด้วย getEventPhase (ตัวเดียวกับหน้า /r /s และจอ Kiosk)
+// draft = ข้อมูลใน Wizard ของ Event นี้ (useWizardStore) — วัน-เวลาที่แก้ใน Wizard มาก่อน (buildPublicEvent)
+// - ฉบับร่าง / ถูกลบ → ตามที่เก็บไว้
+// - ไม่มีวัน-เวลาครบ (ข้อมูลตัวอย่างบางงาน) → getEventPhase ใช้สถานะที่เก็บไว้แทน
+// ตัวอย่าง: Workshop (23 ต.ค. 10:00–15:00) ดูวันที่ 19 พ.ย. → "ended" (จบแล้ว)
+// หมายเหตุ: กฎล็อกการแก้ไข (isEditLocked) ยังดูสถานะที่เก็บไว้ ให้ตรงกับ Wizard ของผู้จัดงาน
+export function liveStatus(event: Event, draft: EventDraft | undefined, now: Date): EventStatus {
+  if (event.status === "draft" || event.status === "deleted") return event.status;
+  const phase = getEventPhase(buildPublicEvent(event, draft), now);
+  return phase === "ended" ? "ended" : phase === "live" ? "active" : "scheduled";
 }
 
 // ---------- Survey เปิดต่อหลังจบงานกี่วัน ----------

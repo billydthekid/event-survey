@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useWizardStore } from "@/lib/wizard-store";
+import { useNow } from "@/lib/hooks/useNow";
+import { liveStatus } from "@/lib/utils/eventInfo";
 import { countByEvent, summarize, visibleEvents } from "@/lib/utils/stats";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { formatDayMonth } from "@/lib/utils/date";
@@ -14,6 +17,8 @@ import CreateEventModal from "@/components/events/CreateEventModal";
 // ช่อง "กำลังดู ..." ใน Sidebar + popup เลือก Event
 // เลือก "ภาพรวมทุก Event" → /super · เลือก Event → /super/events/[id]/dashboard
 // Event ที่กำลังดูอ่านจาก URL ([id]) — Sidebar ส่ง eventId เข้ามา
+// สถานะ (ป้าย / ปุ่มกรอง / ลำดับ / สีกล่องวันที่) คิดจากวัน-เวลาจริงด้วย liveStatus — ไม่ใช่ event.status ที่เก็บไว้
+// useNow ใช้ได้เพราะ Sidebar ครอบ <Suspense> อยู่แล้ว
 
 // ลำดับสถานะในรายการ (กำลังจัดงานขึ้นก่อน) — ใช้เป็นปุ่มกรองด้วย
 const STATUS_ORDER: EventStatus[] = ["active", "scheduled", "ended", "draft"];
@@ -50,6 +55,8 @@ export function EventSwitcher({ eventId }: { eventId?: string }) {
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);   // modal สร้าง Event (ตัวเดียวกับปุ่มใน Sidebar)
   const event = useStore((s) => s.events.find((e) => e.id === eventId));
+  const draft = useWizardStore((s) => (eventId ? s.drafts[eventId] : undefined));
+  const now = useNow();
 
   // ไม่มี eventId = ดูทุก Event · มี id แต่หาไม่เจอ (ถูกลบ / พิมพ์ URL ผิด) = "ไม่พบ Event"
   const title = !eventId ? "ทุก Event" : event?.name.th ?? "ไม่พบ Event";
@@ -60,7 +67,7 @@ export function EventSwitcher({ eventId }: { eventId?: string }) {
         onClick={() => setOpen(true)}
         className="mb-3 flex w-full items-center gap-3 rounded-xl bg-white p-2 text-left shadow-sm hover:bg-slate-50"
       >
-        <DateBox all={!eventId} date={event?.date} status={event?.status} />
+        <DateBox all={!eventId} date={event?.date} status={event ? liveStatus(event, draft, now) : undefined} />
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-slate-400">กำลังดู</span>
           <span className="block truncate text-sm font-semibold">{title}</span>
@@ -99,6 +106,9 @@ function EventPicker({
   const events = useStore((s) => s.events);
   const registrations = useStore((s) => s.registrations);
   const responses = useStore((s) => s.responses);
+  const drafts = useWizardStore((s) => s.drafts);   // ข้อมูลใน Wizard ทุก Event (วัน-เวลาที่ผู้จัดงานแก้)
+  const now = useNow();
+  const statusOf = (e: (typeof events)[number]) => liveStatus(e, drafts[e.id], now);
 
   // ---------- ค้นหา / กรอง ----------
   const [search, setSearch] = useState("");
@@ -109,12 +119,12 @@ function EventPicker({
   const keyword = search.trim().toLowerCase();
 
   const list = visibleEvents(events)                                         // ไม่รวมที่ถูกลบ
-    .filter((e) => statusFilter === "all" || e.status === statusFilter)     // ปุ่มกรองสถานะ
+    .filter((e) => statusFilter === "all" || statusOf(e) === statusFilter)  // ปุ่มกรองสถานะ
     .filter((e) => e.name.th.toLowerCase().includes(keyword))               // ช่องค้นหา
     // เรียงตามลำดับสถานะ → สถานะเดียวกันเอาวันล่าสุดขึ้นก่อน
     .sort(
       (a, b) =>
-        STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || b.date.localeCompare(a.date)
+        STATUS_ORDER.indexOf(statusOf(a)) - STATUS_ORDER.indexOf(statusOf(b)) || b.date.localeCompare(a.date)
     );
 
   // ---------- เลือกแล้ว: ปิด popup + ไปหน้านั้น ----------
@@ -193,7 +203,8 @@ function EventPicker({
           <p className="px-3 pt-3 pb-1 text-xs text-slate-400">Event ทั้งหมด</p>
 
           {list.map((e) => {
-            const s = STATUS_LABEL[e.status];
+            const status = statusOf(e);
+            const s = STATUS_LABEL[status];
             const selected = e.id === currentId;
             return (
               <button
@@ -203,7 +214,7 @@ function EventPicker({
                   selected ? "bg-blue-50/60" : "hover:bg-slate-50"
                 }`}
               >
-                <DateBox date={e.date} status={e.status} />
+                <DateBox date={e.date} status={status} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{e.name.th}</span>
                   <span className="mt-1 flex items-center gap-2 text-xs text-slate-400">

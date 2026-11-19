@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { ClipboardCheck, Clock, Download, QrCode, TabletSmartphone, UserPlus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/hooks/useNow";
+import { useWizardStore } from "@/lib/wizard-store";
+import { liveStatus } from "@/lib/utils/eventInfo";
 import { STATUS_LABEL } from "@/lib/utils/status";
 import { countdown, eventRange, formatRecent, formatTime } from "@/lib/utils/date";
 import { latestAt, registrationSlots, satisfactionSummary } from "@/lib/utils/stats";
@@ -27,6 +29,7 @@ function EventDashboard() {
   const allRegistrations = useStore((s) => s.registrations);
   const allResponses = useStore((s) => s.responses);
   const now = useNow();   // อัปเดตทุก 1 นาที → เหลือเวลา / ข้อมูลถึง / ช่องประ ขยับเอง
+  const draft = useWizardStore((st) => st.drafts[id]);   // ข้อมูลใน Wizard (วัน-เวลาที่ผู้จัดงานแก้)
 
   if (!event) {
     return (
@@ -51,7 +54,7 @@ function EventDashboard() {
   const satisfaction = satisfactionSummary(responses, ratingId);
   const timeLeft = countdown(event, now);
 
-  const s = STATUS_LABEL[event.status];
+  const s = STATUS_LABEL[liveStatus(event, draft, now)];   // ป้ายสถานะตามเวลาจริง
   const eventPage = `/super/events/${event.id}/event`;   // หน้า Event (ข้อมูล + QR) — ทำใน ④
 
   return (
@@ -107,7 +110,7 @@ function EventDashboard() {
 
       {/* ---------- สถานะ Event + เมื่อไหร่และที่ไหน (Figma 1136 : 460) ---------- */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[1136fr_460fr]">
-        <EventStatusCard event={event} now={now} />
+        <EventStatusCard event={event} draft={draft} now={now} registered={registrations.length} />
         <WhenWhereCard event={event} now={now} />
       </div>
     </div>

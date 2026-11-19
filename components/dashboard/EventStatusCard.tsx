@@ -1,7 +1,9 @@
 // components/dashboard/EventStatusCard.tsx
 import { ClipboardList, Lock, QrCode, TabletSmartphone, Users, type LucideIcon } from "lucide-react";
 import { Event } from "@/types";
+import type { EventDraft } from "@/types/event";
 import { isEditLocked } from "@/lib/utils/eventInfo";
+import { buildPublicEvent, getRegisterPhase, regClosesAt, regOpensAt } from "@/lib/public-event";
 
 // การ์ด "สถานะ Event" (หน้า ③) — 5 แถว: QR ลงทะเบียน · Survey · จอ Kiosk · ทีมดูแล · แก้ไขข้อมูล
 // ข้อมูลที่ Event ยังไม่ได้กรอก (เช่น Draft) แสดง "ยังไม่กำหนด"
@@ -20,14 +22,16 @@ const KIOSK_LABEL: Record<Event["kiosk"]["screen"], string> = {
   both: "แสดง QR ทั้งคู่",
 };
 
-// ช่วงเปิด-ปิดลงทะเบียน เทียบกับเวลาปัจจุบัน
-function registrationState(event: Event, now: Date): { text: string; open: boolean } {
-  const { opensAt, closesAt } = event.registration;
-  if (!opensAt || !closesAt) return { text: "ยังไม่กำหนด", open: false };
-  const t = now.getTime();
-  if (t < new Date(opensAt).getTime()) return { text: "ยังไม่เปิด", open: false };
-  if (t < new Date(closesAt).getTime()) return { text: "เปิดรับอยู่", open: true };
-  return { text: "ปิดแล้ว", open: false };
+// ช่วงเปิด-ปิดลงทะเบียน เทียบกับเวลาปัจจุบัน — ใช้ getRegisterPhase ตัวเดียวกับหน้า /r และจอ Kiosk
+// (เวลาที่ตั้งใน Wizard มาก่อน · ไม่ได้ตั้ง → เปิดตอนงานเริ่ม ปิดตอนงานจบ · ครบจำนวนรับ → เต็มแล้ว)
+const REGISTER_TEXT = { open: "เปิดรับอยู่", notOpen: "ยังไม่เปิด", closed: "ปิดแล้ว", full: "เต็มแล้ว" };
+
+function registrationState(event: Event, draft: EventDraft | undefined, now: Date, registered: number) {
+  const pub = buildPublicEvent(event, draft);
+  // ไม่มีทั้งช่วงลงทะเบียนและวัน-เวลาจัดงาน → ยังไม่รู้ว่าเปิดเมื่อไหร่
+  if (!regOpensAt(pub) && !regClosesAt(pub)) return { text: "ยังไม่กำหนด", open: false };
+  const phase = getRegisterPhase(pub, now, registered);
+  return { text: REGISTER_TEXT[phase], open: phase === "open" };
 }
 
 function surveyState(event: Event): string {
@@ -46,11 +50,13 @@ interface Row {
 
 interface EventStatusCardProps {
   event: Event;
+  draft?: EventDraft;   // ข้อมูลใน Wizard ของ Event นี้ (ถ้ามี)
   now: Date;
+  registered: number;   // จำนวนคนลงทะเบียน (เช็กว่าเต็มหรือยัง)
 }
 
-export function EventStatusCard({ event, now }: EventStatusCardProps) {
-  const reg = registrationState(event, now);
+export function EventStatusCard({ event, draft, now, registered }: EventStatusCardProps) {
+  const reg = registrationState(event, draft, now, registered);
 
   const rows: Row[] = [
     { icon: QrCode, tone: "green", label: "QR ลงทะเบียน", value: reg.text, highlight: reg.open },
