@@ -1,7 +1,7 @@
 "use client";
-// ขั้นที่ 5: Preview — ไม่มี Checklist แล้ว (ทุกขั้นถูกบังคับให้ครบก่อนมาถึงขั้นนี้)
-// แสดงหน้าตาที่ผู้เข้าร่วมเห็น เรียงลงมาเต็มความกว้าง: จอ Kiosk → ฟอร์มลงทะเบียน → แบบประเมิน
-// ฟอร์ม / Survey ไม่บังคับ → ไม่ได้สร้าง = ขึ้นข้อความว่าไม่มี (แทนตัวอย่างว่าง ๆ)
+// ฟ้าใส: ขั้นที่ 5: Preview — ไม่มี Checklist แล้ว (ทุกขั้นถูกบังคับให้ครบก่อนมาถึงขั้นนี้)
+// ฟ้าใส: แสดงหน้าตาที่ผู้เข้าร่วมเห็น เรียงลงมาเต็มความกว้าง: จอ Kiosk → ฟอร์มลงทะเบียน → แบบประเมิน
+// ฟ้าใส: ฟอร์ม / Survey ไม่บังคับ → ไม่ได้สร้าง = ขึ้นข้อความว่าไม่มี (แทนตัวอย่างว่าง ๆ)
 
 import { Lock } from "lucide-react";
 import { FormPreview } from "@/components/event/form-preview";
@@ -14,14 +14,20 @@ import { pageLook } from "@/lib/theme-presets";
 import { WizardSection } from "./wizard-section";
 import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ขั้นที่ 5 Preview และเผยแพร่
 export function StepPreview() {
+  // ฟ้าใส: Event ที่กำลังแก้
   const d = useWizardStore((s) => s.draft);
+  // ฟ้าใส: ข้อมูลทั่วไป
   const g = d.general;
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
 
   return (
     <>
+      {/* ฟ้าใส: ส่วนจอ Kiosk */}
       <WizardSection
         title={tr("จอ Kiosk", "Kiosk screen")}
         description={
@@ -31,16 +37,19 @@ export function StepPreview() {
         }
       >
         <div className={d.theme.kiosk === "landscape" ? "mx-auto w-full max-w-2xl" : "mx-auto w-full max-w-sm"}>
+          {/* ฟ้าใส: ภาพจำลองจอ Kiosk */}
           <KioskPreview d={d} />
         </div>
       </WizardSection>
 
+      {/* ฟ้าใส: ส่วนฟอร์มลงทะเบียน */}
       <WizardSection
         title={tr("ฟอร์มลงทะเบียน", "Registration form")}
         description={tr("หน้าที่ผู้เข้าร่วมเห็นเมื่อสแกน QR ลงทะเบียน", "What attendees see after scanning the registration QR")}
       >
         {hasRegistration(d) ? (
           <div className="mx-auto w-full max-w-md">
+            {/* ฟ้าใส: ภาพจำลองฟอร์ม (สีตามที่ตั้งใน Branding) */}
             <FormPreview fields={d.form.fields} primary={d.theme.primary} eventName={g.nameTh} look={pageLook(d.theme, "form")} />
           </div>
         ) : (
@@ -53,12 +62,14 @@ export function StepPreview() {
         )}
       </WizardSection>
 
+      {/* ฟ้าใส: ส่วนแบบประเมิน */}
       <WizardSection
         title={tr("แบบประเมิน", "Survey")}
         description={tr("หน้าที่ผู้เข้าร่วมเห็นเมื่อสแกน QR Survey", "What attendees see after scanning the survey QR")}
       >
         {hasSurvey(d) ? (
           <div className="mx-auto w-full max-w-md">
+            {/* ฟ้าใส: ภาพจำลองแบบประเมิน */}
             <SurveyPreview
               questions={d.survey.questions}
               lang="th"
@@ -77,7 +88,7 @@ export function StepPreview() {
         )}
       </WizardSection>
 
-      {/* คำเตือนสำคัญก่อนกดเผยแพร่: เน้นด้วยกล่องสีส้ม + ไอคอนกุญแจ */}
+      {/* ฟ้าใส: คำเตือนสำคัญก่อนกดเผยแพร่: เน้นด้วยกล่องสีส้ม + ไอคอนกุญแจ */}
       <div className="py-5">
         <div role="note" className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <Lock className="mt-0.5 size-4 shrink-0" />
@@ -94,6 +105,7 @@ export function StepPreview() {
   );
 }
 
+// ฟ้าใส: กล่องแจ้งว่าไม่มีฟอร์ม / Survey
 function EmptyPreview({ text }: { text: string }) {
   return <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{text}</p>;
 }

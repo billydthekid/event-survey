@@ -1,10 +1,10 @@
 "use client";
-// ขั้นที่ 4: Survey — หน้าเดียวเรียงลงมา (แบบเดียวกับขั้นฟอร์มลงทะเบียน): เวลาเปิด–ปิดรับคำตอบ → คำถาม
-// Survey Builder เดิม (/survey/builder) ย้ายมาอยู่ตรงนี้แล้ว:
-// - การ์ดทีละคำถาม: พิมพ์คำถามในการ์ด (ภาษาไทย) · แก้ตัวเลือก / ตาราง / สเกล (QuestionEditor) · ทำสำเนา · ลบ
-// - ท้ายการ์ด: เปลี่ยนประเภท · คะแนนเต็ม (ให้ดาว / สเกล) · Required (เดิมอยู่แผงขวา)
-// - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts) · แถบ "เพิ่มคำถาม" = 12 ประเภท (lib/survey-types.ts)
-// - Survey ไม่บังคับ (ไม่มีคำถาม = ไม่มี Survey) · ถ้ามีคำถามต้องกำหนดเวลาก่อนกด "ถัดไป" (stepBlock)
+// ฟ้าใส: ขั้นที่ 4: Survey — หน้าเดียวเรียงลงมา (แบบเดียวกับขั้นฟอร์มลงทะเบียน): เวลาเปิด–ปิดรับคำตอบ → คำถาม
+// ฟ้าใส: Survey Builder เดิม (/survey/builder) ย้ายมาอยู่ตรงนี้แล้ว:
+// ฟ้าใส: - การ์ดทีละคำถาม: พิมพ์คำถามในการ์ด (ภาษาไทย) · แก้ตัวเลือก / ตาราง / สเกล (QuestionEditor) · ทำสำเนา · ลบ
+// ฟ้าใส: - ท้ายการ์ด: เปลี่ยนประเภท · คะแนนเต็ม (ให้ดาว / สเกล) · Required (เดิมอยู่แผงขวา)
+// ฟ้าใส: - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts) · แถบ "เพิ่มคำถาม" = 12 ประเภท (lib/survey-types.ts)
+// ฟ้าใส: - Survey ไม่บังคับ (ไม่มีคำถาม = ไม่มี Survey) · ถ้ามีคำถามต้องกำหนดเวลาก่อนกด "ถัดไป" (stepBlock)
 
 import { useState } from "react";
 import { Copy, GripVertical, Trash2 } from "lucide-react";
@@ -23,41 +23,57 @@ import { TimeWindowFields } from "./time-window-fields";
 import { WizardSection } from "./wizard-section";
 import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ขั้นที่ 4 Survey
 export function StepSurvey() {
+  // ฟ้าใส: Event ที่กำลังแก้
   const draft = useWizardStore((s) => s.draft);
+  // ฟ้าใส: ฟังก์ชันบันทึก
   const patch = useWizardStore((s) => s.patch);
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ภาษาอังกฤษไหม
   const en = lang === "en";
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
+  // ฟ้าใส: ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
   const qs = draft.survey.questions.map(normalizeQuestion);
+  // ฟ้าใส: บันทึกรายการคำถามใหม่ทั้งหมด
   const setQs = (next: SurveyQuestion[]) => patch("survey", { questions: next });
+  // ฟ้าใส: แก้คำถามเดียวตาม id
   const update = (qid: string, v: Partial<SurveyQuestion>) => setQs(qs.map((q) => (q.id === qid ? { ...q, ...v } : q)));
-  const sort = useDragSort(qs, setQs); // ลากเรียงคำถาม
+  const sort = useDragSort(qs, setQs); // ฟ้าใส: ลากเรียงคำถาม
 
-  const add = (type: SurveyQType) => { // เพิ่มคำถามใหม่: ประเภท + ค่าตั้งต้นของประเภทนั้น + id ใหม่
+  const add = (type: SurveyQType) => { // ฟ้าใส: เพิ่มคำถามใหม่: ประเภท + ค่าตั้งต้นของประเภทนั้น + id ใหม่
+    // ฟ้าใส: id ของคำถามใหม่
     const nid = newId("q");
     setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: [], ...defaultsFor(type, undefined, lang) }]);
     setSelectedId(nid);
   };
 
-  const duplicate = (qid: string) => { // ทำสำเนา: copy + id ใหม่ + insert หลังคำถามเดิม
+  const duplicate = (qid: string) => { // ฟ้าใส: ทำสำเนา: copy + id ใหม่ + insert หลังคำถามเดิม
+    // ฟ้าใส: ตำแหน่งของคำถามที่จะทำสำเนา
     const i = qs.findIndex((q) => q.id === qid);
+    // ฟ้าใส: id ของสำเนา
     const nid = newId("q");
+    // ฟ้าใส: คำถามต้นฉบับ
     const src = qs[i];
+    // ฟ้าใส: สำเนา (คัดลอกตัวเลือก / แถวแยกกัน)
     const copy = { ...src, id: nid, options: [...src.options], rows: src.rows ? [...src.rows] : undefined };
     setQs([...qs.slice(0, i + 1), copy, ...qs.slice(i + 1)]);
     setSelectedId(nid);
   };
 
+  // ฟ้าใส: ลบคำถาม
   const remove = (qid: string) => setQs(qs.filter((q) => q.id !== qid));
+  // ฟ้าใส: เปลี่ยนประเภทคำถาม + ใส่ค่าตั้งต้นของประเภทนั้น
   const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q, lang) });
 
 
   return (
     <>
+      {/* ฟ้าใส: ส่วนเวลาเปิด–ปิดตอบ */}
       <WizardSection
         title={tr("เปิดตอบ Survey", "Survey window")}
         description={
@@ -66,6 +82,7 @@ export function StepSurvey() {
             : tr("ผู้เข้าร่วมตอบแบบประเมินผ่าน QR Survey ได้เฉพาะช่วงนี้", "Attendees can answer via the survey QR only during this time")
         }
       >
+        {/* ฟ้าใส: ช่องเลือกเวลาเปิด–ปิดตอบ (บังคับเมื่อมีคำถาม) */}
         <TimeWindowFields
           openKey="surveyOpen"
           closeKey="surveyClose"
@@ -75,7 +92,7 @@ export function StepSurvey() {
         />
       </WizardSection>
 
-      {/* พิมพ์คำถามภาษาไทยอย่างเดียว (ตัดปุ่มสลับ TH / EN ออกแล้ว · titleEn เดิมยังเก็บไว้) */}
+      {/* ฟ้าใส: พิมพ์คำถามภาษาไทยอย่างเดียว (ตัดปุ่มสลับ TH / EN ออกแล้ว · titleEn เดิมยังเก็บไว้) */}
       <WizardSection title={tr("คำถาม", "Questions")} description={tr(`${qs.length} คำถาม · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`, `${qs.length} questions · drag ⋮⋮ to reorder`)}>
         {qs.length === 0 && (
           <p className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
@@ -84,10 +101,14 @@ export function StepSurvey() {
         )}
 
         {qs.map((q, i) => {
+          // ฟ้าใส: ข้อมูลของประเภทคำถามนี้
           const meta = qtype(q.type);
+          // ฟ้าใส: การ์ดนี้ถูกเลือกอยู่ไหม
           const isSel = selectedId === q.id;
+          // ฟ้าใส: เป็นคำถามแบบคะแนน (ดาว / สเกล) ไหม
           const scale = q.type === "rating" || q.type === "linear";
           return (
+            // ฟ้าใส: การ์ดของคำถาม 1 ข้อ (ลากเรียงได้)
             <section
               key={q.id}
               {...sort.itemProps(i)}
@@ -126,7 +147,7 @@ export function StepSurvey() {
                 </div>
               </div>
 
-              {/* ชื่อคำถาม พิมพ์แก้ในการ์ดได้เลย */}
+              {/* ฟ้าใส: ชื่อคำถาม พิมพ์แก้ในการ์ดได้เลย */}
               <div className="flex items-baseline gap-1">
                 <input
                   value={q.titleTh}
@@ -138,10 +159,10 @@ export function StepSurvey() {
                 {q.required && <span className="text-lg font-bold text-destructive">*</span>}
               </div>
 
-              {/* ช่องตอบ: แก้ตัวเลือก / แถว-คอลัมน์ของตาราง / คำกำกับสเกล ในการ์ดได้เลย */}
+              {/* ฟ้าใส: ช่องตอบ: แก้ตัวเลือก / แถว-คอลัมน์ของตาราง / คำกำกับสเกล ในการ์ดได้เลย */}
               <QuestionEditor q={q} primary={draft.theme.primary} update={(v) => update(q.id, v)} />
 
-              {/* ประเภท + คะแนนเต็ม + Required (เดิมอยู่แผงตั้งค่าด้านขวาของ Survey Builder) */}
+              {/* ฟ้าใส: ประเภท + คะแนนเต็ม + Required (เดิมอยู่แผงตั้งค่าด้านขวาของ Survey Builder) */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm">
@@ -161,6 +182,7 @@ export function StepSurvey() {
                   {scale && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">{q.type === "rating" ? tr("จำนวนดาว", "Stars") : tr("คะแนนเต็ม", "Max score")}</span>
+                      {/* ฟ้าใส: เลือกคะแนนเต็ม 5 หรือ 10 */}
                       <ToggleGroup
                         value={[String(ratingOf(q).max)]}
                         onValueChange={(v) => v[0] && update(q.id, { ratingMax: Number(v[0]) as RatingMax })}
@@ -182,7 +204,7 @@ export function StepSurvey() {
           );
         })}
 
-        {/* ===== แถบเพิ่มคำถาม: 12 ประเภท ===== */}
+        {/* ฟ้าใส: ===== แถบเพิ่มคำถาม: 12 ประเภท ===== */}
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed p-4">
           <span className="mr-2 text-sm text-muted-foreground">{tr("เพิ่มคำถาม", "Add question")}</span>
           {QTYPES.map((qt) => (

@@ -1,8 +1,8 @@
 "use client";
-// หน้าต่าง Crop รูปปก / โฆษณา ตามสัดส่วน: 16:9 (1920 × 1080 px) หรือ 3:4 (1080 × 1440 px) สำหรับจอ Kiosk แนวนอน
-// - ลากรูปเพื่อเลื่อนตำแหน่ง · เลื่อนแถบ Zoom เพื่อขยาย
-// - กรอบตามสัดส่วนอยู่กับที่ รูปต้องเต็มกรอบเสมอ (เลื่อนออกนอกกรอบไม่ได้)
-// - กด "ใช้รูปนี้" → ตัดด้วย canvas ได้ JPEG ตามขนาดของสัดส่วน (lib/image-crop.ts)
+// ฟ้าใส: หน้าต่าง Crop รูปปก / โฆษณา ตามสัดส่วน: 16:9 (1920 × 1080 px) หรือ 3:4 (1080 × 1440 px) สำหรับจอ Kiosk แนวนอน
+// ฟ้าใส: - ลากรูปเพื่อเลื่อนตำแหน่ง · เลื่อนแถบ Zoom เพื่อขยาย
+// ฟ้าใส: - กรอบตามสัดส่วนอยู่กับที่ รูปต้องเต็มกรอบเสมอ (เลื่อนออกนอกกรอบไม่ได้)
+// ฟ้าใส: - กด "ใช้รูปนี้" → ตัดด้วย canvas ได้ JPEG ตามขนาดของสัดส่วน (lib/image-crop.ts)
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Move, ZoomIn } from "lucide-react";
@@ -12,38 +12,50 @@ import { MEDIA_SIZE, cropToDataUrl, loadImage } from "@/lib/image-crop";
 import type { CropRatio } from "@/types/event";
 import { useTr } from "@/lib/wizard-lang";
 
-// ขนาดกรอบบนจอ (px): 16:9 = 560 × 315 · 3:4 = 315 × 420
+// ฟ้าใส: ขนาดกรอบบนจอ (px): 16:9 = 560 × 315 · 3:4 = 315 × 420
 const FRAME: Record<CropRatio, { w: number; h: number }> = {
-  "4:1": { w: 560, h: 140 }, // แบนเนอร์
+  "4:1": { w: 560, h: 140 }, // ฟ้าใส: แบนเนอร์
   "16:9": { w: 560, h: 315 },
   "3:4": { w: 315, h: 420 },
 };
 
+// ฟ้าใส: ค่าที่ส่งเข้ามาให้หน้าต่าง Crop
 interface Props {
-  src: string | null; // data URL ของรูปต้นฉบับ (null = ปิด)
-  title?: string; // ค่าเริ่มต้น "Crop รูปโฆษณา <สัดส่วน>"
-  ratio?: CropRatio; // ไม่ส่ง = 16:9
+  src: string | null; // ฟ้าใส: data URL ของรูปต้นฉบับ (null = ปิด)
+  title?: string; // ฟ้าใส: ค่าเริ่มต้น "Crop รูปโฆษณา <สัดส่วน>"
+  ratio?: CropRatio; // ฟ้าใส: ไม่ส่ง = 16:9
   fileName: string;
+  // ฟ้าใส: กดยกเลิก
   onCancel: () => void;
+  // ฟ้าใส: crop เสร็จ ส่งรูปกลับ
   onDone: (dataUrl: string) => void;
 }
 
+// ฟ้าใส: หน้าต่าง Crop รูป
 export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onDone }: Props) {
+  // ฟ้าใส: ความกว้างกรอบบนจอ
   const FRAME_W = FRAME[ratio].w;
+  // ฟ้าใส: ความสูงกรอบบนจอ
   const FRAME_H = FRAME[ratio].h;
   const { w: OUT_W, h: OUT_H } = MEDIA_SIZE[ratio];
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 }); // มุมซ้ายบนของรูป เทียบกับกรอบ
+  const [offset, setOffset] = useState({ x: 0, y: 0 }); // ฟ้าใส: มุมซ้ายบนของรูป เทียบกับกรอบ
+  // ฟ้าใส: จุดเริ่มลาก (ตำแหน่งเมาส์ + ตำแหน่งรูป)
   const drag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
 
-  // โหลดรูปเมื่อเปิด แล้วจัดกึ่งกลาง (setState อยู่ใน callback ของ promise ไม่ใช่ใน effect ตรง ๆ)
+  // ฟ้าใส: โหลดรูปเมื่อเปิด แล้วจัดกึ่งกลาง (setState อยู่ใน callback ของ promise ไม่ใช่ใน effect ตรง ๆ)
   useEffect(() => {
+    // ฟ้าใส: ยังไม่มีรูป → ไม่โหลด
     if (!src) return;
+    // ฟ้าใส: ยังเปิดหน้าต่างอยู่ไหม (กันโหลดเสร็จหลังปิด)
     let alive = true;
     loadImage(src).then((im) => {
+      // ฟ้าใส: ปิดไปแล้ว → ไม่ต้องตั้งค่า
       if (!alive) return;
+      // ฟ้าใส: ขนาดที่รูปเต็มกรอบพอดี
       const s = Math.max(FRAME_W / im.naturalWidth, FRAME_H / im.naturalHeight);
       setImg(im);
       setZoom(1);
@@ -55,34 +67,45 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
     // eslint-disable-next-line react-hooks/exhaustive-deps -- จัดกึ่งกลางใหม่เมื่อเปลี่ยนรูป / สัดส่วน (FRAME_W/H มาจาก ratio)
   }, [src, ratio]);
 
-  // scale = จากพิกเซลรูปจริง → พิกเซลบนจอ (cover กรอบ × zoom)
-  const base = img ? Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight) : 1; // scale ของรูปเต็มกรอบ ภาพเต็มกรอบตอนเปิด
+  // ฟ้าใส: scale = จากพิกเซลรูปจริง → พิกเซลบนจอ (cover กรอบ × zoom)
+  const base = img ? Math.max(FRAME_W / img.naturalWidth, FRAME_H / img.naturalHeight) : 1; // ฟ้าใส: scale ของรูปเต็มกรอบ ภาพเต็มกรอบตอนเปิด
+  // ฟ้าใส: ขนาดรูปบนจอตอนนี้ (รวมซูม)
   const scale = base * zoom;
+  // ฟ้าใส: ความกว้างรูปบนจอ
   const dw = img ? img.naturalWidth * scale : 0;
+  // ฟ้าใส: ความสูงรูปบนจอ
   const dh = img ? img.naturalHeight * scale : 0;
-  const clamp = (x: number, y: number) => ({ // ป้องกันลากออกนอกกรอบ ล็อกขอบไม่ให้เห็นช่องว่าง
+  const clamp = (x: number, y: number) => ({ // ฟ้าใส: ป้องกันลากออกนอกกรอบ ล็อกขอบไม่ให้เห็นช่องว่าง
     x: Math.min(0, Math.max(FRAME_W - dw, x)),
     y: Math.min(0, Math.max(FRAME_H - dh, y)),
   });
+  // ฟ้าใส: ตำแหน่งรูปที่ไม่หลุดกรอบ
   const pos = clamp(offset.x, offset.y);
+  // ฟ้าใส: รูปเล็กกว่าขนาดผลลัพธ์ไหม (เตือนว่าอาจไม่คม)
   const small = img !== null && (img.naturalWidth < OUT_W || img.naturalHeight < OUT_H);
 
-  // zoom รอบจุดกึ่งกลางกรอบ
-  const changeZoom = (z: number) => { // ซูมรอบจุดกลาง
+  // ฟ้าใส: zoom รอบจุดกึ่งกลางกรอบ
+  const changeZoom = (z: number) => { // ฟ้าใส: ซูมรอบจุดกลาง
+    // ฟ้าใส: ยังไม่มีรูป → ไม่ทำอะไร
     if (!img) return;
+    // ฟ้าใส: จุดกลางกรอบ ตำแหน่ง x ในรูปจริง
     const cx = (FRAME_W / 2 - pos.x) / scale;
+    // ฟ้าใส: จุดกลางกรอบ ตำแหน่ง y ในรูปจริง
     const cy = (FRAME_H / 2 - pos.y) / scale;
+    // ฟ้าใส: ขนาดใหม่หลังซูม
     const ns = base * z;
     setZoom(z);
     setOffset({ x: FRAME_W / 2 - cx * ns, y: FRAME_H / 2 - cy * ns });
   };
 
-  const confirm = () => { // ตัดรูปแล้วส่งกลับ data URL กด "ใช้รูปนี้"
+  const confirm = () => { // ฟ้าใส: ตัดรูปแล้วส่งกลับ data URL กด "ใช้รูปนี้"
+    // ฟ้าใส: ยังไม่มีรูป → ไม่ทำอะไร
     if (!img) return;
     onDone(cropToDataUrl(img, { x: -pos.x / scale, y: -pos.y / scale, width: FRAME_W / scale, height: FRAME_H / scale }, ratio));
   };
 
   return (
+    // ฟ้าใส: หน้าต่าง (เปิดเมื่อมีรูป)
     <Dialog open={src !== null} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
@@ -101,7 +124,9 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
             drag.current = { px: e.clientX, py: e.clientY, ox: pos.x, oy: pos.y };
           }}
           onPointerMove={(e) => {
+            // ฟ้าใส: ข้อมูลตอนเริ่มลาก
             const d = drag.current;
+            // ฟ้าใส: กำลังลาก → เลื่อนรูปตามเมาส์
             if (d) setOffset(clamp(d.ox + e.clientX - d.px, d.oy + e.clientY - d.py));
           }}
           onPointerUp={() => (drag.current = null)}
@@ -116,7 +141,7 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
               style={{ left: pos.x, top: pos.y, width: dw, height: dh }}
             />
           )}
-          {/* เส้นแบ่ง 3 ส่วน ช่วยจัดองค์ประกอบ */}
+          {/* ฟ้าใส: เส้นแบ่ง 3 ส่วน ช่วยจัดองค์ประกอบ */}
           <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
             {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="border border-white/25" />
@@ -128,7 +153,7 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
         <div className="flex items-center gap-3 text-sm">
           <ZoomIn className="size-4 text-muted-foreground" />
           <input
-            type="range" // zoom แถบซูม 1–3 เท่า
+            type="range" // ฟ้าใส: zoom แถบซูม 1–3 เท่า
             min={1}
             max={3}
             step={0.01}

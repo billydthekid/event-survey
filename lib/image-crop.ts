@@ -1,28 +1,31 @@
-// lib/image-crop.ts
-// ตัด (crop) รูปในเบราว์เซอร์ด้วย <canvas> แล้วเก็บเป็น data URL (ยังไม่มี API อัปโหลดจริง)
-// รูปโฆษณาบน Kiosk = 16:9 ขนาด 1920 × 1080 px บีบอัดเป็น JPEG เพื่อไม่ให้ localStorage เต็ม (~200–400 KB ต่อรูป)
+// ฟ้าใส: lib/image-crop.ts
+// ฟ้าใส: ตัด (crop) รูปในเบราว์เซอร์ด้วย <canvas> แล้วเก็บเป็น data URL (ยังไม่มี API อัปโหลดจริง)
+// ฟ้าใส: รูปโฆษณาบน Kiosk = 16:9 ขนาด 1920 × 1080 px บีบอัดเป็น JPEG เพื่อไม่ให้ localStorage เต็ม (~200–400 KB ต่อรูป)
 
-// จอ Kiosk แนวนอนเลือกรูป 3:4 ได้ (1080 × 1440 px) · ขนาดเดิม 16:9 ยังเป็นค่าเริ่มต้น
+// ฟ้าใส: จอ Kiosk แนวนอนเลือกรูป 3:4 ได้ (1080 × 1440 px) · ขนาดเดิม 16:9 ยังเป็นค่าเริ่มต้น
 import type { CropRatio, EventDraft, MediaRatio } from "@/types/event";
 
+// ฟ้าใส: ความกว้างรูปโฆษณา 16:9
 export const AD_WIDTH = 1920;
+// ฟ้าใส: ความสูงรูปโฆษณา 16:9
 export const AD_HEIGHT = 1080;
-export const AD_RATIO = AD_WIDTH / AD_HEIGHT; // 16:9
+export const AD_RATIO = AD_WIDTH / AD_HEIGHT; // ฟ้าใส: 16:9
 
-/** ขนาดผลลัพธ์ของแต่ละสัดส่วน (px) */
+/** ฟ้าใส: ขนาดผลลัพธ์ของแต่ละสัดส่วน (px) */
 export const MEDIA_SIZE: Record<CropRatio, { w: number; h: number }> = {
   "16:9": { w: AD_WIDTH, h: AD_HEIGHT },
   "3:4": { w: 1080, h: 1440 },
-  "4:1": { w: 1600, h: 400 }, // แบนเนอร์หัวฟอร์ม / Survey
+  "4:1": { w: 1600, h: 400 }, // ฟ้าใส: แบนเนอร์หัวฟอร์ม / Survey
 };
 
-/** สัดส่วนรูปที่ใช้ตอนนี้: ตามที่เลือก (ไม่มี = 16:9) · ได้ทั้งจอแนวตั้งและแนวนอน */
+/** ฟ้าใส: สัดส่วนรูปที่ใช้ตอนนี้: ตามที่เลือก (ไม่มี = 16:9) · ได้ทั้งจอแนวตั้งและแนวนอน */
 export function mediaRatioOf(theme: EventDraft["theme"]): MediaRatio {
   return theme.mediaRatio ?? "16:9";
 }
 
-export function readFileAsDataUrl(file: File): Promise<string> { // อ่านไฟล์ → data URL
+export function readFileAsDataUrl(file: File): Promise<string> { // ฟ้าใส: อ่านไฟล์ → data URL
   return new Promise((resolve, reject) => {
+    // ฟ้าใส: ตัวอ่านไฟล์ของเบราว์เซอร์
     const r = new FileReader();
     r.onload = () => resolve(String(r.result));
     r.onerror = () => reject(r.error);
@@ -30,8 +33,10 @@ export function readFileAsDataUrl(file: File): Promise<string> { // อ่าน
   });
 }
 
+// ฟ้าใส: โหลดรูปจาก data URL / ลิงก์ ให้ได้ object รูปที่วาดลง canvas ได้
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
+    // ฟ้าใส: สร้าง object รูปเปล่า แล้วรอโหลดเสร็จ
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("โหลดรูปไม่ได้"));
@@ -39,7 +44,7 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** พื้นที่ของรูปต้นฉบับที่จะตัด (หน่วย px ของรูปต้นฉบับ) */
+/** ฟ้าใส: พื้นที่ของรูปต้นฉบับที่จะตัด (หน่วย px ของรูปต้นฉบับ) */
 export interface CropRect {
   x: number;
   y: number;
@@ -47,22 +52,25 @@ export interface CropRect {
   height: number;
 }
 
-/** ตัดรูปตาม rect แล้วย่อ/ขยายเป็นขนาดของสัดส่วนนั้น (16:9 = 1920×1080, 3:4 = 1080×1440) → data URL (JPEG) */
+/** ฟ้าใส: ตัดรูปตาม rect แล้วย่อ/ขยายเป็นขนาดของสัดส่วนนั้น (16:9 = 1920×1080, 3:4 = 1080×1440) → data URL (JPEG) */
 export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, ratio: CropRatio = "16:9", quality = 0.85): string {
   const { w, h } = MEDIA_SIZE[ratio];
+  // ฟ้าใส: สร้าง canvas ขนาดเท่ารูปผลลัพธ์
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
+  // ฟ้าใส: ปากกาวาดของ canvas
   const ctx = canvas.getContext("2d");
+  // ฟ้าใส: เบราว์เซอร์เก่าที่ไม่มี canvas → แจ้ง error
   if (!ctx) throw new Error("เบราว์เซอร์ไม่รองรับ canvas");
-  ctx.fillStyle = "#FFFFFF"; // PNG พื้นใส → พื้นขาว (JPEG ไม่มีความโปร่งใส)
+  ctx.fillStyle = "#FFFFFF"; // ฟ้าใส: PNG พื้นใส → พื้นขาว (JPEG ไม่มีความโปร่งใส)
   ctx.fillRect(0, 0, w, h);
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, w, h); // ตัดแล้วย่อ/ขยายตามขนาดของสัดส่วน
-  return canvas.toDataURL("image/jpeg", quality); // data URL ของ JPEG ได้ไฟล์ JPEG 85%
+  ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, w, h); // ฟ้าใส: ตัดแล้วย่อ/ขยายตามขนาดของสัดส่วน
+  return canvas.toDataURL("image/jpeg", quality); // ฟ้าใส: data URL ของ JPEG ได้ไฟล์ JPEG 85%
 }
 
-/** ขนาดไฟล์โดยประมาณของ data URL (KB) */
+/** ฟ้าใส: ขนาดไฟล์โดยประมาณของ data URL (KB) */
 export const dataUrlKB = (url: string) => Math.round((url.length * 3) / 4 / 1024);
 
 /**
@@ -76,20 +84,27 @@ export async function resizeToDataUrl(
   type: "image/png" | "image/jpeg" = "image/jpeg",
   quality = 0.82
 ): Promise<string> {
+  // ฟ้าใส: โหลดรูปต้นฉบับ
   const img = await loadImage(src);
-  const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight); // อยู่ในกรอบทั้งรูป ไม่ขยาย
+  const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight); // ฟ้าใส: อยู่ในกรอบทั้งรูป ไม่ขยาย
+  // ฟ้าใส: ความกว้างใหม่ (อย่างน้อย 1 px)
   const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  // ฟ้าใส: ความสูงใหม่ (อย่างน้อย 1 px)
   const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  // ฟ้าใส: สร้าง canvas ขนาดใหม่
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
+  // ฟ้าใส: ปากกาวาดของ canvas
   const ctx = canvas.getContext("2d");
+  // ฟ้าใส: เบราว์เซอร์ไม่รองรับ canvas → แจ้ง error
   if (!ctx) throw new Error("เบราว์เซอร์ไม่รองรับ canvas");
+  // ฟ้าใส: JPEG ไม่มีพื้นใส → ระบายพื้นขาวก่อน
   if (type === "image/jpeg") {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, w, h);
   }
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, 0, 0, w, h); // ย่อรูป วาดขนาดใหม่
+  ctx.drawImage(img, 0, 0, w, h); // ฟ้าใส: ย่อรูป วาดขนาดใหม่
   return canvas.toDataURL(type, quality);
 }

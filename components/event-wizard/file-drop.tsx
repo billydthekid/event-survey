@@ -5,23 +5,28 @@ import { ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UploadedAsset } from "@/types/event";
 
+// ฟ้าใส: ค่าที่ส่งเข้ามาให้กล่องวางไฟล์
 interface Props {
-  onPick?: (asset: UploadedAsset) => void; // ได้แค่ชื่อ + ขนาด (mock)
-  onFile?: (file: File) => void; // ได้ไฟล์จริง (ใช้กับรูปโฆษณาที่ต้อง crop)
+  onPick?: (asset: UploadedAsset) => void; // ฟ้าใส: ได้แค่ชื่อ + ขนาด (mock)
+  onFile?: (file: File) => void; // ฟ้าใส: ได้ไฟล์จริง (ใช้กับรูปโฆษณาที่ต้อง crop)
   title: string;
   hint?: string;
   accept?: string;
   className?: string;
 }
 
+// ฟ้าใส: กล่องลากไฟล์มาวาง หรือกดเลือกไฟล์
 export function FileDrop({ onPick, onFile, title, hint, accept = "image/png,image/jpeg", className }: Props) {
+  // ฟ้าใส: ช่องเลือกไฟล์ที่ซ่อนไว้
   const ref = useRef<HTMLInputElement>(null);
 
+  // ฟ้าใส: ได้ไฟล์แล้ว → ส่งต่อ
   const handle = (file?: File) => {
+    // ฟ้าใส: ไม่มีไฟล์ → ไม่ทำอะไร
     if (!file) return;
     onFile?.(file);
     onPick?.({ name: file.name, sizeKB: Math.round(file.size / 1024), cropped: false });
-    if (ref.current) ref.current.value = ""; // เลือกไฟล์เดิมซ้ำได้
+    if (ref.current) ref.current.value = ""; // ฟ้าใส: เลือกไฟล์เดิมซ้ำได้
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
-// ช่องรูปเล็ก (โลโก้ / พื้นหลัง) ใช้ในขั้น Branding: กรอบรูปย่อ + ปุ่มอัปโหลด / เปลี่ยน / ลบ
-// แยกออกมาจาก step-branding.tsx เพื่อใช้ซ้ำในส่วนตั้งสีของฟอร์ม / Survey (custom-colors.tsx)
+// ฟ้าใส: ช่องรูปเล็ก (โลโก้ / พื้นหลัง) ใช้ในขั้น Branding: กรอบรูปย่อ + ปุ่มอัปโหลด / เปลี่ยน / ลบ
+// ฟ้าใส: แยกออกมาจาก step-branding.tsx เพื่อใช้ซ้ำในส่วนตั้งสีของฟอร์ม / Survey (custom-colors.tsx)
 
 import { useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { UploadedAsset } from "@/types/event";
 import { useTr } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ช่องรูปเล็ก: กรอบรูป + ปุ่มอัปโหลด / เปลี่ยน / ลบ
 export function ImageSlot({
   asset,
   hint,
@@ -20,13 +21,17 @@ export function ImageSlot({
 }: {
   asset: UploadedAsset | null;
   hint: string;
+  // ฟ้าใส: เลือกไฟล์แล้ว
   onPick: (f: File) => Promise<void>;
+  // ฟ้าใส: กดลบ
   onRemove: () => void;
   className?: string;
   accept?: string;
   contain?: boolean;
 }) {
+  // ฟ้าใส: ช่องเลือกไฟล์ที่ซ่อนไว้
   const ref = useRef<HTMLInputElement>(null);
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
   const [error, setError] = useState("");
   return (
@@ -65,10 +70,13 @@ export function ImageSlot({
         accept={accept}
         hidden
         onChange={async (e) => {
+          // ฟ้าใส: ไฟล์ที่เลือก
           const f = e.target.files?.[0];
           e.target.value = "";
+          // ฟ้าใส: ไม่ได้เลือก → ไม่ทำอะไร
           if (!f) return;
           setError("");
+          // ฟ้าใส: ไฟล์ต้องไม่เกิน 10 MB
           if (f.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
           try {
             await onPick(f);

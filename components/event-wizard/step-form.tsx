@@ -1,10 +1,10 @@
 "use client";
-// ขั้นที่ 3: ฟอร์มลงทะเบียน — หน้าเดียวเรียงลงมา: เวลาเปิด–ปิดรับลงทะเบียน → ช่องในฟอร์ม (แบบ Google Form)
-// - การ์ดทีละช่อง: พิมพ์ชื่อช่อง · ตั้งตัวเลือก (Multiple Choice / Checkboxes / Dropdown) · ทำสำเนา · ลบ
-// - ท้ายการ์ด: เปลี่ยนประเภท + Required (เดิมอยู่แผงขวา)
-// - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts)
-// - แถบ "เพิ่มช่อง" = 12 ประเภท (lib/form-types.ts) · กดแล้วได้ช่องพร้อมชื่อตัวอย่าง แก้ชื่อได้
-// - ฟอร์มไม่บังคับ (ไม่มีช่อง = ไม่รับลงทะเบียน) · ถ้ามีช่องต้องกำหนดเวลาเปิด–ปิดรับก่อนกด "ถัดไป" (stepBlock)
+// ฟ้าใส: ขั้นที่ 3: ฟอร์มลงทะเบียน — หน้าเดียวเรียงลงมา: เวลาเปิด–ปิดรับลงทะเบียน → ช่องในฟอร์ม (แบบ Google Form)
+// ฟ้าใส: - การ์ดทีละช่อง: พิมพ์ชื่อช่อง · ตั้งตัวเลือก (Multiple Choice / Checkboxes / Dropdown) · ทำสำเนา · ลบ
+// ฟ้าใส: - ท้ายการ์ด: เปลี่ยนประเภท + Required (เดิมอยู่แผงขวา)
+// ฟ้าใส: - ลากที่ ⋮⋮ เพื่อเรียงลำดับ (lib/use-drag-sort.ts)
+// ฟ้าใส: - แถบ "เพิ่มช่อง" = 12 ประเภท (lib/form-types.ts) · กดแล้วได้ช่องพร้อมชื่อตัวอย่าง แก้ชื่อได้
+// ฟ้าใส: - ฟอร์มไม่บังคับ (ไม่มีช่อง = ไม่รับลงทะเบียน) · ถ้ามีช่องต้องกำหนดเวลาเปิด–ปิดรับก่อนกด "ถัดไป" (stepBlock)
 
 import { useState } from "react";
 import { Copy, Eye, GripVertical, Plus, Trash2, X } from "lucide-react";
@@ -23,54 +23,72 @@ import type { FieldKind, FormField } from "@/types/event";
 import { TimeWindowFields } from "./time-window-fields";
 import { WizardSection } from "./wizard-section";
 
+// ฟ้าใส: ขั้นที่ 3 ฟอร์มลงทะเบียน
 export function StepForm() {
+  // ฟ้าใส: ช่องทั้งหมดในฟอร์ม
   const fields = useWizardStore((s) => s.draft.form.fields);
+  // ฟ้าใส: Event ที่กำลังแก้
   const draft = useWizardStore((s) => s.draft);
+  // ฟ้าใส: ฟังก์ชันบันทึก
   const patch = useWizardStore((s) => s.patch);
+  // ฟ้าใส: ภาษาที่เลือก
   const lang = useWizardLang();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ภาษาอังกฤษไหม
   const en = lang === "en";
+  // ฟ้าใส: บันทึกรายการช่องใหม่ทั้งหมด
   const setFields = (f: FormField[]) => patch("form", { fields: f });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [justAdded, setJustAdded] = useState<string | null>(null); // ช่องที่เพิ่งเพิ่ม → โฟกัสชื่อให้พิมพ์ต่อได้เลย
+  const [justAdded, setJustAdded] = useState<string | null>(null); // ฟ้าใส: ช่องที่เพิ่งเพิ่ม → โฟกัสชื่อให้พิมพ์ต่อได้เลย
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // ฟ้าใส: แก้ช่องเดียวตาม id
   const update = (id: string, v: Partial<FormField>) => setFields(fields.map((f) => (f.id === id ? { ...f, ...v } : f)));
+  // ฟ้าใส: เลือกการ์ดช่อง (ไว้ไฮไลต์)
   const select = (id: string) => setSelectedId(id);
-  const add = (kind: FieldKind) => { // เพิ่มช่องใหม่: ประเภท + ชื่อตัวอย่าง + id ใหม่
+  const add = (kind: FieldKind) => { // ฟ้าใส: เพิ่มช่องใหม่: ประเภท + ชื่อตัวอย่าง + id ใหม่
+    // ฟ้าใส: ข้อมูลของประเภทที่เลือก
     const k = formKind(kind);
+    // ฟ้าใส: สร้าง id ใหม่
     const id = newId("f");
     setFields([...fields, { id, label: en ? k.exampleEn : k.example, kind, hint: k.th, required: false, options: k.hasOptions ? defaultOptions(lang) : undefined }]);
     setSelectedId(id);
     setJustAdded(id);
   };
 
-  const duplicate = (id: string) => { // ทำสำเนาช่อง: copy + id ใหม่ + insert หลังช่องเดิม
+  const duplicate = (id: string) => { // ฟ้าใส: ทำสำเนาช่อง: copy + id ใหม่ + insert หลังช่องเดิม
+    // ฟ้าใส: ตำแหน่งของช่องที่จะทำสำเนา
     const i = fields.findIndex((f) => f.id === id);
+    // ฟ้าใส: id ของสำเนา
     const nid = newId("f");
+    // ฟ้าใส: สำเนา (คัดลอกตัวเลือกแยกกัน ไม่ใช้ array ร่วม)
     const copy = { ...fields[i], id: nid, options: fields[i].options ? [...fields[i].options!] : undefined };
     setFields([...fields.slice(0, i + 1), copy, ...fields.slice(i + 1)]);
     setSelectedId(nid);
   };
 
-  const remove = (id: string) => { // ลบช่อง: filter + เลือกช่องถัดไป (หรือ null ถ้าไม่มีเหลือ)
+  const remove = (id: string) => { // ฟ้าใส: ลบช่อง: filter + เลือกช่องถัดไป (หรือ null ถ้าไม่มีเหลือ)
+    // ฟ้าใส: รายการที่เหลือหลังลบ
     const next = fields.filter((f) => f.id !== id);
     setFields(next);
     setSelectedId(next[0]?.id ?? null);
   };
 
-  // เปลี่ยนประเภท: ประเภทที่มีตัวเลือกแต่ยังไม่มี → ใส่ตัวเลือกตั้งต้นให้
+  // ฟ้าใส: เปลี่ยนประเภท: ประเภทที่มีตัวเลือกแต่ยังไม่มี → ใส่ตัวเลือกตั้งต้นให้
   const changeKind = (f: FormField, kind: FieldKind) => {
+    // ฟ้าใส: ข้อมูลของประเภทใหม่
     const k = formKind(kind);
     update(f.id, { kind, hint: k.th, options: k.hasOptions ? (f.options?.length ? f.options : defaultOptions(lang)) : f.options });
   };
 
-  const sort = useDragSort(fields, setFields); // ลากเรียงช่องในฟอร์ม
+  const sort = useDragSort(fields, setFields); // ฟ้าใส: ลากเรียงช่องในฟอร์ม
 
 
   return (
     <>
+      {/* ฟ้าใส: ส่วนเวลาเปิด–ปิดรับลงทะเบียน */}
       <WizardSection
         title={tr("เปิดรับลงทะเบียน", "Registration window")}
         description={
@@ -79,9 +97,11 @@ export function StepForm() {
             : tr("ผู้เข้าร่วมลงทะเบียนผ่าน QR และลิงก์ได้เฉพาะช่วงนี้", "Attendees can register via the QR and link only during this time")
         }
       >
+        {/* ฟ้าใส: ช่องเลือกเวลาเปิด–ปิดรับ (บังคับเมื่อมีช่องในฟอร์ม) */}
         <TimeWindowFields openKey="regOpen" closeKey="regClose" openLabel={tr("เปิดรับ", "Opens")} closeLabel={tr("ปิดรับ", "Closes")} required={fields.length > 0} />
       </WizardSection>
 
+      {/* ฟ้าใส: ส่วนช่องในฟอร์ม */}
       <WizardSection
         title={tr("ช่องในฟอร์ม", "Form fields")}
         description={tr(`${fields.length} ช่อง · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`, `${fields.length} fields · drag ⋮⋮ to reorder`)}
@@ -97,11 +117,15 @@ export function StepForm() {
           </p>
         )}
 
-        {fields.map((f, i) => { // การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ประเภท/Required + ทำสำเนา + ลบ
+        {fields.map((f, i) => { // ฟ้าใส: การ์ดช่องในฟอร์ม: ชื่อช่อง + ตัวเลือก (ถ้ามี) + ประเภท/Required + ทำสำเนา + ลบ
+          // ฟ้าใส: ข้อมูลของประเภทช่องนี้
           const k = formKind(f.kind);
+          // ฟ้าใส: การ์ดนี้ถูกเลือกอยู่ไหม
           const isSel = selectedId === f.id;
+          // ฟ้าใส: ตัวเลือกของช่อง
           const options = f.options ?? [];
           return (
+            // ฟ้าใส: การ์ดของช่อง 1 ช่อง (ลากเรียงได้)
             <section
               key={f.id}
               {...sort.itemProps(i)}
@@ -154,7 +178,7 @@ export function StepForm() {
               </div>
 
               {k.hasOptions ? (
-                // ตัวเลือกแก้ในการ์ดได้เลย (แบบ Survey Builder)
+                // ฟ้าใส: ตัวเลือกแก้ในการ์ดได้เลย (แบบ Survey Builder)
                 <div className="space-y-2">
                   {options.map((o, n) => (
                     <div key={n} className="group flex max-w-2xl items-center gap-3 rounded-lg border px-4 py-2.5">
@@ -193,7 +217,7 @@ export function StepForm() {
                 <FieldSample f={f} className="max-w-md" />
               )}
 
-              {/* ประเภท + Required (เดิมอยู่แผงตั้งค่าด้านขวา) */}
+              {/* ฟ้าใส: ประเภท + Required (เดิมอยู่แผงตั้งค่าด้านขวา) */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                 <label className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">{tr("ประเภท", "Type")}</span>
@@ -218,7 +242,7 @@ export function StepForm() {
           );
         })}
 
-        {/* ===== แถบเพิ่มช่อง: 12 ประเภท ===== */}
+        {/* ฟ้าใส: ===== แถบเพิ่มช่อง: 12 ประเภท ===== */}
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed p-4">
           <span className="mr-2 text-sm text-muted-foreground">{tr("เพิ่มช่อง", "Add field")}</span>
           {FORM_KINDS.map((k) => (
@@ -235,12 +259,13 @@ export function StepForm() {
         </div>
       </WizardSection>
 
-      {/* ===== Preview ฟอร์ม (แบบ Google Form) ===== */}
+      {/* ฟ้าใส: ===== Preview ฟอร์ม (แบบ Google Form) ===== */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{tr("Preview ฟอร์มลงทะเบียน", "Registration form preview")}</DialogTitle>
           </DialogHeader>
+          {/* ฟ้าใส: ภาพจำลองฟอร์ม */}
           <FormPreview fields={fields} primary={draft.theme.primary} eventName={draft.general.nameTh} look={pageLook(draft.theme, "form")} />
         </DialogContent>
       </Dialog>

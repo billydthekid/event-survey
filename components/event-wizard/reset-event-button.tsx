@@ -1,8 +1,8 @@
 "use client";
-// ปุ่ม "รีเซ็ต" บนแถบบนของหน้าตั้งค่า Event (ข้างปุ่มภาษา)
-// กดแล้วถามยืนยันก่อนเสมอ → ล้างทุกขั้นกลับเป็นตอนก่อนกรอกครั้งแรก (เก็บชื่อ Event ไว้) แล้วพากลับไปขั้นที่ 1
-// ข้อมูลที่ล้าง: ข้อมูลทั่วไป · Branding (สี รูปปก โฆษณา โลโก้ แบนเนอร์) · ฟอร์ม · Survey · ช่วงเวลา — ย้อนกลับไม่ได้
-// Event ที่เผยแพร่แล้ว (ล็อก) ไม่แสดงปุ่มนี้
+// ฟ้าใส: ปุ่ม "รีเซ็ต" บนแถบบนของหน้าตั้งค่า Event (ข้างปุ่มภาษา)
+// ฟ้าใส: กดแล้วถามยืนยันก่อนเสมอ → ล้างทุกขั้นกลับเป็นตอนก่อนกรอกครั้งแรก (เก็บชื่อ Event ไว้) แล้วพากลับไปขั้นที่ 1
+// ฟ้าใส: ข้อมูลที่ล้าง: ข้อมูลทั่วไป · Branding (สี รูปปก โฆษณา โลโก้ แบนเนอร์) · ฟอร์ม · Survey · ช่วงเวลา — ย้อนกลับไม่ได้
+// ฟ้าใส: Event ที่เผยแพร่แล้ว (ล็อก) ไม่แสดงปุ่มนี้
 
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
@@ -12,16 +12,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useWizardStore } from "@/lib/wizard-store";
 import { useTr } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ปุ่มรีเซ็ต + popup ยืนยัน
 export function ResetEventButton({ eventId, eventName }: { eventId: string; eventName: string }) {
   const [open, setOpen] = useState(false);
+  // ฟ้าใส: ฟังก์ชันรีเซ็ตใน store
   const resetDraft = useWizardStore((s) => s.resetDraft);
+  // ฟ้าใส: ใช้พากลับขั้นที่ 1
   const router = useRouter();
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
 
+  // ฟ้าใส: กดยืนยัน → ล้างข้อมูล ปิด popup แล้วกลับขั้นที่ 1
   const confirm = () => {
     resetDraft(eventId);
     setOpen(false);
-    router.push(`/admin/events/${eventId}/edit/setup-info`); // ขั้นที่ 1 (ชื่อโฟลเดอร์เดียวกับ STEPS ใน wizard-shell)
+    router.push(`/admin/events/${eventId}/edit/setup-info`); // ฟ้าใส: ขั้นที่ 1 (ชื่อโฟลเดอร์เดียวกับ STEPS ใน wizard-shell)
   };
 
   return (
@@ -34,6 +39,7 @@ export function ResetEventButton({ eventId, eventName }: { eventId: string; even
         <RotateCcw className="size-3.5" /> {tr("รีเซ็ต", "Reset")}
       </button>
 
+      {/* ฟ้าใส: popup ยืนยันรีเซ็ต */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="flex-row items-center gap-3 space-y-0 text-left">
