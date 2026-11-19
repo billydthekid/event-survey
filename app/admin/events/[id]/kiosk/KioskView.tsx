@@ -52,7 +52,8 @@ const CANVAS_H = 1920;
 const PORTRAIT_MIN_H = 1400; // จอแนวตั้งที่เตี้ยสุดที่ยังวางรูป + ชื่องาน + QR ได้ครบ (3:4 = 1440)
 const LANDSCAPE_H = 1080;
 const LANDSCAPE_RATIO = 1.2; // กว้าง/สูง ตั้งแต่ค่านี้ใช้เลย์เอาต์แนวนอน
-// ตอนนี้ล็อกเป็นแนวตั้งเสมอ (ตกลงกับทีม) · เปลี่ยนเป็น true เพื่อให้จอกว้างใช้เลย์เอาต์แนวนอน 16:9 อัตโนมัติ
+// แนวจอมาจากตัวเลือก "จอ Kiosk แนวตั้ง / แนวนอน" ใน Wizard ขั้น Branding (ไม่ได้เลือก = แนวตั้ง)
+// AUTO_LANDSCAPE = true → งานที่ไม่ได้เลือก ถ้าเปิดบนจอกว้างจะใช้แนวนอนเองอัตโนมัติ
 const AUTO_LANDSCAPE = false;
 
 // ============ hooks อ่านค่าจากเบราว์เซอร์ (ฝั่ง server ไม่มี window/document) ============
@@ -208,13 +209,23 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   //   AUTO_LANDSCAPE = true  → เลย์เอาต์แนวนอน ผืนสูง 1080 px กว้างตามจอ (16:9 = 1920 × 1080)
   //   AUTO_LANDSCAPE = false → โปสเตอร์แนวตั้ง 1080 px วางกลางจอ ขอบซ้าย-ขวาเป็นสีพื้นหลัง
   const wide = vw / vh >= LANDSCAPE_RATIO;
-  const layout: KioskLayout = wide && AUTO_LANDSCAPE ? "landscape" : "portrait";
+  // แนวจอ: Event Admin เลือกแนวนอนใน Wizard (ขั้น Branding) → แนวนอนเสมอ · ไม่ได้เลือก → แนวตั้ง
+  //        (AUTO_LANDSCAPE = true → จอกว้างใช้แนวนอนเองอัตโนมัติ)
+  const layout: KioskLayout =
+    model.orientation === "landscape" || (wide && AUTO_LANDSCAPE) ? "landscape" : "portrait";
   let scale: number;
-  if (layout === "landscape") scale = vh / LANDSCAPE_H;
-  else if (wide) scale = Math.min(vw / CANVAS_W, vh / CANVAS_H);
-  else scale = Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
-  const canvasW = wide && layout === "portrait" ? CANVAS_W : vw / scale;
-  const canvasH = vh / scale;
+  let canvasW: number;
+  let canvasH: number;
+  if (layout === "landscape") {
+    // จอกว้าง → สูงเต็มจอ กว้างตามจอ · จอแนวตั้ง (เช่น เปิดบนมือถือ) → ผืน 1920×1080 วางกลาง ขอบบน-ล่างเป็นสีพื้นหลัง
+    scale = wide ? vh / LANDSCAPE_H : Math.min(vw / (LANDSCAPE_H * 16 / 9), vh / LANDSCAPE_H);
+    canvasW = wide ? vw / scale : (LANDSCAPE_H * 16) / 9;
+    canvasH = LANDSCAPE_H;
+  } else {
+    scale = wide ? Math.min(vw / CANVAS_W, vh / CANVAS_H) : Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
+    canvasW = wide ? CANVAS_W : vw / scale;
+    canvasH = vh / scale;
+  }
 
   return (
     <div
@@ -223,11 +234,11 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       onPointerDown={controls.poke}
       // overflow-clip (ไม่ใช่ hidden): กล่อง hidden ยังถูกเลื่อนได้ (โฟกัสปุ่ม / ลากเลือกข้อความ) → หัวจอหายขึ้นไป
       // clip ตัดส่วนเกินทิ้งเฉย ๆ เลื่อนไม่ได้เลย
-      className="fixed inset-0 z-50 flex justify-center overflow-clip"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-clip"
       style={{ background: pageColor(model) }}
     >
-      {/* กล่องขนาดจริงหลังย่อ → flex จัดโปสเตอร์ไว้กลางจอ (กรณีจอกว้าง) */}
-      <div className="shrink-0" style={{ width: canvasW * scale, height: vh }}>
+      {/* กล่องขนาดจริงหลังย่อ → flex จัดไว้กลางจอ (โปสเตอร์แนวตั้งบนจอกว้าง / แนวนอนบนจอแนวตั้ง) */}
+      <div className="shrink-0" style={{ width: canvasW * scale, height: canvasH * scale }}>
         <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           <KioskScreen
             model={model}

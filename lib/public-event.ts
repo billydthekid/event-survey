@@ -9,6 +9,8 @@
 import type { BiText, Event, FieldType, QuestionType, Registration } from "@/types";
 import type { AllowListKind, BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
+import { eventTypeLabel } from "@/lib/event-types";
+import { pageLook, type PageKey, type PageLook } from "@/lib/theme-presets";
 import { isActive, normalizeContact } from "@/lib/allow-list";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
@@ -49,13 +51,19 @@ export interface PublicEvent {
   name: BiText;
   desc: BiText;
   organizer: string;
-  contactEmail: string;
+  contactEmail: string; // "" = ไม่แสดง (ไม่ได้กรอก หรือ Event Admin ปิดสวิตช์แสดงช่องทางติดต่อ)
+  contactPhone: string; // "" = ไม่แสดง
+  mapUrl: string; // ลิงก์แผนที่ "" = ไม่มี
+  typeLabel: BiText; // ประเภทงาน เช่น สัมมนา / Workshop
   date: string; // yyyy-MM-dd
   endDate: string; // วันจบ (งานหลายวัน) "" = วันเดียวกับวันเริ่ม
   startTime: string;
   endTime: string;
   venue: string;
-  theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground };
+  // textColor: สีตัวอักษร (ชื่องาน รายละเอียด) ที่ Event Admin ตั้งเอง "" = อัตโนมัติตามโหมด
+  theme: { primary: string; mode: "light" | "dark" | "bold"; background: ThemeBackground; textColor: string };
+  // หน้าตาหน้าฟอร์ม (/r) / Survey (/s) จาก Wizard ขั้น Branding (pageLook ของ P1tch4pa) · ไม่มี draft = ไม่มี
+  pages?: Record<PageKey, PageStyle>;
   logo?: string;
   cover?: string; // รูปปก 16:9 (Wizard ขั้น Branding) ไม่มี = ไม่แสดง
   closed: boolean; // Event ปิด (รับเฉพาะรายชื่อที่ import) → แบบประเมินตอบได้เฉพาะผู้ที่ลงทะเบียน
@@ -66,6 +74,7 @@ export interface PublicEvent {
   surveyOpen: string;
   surveyClose: string;
   fields: PublicField[];
+  registration: { enabled: boolean }; // false = Event นี้ไม่รับลงทะเบียน (ฟอร์มใน Wizard ไม่มีช่อง)
   survey: { enabled: boolean; questions: PublicQuestion[] };
 }
 
@@ -86,15 +95,20 @@ export const GENDER_OPTIONS: { value: string; label: BiText }[] = [
   { value: "unspecified", label: { th: "ไม่ระบุ", en: "Not specified" } },
 ];
 
-// ฟอร์มตั้งต้น เมื่อ Event ยังไม่ได้ตั้งช่องใดเลย
-const DEFAULT_FIELDS: PublicField[] = (["name", "email"] as const).map((k) => ({
+// ฟอร์มตั้งต้น เมื่อ Event ยังไม่ได้ตั้งช่องใดเลย (ฟอร์มที่ Event Admin ตั้งใน Wizard มาก่อนเสมอ)
+// - Event เปิด: ชื่ออย่างเดียว (ผู้เข้าร่วมไม่ต้องให้อีเมล ไม่ดูเหมือนล็อกอิน)
+// - Event ปิด: ชื่อ + ช่องที่ใช้เช็ครายชื่อ (อีเมล หรือ เบอร์ ตามที่ Event Admin เลือกตอน import)
+const basicField = (k: BasicFieldKey): PublicField => ({
   id: `f-${k}`,
   key: k,
   label: BASIC[k].label,
   type: BASIC[k].type,
   required: true,
   options: [],
-}));
+});
+function defaultFields(allow: EventDraft["allowList"]): PublicField[] {
+  return isActive(allow) ? [basicField("name"), basicField(allow.kind)] : [basicField("name")];
+}
 
 // ช่องจาก Wizard: 12 ประเภท → ชนิดของหน้า /r (ชื่อช่องมีแต่ภาษาไทย)
 const KIND_TO_PUBLIC: Record<FieldKind, PublicFieldType> = {
@@ -139,6 +153,17 @@ export function themeBackground(event: Event, draft?: EventDraft): ThemeBackgrou
   };
 }
 export const themeLogo = (event: Event, draft?: EventDraft) => draft?.theme.logo?.dataUrl || event.theme.logo;
+
+// หน้าตาของหน้าฟอร์ม / Survey: ใช้ pageLook() ตัวเดียวกับ Preview ใน Wizard → หน้าจริงตรงกับที่ Event Admin เห็น
+// own = Event Admin เปิด "ตั้งสีแยก" ของหน้านั้น (ไม่เปิด = ใช้สีเดียวกับ Kiosk → หน้าเราใช้ธีมเดิมของเรา)
+export interface PageStyle extends PageLook {
+  own: boolean;
+}
+function pageStyles(draft?: EventDraft): Record<PageKey, PageStyle> | undefined {
+  if (!draft) return undefined;
+  const style = (k: PageKey): PageStyle => ({ ...pageLook(draft.theme, k), own: !!draft.theme.pages?.[k] });
+  return { form: style("form"), survey: style("survey") };
+}
 // รูปปก: Wizard (crop 16:9 แล้ว) → รูปเดิมใน store หลัก · ไม่มีทั้งคู่ = undefined
 export const eventCover = (event: Event, draft?: EventDraft) => draft?.general.cover?.dataUrl || event.coverImage || undefined;
 
@@ -147,11 +172,12 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
   const g = draft?.general;
   const report = getReportData(event.id);
 
-  // ฟอร์ม: Wizard → Event → ฟอร์มตั้งต้น (ชื่อ + อีเมล)
-  const fields =
-    draft && draft.form.fields.length > 0
-      ? fromWizard(draft.form.fields)
-      : event.registration.fields.length > 0
+  // ฟอร์ม:
+  // - มี draft ของ Wizard → ใช้ฟอร์มใน Wizard ตรง ๆ (ไม่มีช่องเลย = Event นี้ไม่รับลงทะเบียน · กติกาของ Wizard)
+  // - ไม่มี draft (งานตัวอย่างที่ยังไม่เคยเปิด Wizard) → ฟอร์มใน Event → ฟอร์มตั้งต้น
+  const fields = draft
+    ? fromWizard(draft.form.fields)
+    : event.registration.fields.length > 0
         ? [...event.registration.fields]
             .sort((a, b) => a.order - b.order)
             .map((f) => ({
@@ -162,11 +188,13 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
               required: f.required,
               options: f.options ?? [],
             }))
-        : DEFAULT_FIELDS;
+        : defaultFields(undefined); // ไม่มี draft = ไม่มีรายชื่อ Event ปิด → ฟอร์มตั้งต้นแบบ Event เปิด
 
-  // Survey: Wizard (ถ้ามีคำถาม) → Event → mock ของ Report
+  // Survey:
+  // - มี draft ของ Wizard → ใช้คำถามใน Wizard ตรง ๆ (ไม่มีคำถาม = Event นี้ไม่มีแบบประเมิน · กติกาของ Wizard)
+  // - ไม่มี draft (งานตัวอย่าง) → คำถามใน Event → mock ของ Report
   let questions: PublicQuestion[] = [];
-  if (draft && draft.survey.questions.length > 0) {
+  if (draft) {
     // 12 ประเภทจาก Survey Builder (lib/survey-types.ts) · ข้อมูลเก่า rating ตัวเลข → linear
     questions = draft.survey.questions.map(normalizeQuestion).map((q) => ({
       id: q.id,
@@ -195,8 +223,11 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
         ratingLabels: report?.ratingLabels?.[q.id],
       }));
   }
-  const surveyEnabled =
-    !!draft?.survey.enabled || !!event.survey?.enabled || !!report?.survey.enabled;
+  // มี draft → มีคำถาม = มีแบบประเมิน (Wizard ไม่มีสวิตช์เปิด/ปิดแล้ว) · ไม่มี draft → ดูสวิตช์ใน Event / mock
+  const surveyEnabled = draft ? true : !!event.survey?.enabled || !!report?.survey.enabled;
+  // ช่องทางติดต่อ: แสดงเฉพาะเมื่อ Event Admin เปิดสวิตช์ "แสดงช่องทางติดต่อบนหน้า Event"
+  const showContact = g ? g.showContact : event.showContact;
+  const type = (g?.type || event.type) as EventDraft["general"]["type"];
 
   return {
     id: event.id,
@@ -205,7 +236,13 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
     name: { th: g?.nameTh || event.name.th, en: g?.nameEn || event.name.en },
     desc: { th: g?.descTh || event.description.th, en: g?.descEn || event.description.en },
     organizer: g?.organizer || event.organizerName || "",
-    contactEmail: (g ? g.showContact : event.showContact) ? g?.email || event.email || "" : "",
+    contactEmail: showContact ? g?.email || event.email || "" : "",
+    contactPhone: showContact ? g?.phone || event.phone || "" : "",
+    mapUrl: g?.mapUrl || event.mapUrl || "",
+    typeLabel: {
+      th: eventTypeLabel(type, g?.typeOther, "th"),
+      en: eventTypeLabel(type, g?.typeOther, "en"),
+    },
     date: g?.date || event.date,
     endDate: g?.endDate || "", // มีเฉพาะใน Wizard (store หลักยังไม่มีช่องนี้)
     startTime: g?.startTime || event.startTime,
@@ -215,7 +252,9 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
       primary: draft?.theme.primary || event.theme.primary,
       mode: draft?.theme.mode || event.theme.kind,
       background: themeBackground(event, draft),
+      textColor: draft?.theme.textColor || "",
     },
+    pages: pageStyles(draft),
     logo: themeLogo(event, draft),
     cover: eventCover(event, draft),
     closed: isActive(draft?.allowList),
@@ -225,6 +264,7 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
     surveyOpen: draft?.schedule.surveyOpen || event.surveyWindow.opensAt,
     surveyClose: draft?.schedule.surveyClose || event.surveyWindow.closesAt,
     fields,
+    registration: { enabled: fields.length > 0 },
     survey: { enabled: surveyEnabled && questions.length > 0, questions },
   };
 }
@@ -252,6 +292,7 @@ export interface ScheduleInfo {
   maxAttendees: number;
   surveyOpen: string;
   surveyClose: string;
+  registration: { enabled: boolean };
   survey: { enabled: boolean };
 }
 
@@ -280,7 +321,8 @@ export const regClosesAt = (e: ScheduleInfo) => e.regClose || eventEnd(e);
 export const surveyOpensAt = (e: ScheduleInfo) => e.surveyOpen || eventStart(e);
 export const surveyClosesAt = (e: ScheduleInfo) => e.surveyClose || eventEnd(e);
 
-// หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
+// ช่วงลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
+// (ใช้ร่วมกับการ์ดสถานะของเพื่อน components/dashboard/EventStatusCard.tsx → คงไว้ 4 ค่าเหมือนเดิม)
 export type RegisterPhase = "open" | "notOpen" | "closed" | "full";
 export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: number): RegisterPhase {
   const phase = getEventPhase(e, now);
@@ -290,6 +332,13 @@ export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: nu
   if (e.regClose ? after(e.regClose, now) : phase === "ended") return "closed";
   if (e.maxAttendees > 0 && registeredCount >= e.maxAttendees) return "full";
   return "open";
+}
+
+// สถานะของหน้า /r และจอ Kiosk = ช่วงลงทะเบียน + "none" (งานนี้ไม่รับลงทะเบียน: ฟอร์มใน Wizard ไม่มีช่อง)
+export type RegisterState = RegisterPhase | "none";
+export function getRegisterState(e: ScheduleInfo, now: Date, registeredCount: number): RegisterState {
+  if (!e.registration.enabled) return "none";
+  return getRegisterPhase(e, now, registeredCount);
 }
 
 // หน้าแบบประเมิน: เปิด / ยังไม่เปิด / ปิดแล้ว / งานนี้ไม่มีแบบประเมิน

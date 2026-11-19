@@ -10,9 +10,9 @@ import type { EventDraft } from "@/types/event";
 import {
   buildPublicEvent,
   getEventPhase,
-  getRegisterPhase,
+  getRegisterState,
   getSurveyPhase,
-  type RegisterPhase,
+  type RegisterState,
   type ScheduleInfo,
   type SurveyPhase,
   type ThemeBackground,
@@ -31,12 +31,27 @@ export interface KioskModel extends ScheduleInfo {
   startTime: string; // HH:mm
   endTime: string;
   venue: string;
-  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: ThemeBackground };
+  // textColor: สีตัวอักษรที่ Event Admin ตั้งเอง "" = อัตโนมัติตามโหมด
+  theme: { primary: string; secondary: string; mode: KioskThemeMode; background: ThemeBackground; textColor: string };
   logo?: string; // URL รูปโลโก้ (ไม่มี = โลโก้ระบบ)
   closed: boolean; // Event ปิด → แบบประเมินสำหรับผู้ที่ลงทะเบียนแล้วเท่านั้น
   ads: string[]; // URL รูปโฆษณา (หลายรูป = เลื่อนอัตโนมัติ)
   adSeconds: number; // เปลี่ยนรูปทุกกี่วินาที (ตั้งใน Wizard ขั้น Branding)
   screen: Event["kiosk"]["screen"];
+  orientation: KioskOrientation; // จอแนวตั้ง / แนวนอน ตามที่ Event Admin เลือกใน Wizard ขั้น Branding
+  mediaRatio: MediaRatio; // สัดส่วนรูปปก / โฆษณา ตามที่ Event Admin เลือก
+}
+
+// ตัวเลือกจอ Kiosk จาก Wizard ขั้น Branding (งานของ P1tch4pa): draft.theme.kiosk / draft.theme.mediaRatio
+// อ่านแบบเผื่อไว้ → ใช้ได้ทั้งก่อนและหลัง branch ของเพื่อน merge (ไม่มีค่า = แนวตั้ง / 16:9 แบบเดิม)
+export type KioskOrientation = "portrait" | "landscape";
+export type MediaRatio = "16:9" | "3:4";
+function kioskOptions(draft?: EventDraft): { orientation: KioskOrientation; mediaRatio: MediaRatio } {
+  const t = draft?.theme as { kiosk?: string; mediaRatio?: string } | undefined;
+  return {
+    orientation: t?.kiosk === "landscape" ? "landscape" : "portrait",
+    mediaRatio: t?.mediaRatio === "3:4" ? "3:4" : "16:9",
+  };
 }
 
 // รูปจาก Wizard ที่มีไฟล์จริง · ไม่มีเลย = undefined (ใช้รูปของ store หลักแทน)
@@ -65,6 +80,7 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
       secondary: th?.secondary || event.theme.secondary,
       mode: pub.theme.mode,
       background: pub.theme.background,
+      textColor: pub.theme.textColor,
     },
     logo: pub.logo,
     closed: pub.closed,
@@ -73,12 +89,14 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
     ads: draftAds(draft) ?? (event.adImage ? [event.adImage] : pub.cover ? [pub.cover] : []),
     adSeconds: draft?.ads?.seconds || 6,
     screen: event.kiosk.screen,
+    ...kioskOptions(draft),
     status: event.status,
     regOpen: pub.regOpen,
     regClose: pub.regClose,
     maxAttendees: pub.maxAttendees,
     surveyOpen: pub.surveyOpen,
     surveyClose: pub.surveyClose,
+    registration: { enabled: pub.registration.enabled },
     survey: { enabled: pub.survey.enabled },
   };
 }
@@ -94,13 +112,13 @@ export interface KioskSceneResult {
   scene: KioskScene;
   showRegister: boolean;
   showSurvey: boolean;
-  reg: RegisterPhase; // ใช้บอกเหตุผลเมื่อไม่มี QR (ยังไม่เปิด / ปิดแล้ว / เต็ม)
+  reg: RegisterState; // ใช้บอกเหตุผลเมื่อไม่มี QR (ยังไม่เปิด / ปิดแล้ว / เต็ม / ไม่รับลงทะเบียน)
   survey: SurveyPhase;
 }
 
 export function getKioskScene(m: KioskModel, now: Date, registeredCount: number): KioskSceneResult {
   // QR โผล่ก็ต่อเมื่อหน้ามือถือที่ QR พาไป "เปิดรับอยู่จริง" (กฎเดียวกับ /r และ /s)
-  const reg = getRegisterPhase(m, now, registeredCount);
+  const reg = getRegisterState(m, now, registeredCount);
   const survey = getSurveyPhase(m, now);
 
   const wantsRegister = m.screen === "register" || m.screen === "both";
