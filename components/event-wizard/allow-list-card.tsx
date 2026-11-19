@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
+import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, ALLOW_LIST_READY, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
 import { formatThaiDateTime } from "@/lib/utils/date";
 import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import type { AllowList, AllowListKind } from "@/types/event";
@@ -23,6 +23,8 @@ export function AllowListCard() {
   const [report, setReport] = useState<(ParseResult & { fileName: string }) | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // ยังไม่เปิดใช้ Event ปิด: กด "ปิด" แค่ "แอบดู" (ไม่บันทึก closed ลงข้อมูล → หน้า /r ยังรับทุกคน)
+  const [peekClosed, setPeekClosed] = useState(false);
 
   const list: AllowList = draft.allowList ?? { closed: false, kind: "email", values: [], fileName: "", importedAt: "" };
   const lang = useWizardLang();
@@ -71,6 +73,49 @@ export function AllowListCard() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // ยังไม่เปิดใช้ (ALLOW_LIST_READY = false): ปุ่ม เปิด / ปิด กดได้ตามปกติ
+  // กด "ปิด" → ส่วนตั้งค่า Event ปิดแสดงแบบเบลอ กดไม่ได้ + ป้ายแจ้ง (ไม่บันทึกอะไร) · กด "เปิด" → กลับเป็น Event เปิด
+  if (!ALLOW_LIST_READY) {
+    return (
+      <WizardSection
+        title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
+        description={
+          peekClosed
+            ? tr("Event ปิด · รับเฉพาะคนที่อยู่ในรายชื่อที่ import", "Closed event · only people in the imported list")
+            : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
+        }
+        action={
+          <ToggleGroup
+            value={[peekClosed ? "closed" : "open"]}
+            onValueChange={(v) => {
+              if (!v[0]) return;
+              setPeekClosed(v[0] === "closed");
+              if (list.closed) set({ closed: false }); // ข้อมูลเก่าที่เคยตั้งเป็น Event ปิด → กลับเป็น Event เปิด
+            }}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
+            <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
+          </ToggleGroup>
+        }
+      >
+        {peekClosed && (
+          <div className="relative">
+            <div aria-hidden className="pointer-events-none space-y-4 select-none blur-[3px]">
+              <AllowListPreview tr={tr} />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <p className="rounded-xl border bg-background/95 px-5 py-3 text-center text-sm font-semibold shadow-sm">
+                {tr("วัยรุ่นกำลังสร้างมองข้ามไปเทอมนี้ก่อนนะจ๊ะ", "Still under construction · skip this for this term 😉")}
+              </p>
+            </div>
+          </div>
+        )}
+      </WizardSection>
+    );
+  }
 
   return (
     <WizardSection
@@ -168,5 +213,32 @@ export function AllowListCard() {
         </div>
       )}
     </WizardSection>
+  );
+}
+
+// หน้าตาของส่วนตั้งค่า "Event ปิด" แบบอ่านอย่างเดียว (ใช้ตอนยังไม่เปิดใช้ · อยู่ใต้ชั้นเบลอ ไม่มีปุ่มที่ทำงานจริง)
+function AllowListPreview({ tr }: { tr: (th: string, en: string) => string }) {
+  const pill = "rounded-md border px-2.5 py-1 text-sm";
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium">{tr("ตรวจสิทธิ์ด้วย", "Check by")}</span>
+        <span className={`${pill} bg-foreground text-background`}>{tr("อีเมล", "Email")}</span>
+        <span className={pill}>{tr("เบอร์มือถือ", "Mobile number")}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed p-4">
+        <FileSpreadsheet className="size-8 text-muted-foreground" />
+        <div className="min-w-0 flex-1 text-sm">
+          <p className="font-semibold">{tr("ยังไม่มีรายชื่อ", "No list yet")}</p>
+          <p className="text-xs text-muted-foreground">{tr(".csv / .xlsx · คอลัมน์ \"email\"", ".csv / .xlsx · \"email\" column")}</p>
+        </div>
+        <span className={pill}>
+          <Download className="mr-1 inline size-4" /> {tr("ไฟล์ตัวอย่าง", "Sample file")}
+        </span>
+        <span className={`${pill} bg-foreground text-background`}>
+          <Upload className="mr-1 inline size-4" /> {tr("Import ไฟล์", "Import file")}
+        </span>
+      </div>
+    </>
   );
 }
