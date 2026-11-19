@@ -317,7 +317,7 @@ function RemainingCell({ event, t }: { event: Event; t: Text }) {
   let sub = closesText;
   if (r.kind === "countdown") value = formatCountdown(r.ms);          // วันงาน ยังไม่ถึงเวลาปิด → "1:20:04"
   else if (r.kind === "days") value = t.inDays(r.days);                // ยังไม่ถึงวันงาน → "อีก 3 วัน"
-  else if (r.kind === "closed") sub = event.endTime ? closesText : t.closed; // ปิดแล้ว → "—"
+  else if (r.kind === "closed") sub = t.closed;                        // ปิดแล้ว → "—" + "ปิดงานแล้ว" (ไม่โชว์ "ปิดงาน 20:00" ที่อ่านเหมือนยังไม่ปิด)
   // "unset" (ไม่มีวัน/เวลาปิด) และ "pending" (ยังไม่รู้เวลา) → "—"
 
   return <KpiCell label={t.remaining} value={value} sub={sub} />;
@@ -388,20 +388,29 @@ function SlotChart({ event, data, t }: { event: Event; data: ReportData; t: Text
   const isFuture = (slot: number) =>
     nowMs !== null && event.date !== "" && localDateTime(event.date, toHHMM(slot)).getTime() > nowMs;
 
+  // แท่งเยอะ (เกิน 12 แท่ง = เกิน 6 ชม.) → โหมด dense: แสดงป้ายเวลาเฉพาะชั่วโมงเต็ม
+  // เช่น 08:00–20:00 = 24 แท่ง → ป้าย 08:00, 09:00 … 19:00 (ช่วง :30 ซ่อนป้าย)
+  // Event สั้น 3–6 ชม. (6–12 แท่ง) → ไม่ dense หน้าตาเหมือนเดิมทุกอย่าง
+  const dense = slotStarts.length > 12;
+
   const bars: VBar[] = slotStarts.map((s, i) => ({
     label: toHHMM(s),
     value: counts[i],
     state: isFuture(s) ? "future" : i === peakIndex ? "peak" : "normal",
+    hideLabel: dense && s % 60 !== 0, // s = นาทีของวัน: 480 (08:00) % 60 = 0 → แสดง | 510 (08:30) → ซ่อน
   }));
 
   return (
-    <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-3">
+    // min-w-0: ให้การ์ดใน grid หดได้ ไม่ถูกกราฟดันให้กว้างเกินคอลัมน์ (ไม่งั้น overflow-x-auto ด้านล่างไม่ทำงาน)
+    <div className="min-w-0 rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200 md:col-span-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-semibold">{t.perSlot}</p>
         {peakIndex >= 0 && <span className="text-xs text-slate-500">{t.peak(toHHMM(slotStarts[peakIndex]), maxCount)}</span>}
       </div>
-      <div className="mt-6">
-        <VBars bars={bars} />
+      {/* overflow-x-auto: จอแคบที่ใส่ไม่พอ → เลื่อนแนวนอนได้ "ในการ์ด" แทนที่จะล้นทั้งหน้า
+          pb-2 (เฉพาะ dense): เว้นที่ให้แถบเลื่อนบนมือถือ ไม่ทับป้ายเวลา */}
+      <div className={`mt-6 overflow-x-auto ${dense ? "pb-2" : ""}`}>
+        <VBars bars={bars} dense={dense} />
       </div>
     </div>
   );
