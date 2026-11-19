@@ -1,7 +1,7 @@
 "use client";
-// ตัวอย่างคำถาม Survey 12 ประเภท แบบที่ผู้เข้าร่วมเห็นบนหน้า /s
-// - AnswerSample: ช่องตอบตัวอย่างของคำถาม 1 ข้อ (ใช้ทั้งในการ์ดของ Survey Builder และใน Preview)
-// - SurveyPreview: ทั้งแบบประเมิน (Dialog "Preview มือถือ" และขั้น Preview ของ Wizard)
+// ฟ้าใส: ตัวอย่างคำถาม Survey 12 ประเภท แบบที่ผู้เข้าร่วมเห็นบนหน้า /s
+// ฟ้าใส: - AnswerSample: ช่องตอบตัวอย่างของคำถาม 1 ข้อ (ใช้ทั้งในการ์ดของ Survey Builder และใน Preview)
+// ฟ้าใส: - SurveyPreview: ทั้งแบบประเมิน (Dialog "Preview มือถือ" และขั้น Preview ของ Wizard)
 
 import { Calendar, ChevronDown, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,36 +10,49 @@ import type { SurveyQuestion } from "@/types/event";
 import { BG_LAYER, lookStyle, type PageLook } from "@/lib/theme-presets";
 import { useTr } from "@/lib/wizard-lang";
 
+// ฟ้าใส: หน้าตากล่องคำตอบตัวอย่าง
 const box = "rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground";
 
-/** คะแนนเต็มของ linear / rating (ไม่ได้ตั้ง = 5) */
+/** ฟ้าใส: คะแนนเต็มของ linear / rating (ไม่ได้ตั้ง = 5) */
 export const ratingOf = (q: SurveyQuestion) => ({ max: q.ratingMax ?? 5 });
 
+// ฟ้าใส: ช่องตอบตัวอย่างของคำถาม 1 ข้อ (ตามประเภท)
 export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuestion; primary: string; size?: "sm" | "md" }) {
+  // ฟ้าใส: แปลง rating เก่าให้เป็นรูปแบบปัจจุบัน
   const q = normalizeQuestion(raw);
+  // ฟ้าใส: ขนาดเล็ก (ใช้ใน Preview)
   const sm = size === "sm";
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ตัวเลข 1 ถึงคะแนนเต็ม
   const nums = Array.from({ length: ratingOf(q).max }, (_, i) => i + 1);
 
   switch (q.type) {
+    // ฟ้าใส: ข้อความสั้น
     case "short":
       return <div className={cn(box, "max-w-md")}>{tr("พิมพ์คำตอบสั้น ๆ", "Short answer")}</div>;
+    // ฟ้าใส: ข้อความยาว
     case "long":
       return <div className={cn(box, "h-20")}>{tr("พิมพ์คำตอบ…", "Your answer…")}</div>;
+    // ฟ้าใส: วันที่
     case "date":
       return (
         <div className={cn(box, "flex max-w-xs items-center justify-between")}>
           dd / mm / yyyy <Calendar className="size-4" />
         </div>
       );
+    // ฟ้าใส: Dropdown
     case "dropdown":
       return (
         <div className={cn(box, "flex max-w-md items-center justify-between")}>
           {q.options[0] || tr("เลือกคำตอบ", "Choose")} <ChevronDown className="size-4" />
         </div>
       );
+    // ฟ้าใส: ตัวเลือกเดียว
     case "single":
+    // ฟ้าใส: หลายตัวเลือก
     case "multi":
+    // ฟ้าใส: ระดับความเห็น
     case "opinion":
       return (
         <ul className="space-y-1.5">
@@ -51,6 +64,7 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
           ))}
         </ul>
       );
+    // ฟ้าใส: ใช่ / ไม่ใช่
     case "yesno":
       return (
         <div className="flex max-w-xs gap-2">
@@ -61,6 +75,7 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
           ))}
         </div>
       );
+    // ฟ้าใส: ให้ดาว
     case "rating":
       return (
         <div className="flex flex-wrap gap-1">
@@ -69,6 +84,7 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
           ))}
         </div>
       );
+    // ฟ้าใส: สเกลตัวเลข
     case "linear":
       return (
         <div className="max-w-md space-y-1">
@@ -87,7 +103,9 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
           )}
         </div>
       );
+    // ฟ้าใส: ตารางเลือกข้อเดียว
     case "mcgrid":
+    // ฟ้าใส: ตารางเลือกหลายข้อ
     case "cbgrid":
       return (
         <div className="overflow-x-auto rounded-lg border">
@@ -115,12 +133,13 @@ export function AnswerSample({ q: raw, primary, size = "md" }: { q: SurveyQuesti
           </table>
         </div>
       );
+    // ฟ้าใส: ประเภทอื่น
     default:
       return null;
   }
 }
 
-/** แสดงตัวอย่างแบบประเมินแบบที่ผู้เข้าร่วมเห็นบนมือถือ */
+/** ฟ้าใส: แสดงตัวอย่างแบบประเมินแบบที่ผู้เข้าร่วมเห็นบนมือถือ */
 export function SurveyPreview({
   questions,
   lang,
@@ -132,16 +151,19 @@ export function SurveyPreview({
   lang: "th" | "en";
   primary: string;
   title: string;
-  /** สีของหน้า Survey (ขั้น Branding → ปรับแต่งเอง แท็บ Survey) · ไม่ส่ง = พื้นขาวแบบเดิม */
+  /** ฟ้าใส: สีของหน้า Survey (ขั้น Branding → ปรับแต่งเอง แท็บ Survey) · ไม่ส่ง = พื้นขาวแบบเดิม */
   look?: PageLook;
 }) {
+  // ฟ้าใส: สีหลัก (ตั้งแยกให้ Survey ได้)
   const primary = look?.primary ?? primaryProp;
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ชื่อคำถามตามภาษา (ไม่มีชื่อ = ข้อความแทน)
   const label = (q: SurveyQuestion) => (lang === "en" && q.titleEn ? q.titleEn : q.titleTh) || tr("(ยังไม่ตั้งชื่อคำถาม)", "(Untitled question)");
 
   return (
     <div className={cn("mx-auto w-full max-w-sm overflow-hidden rounded-[2rem] border bg-background p-5 shadow-lg", look && BG_LAYER)} style={look ? lookStyle(look) : undefined}>
-      {/* แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
+      {/* ฟ้าใส: แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
       {look?.banner && (
         // eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว
         <img src={look.banner} alt="" className="-mx-1 mb-4 aspect-[4/1] w-[calc(100%+0.5rem)] rounded-xl object-cover" />

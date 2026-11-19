@@ -1,5 +1,5 @@
 "use client";
-// ช่องเลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX — ใช้ในขั้น Branding
+// ฟ้าใส: ช่องเลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX — ใช้ในขั้น Branding
 
 import { useState } from "react";
 import { Check, Pipette } from "lucide-react";
@@ -8,8 +8,8 @@ import { whiteTextContrast } from "@/lib/utils/color";
 import { cn } from "@/lib/utils";
 import { useTr } from "@/lib/wizard-lang";
 
-// ============ เลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX ============
-// เก็บเป็นข้อความ HEX "#RRGGBB" ใน theme.primary / theme.secondary
+// ฟ้าใส: ============ เลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX ============
+// ฟ้าใส: เก็บเป็นข้อความ HEX "#RRGGBB" ใน theme.primary / theme.secondary
 export function ColorField({
   value,
   presets,
@@ -18,27 +18,35 @@ export function ColorField({
 }: {
   value: string;
   presets: readonly string[];
+  // ฟ้าใส: เลือกสีแล้ว
   onChange: (hex: string) => void;
   label: string;
 }) {
-  // hexDraft = ข้อความที่กำลังพิมพ์ (null = แสดงค่าปัจจุบัน) · ใช้ค่าเมื่อเป็น #RRGGBB ที่ถูกต้องเท่านั้น
+  // ฟ้าใส: hexDraft = ข้อความที่กำลังพิมพ์ (null = แสดงค่าปัจจุบัน) · ใช้ค่าเมื่อเป็น #RRGGBB ที่ถูกต้องเท่านั้น
   const [hexDraft, setHexDraft] = useState<string | null>(null);
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
+  // ฟ้าใส: ข้อความในช่อง HEX (กำลังพิมพ์ หรือค่าปัจจุบัน)
   const hex = hexDraft ?? value;
+  // ฟ้าใส: กดสีในถาด
   const pick = (c: string) => {
     setHexDraft(null);
     onChange(c.toUpperCase());
   };
+  // ฟ้าใส: พิมพ์รหัสสี HEX
   const onHex = (v: string) => {
+    // ฟ้าใส: เติม # และเป็นตัวพิมพ์ใหญ่
     const val = (v.startsWith("#") ? v : `#${v}`).toUpperCase();
     setHexDraft(val);
-    if (/^#[0-9A-F]{6}$/.test(val)) onChange(val); // ตรวจ HEX ถ้าเป็น #RRGGBB → ส่งกลับ
+    if (/^#[0-9A-F]{6}$/.test(val)) onChange(val); // ฟ้าใส: ตรวจ HEX ถ้าเป็น #RRGGBB → ส่งกลับ
   };
+  // ฟ้าใส: สีปัจจุบันไม่อยู่ในถาด = สีที่เลือกเอง
   const custom = !presets.some((c) => c.toUpperCase() === value.toUpperCase());
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {presets.map((c) => {
+        // ฟ้าใส: สีนี้ถูกเลือกอยู่ไหม
         const on = c.toUpperCase() === value.toUpperCase();
         return (
           <button
@@ -54,7 +62,7 @@ export function ColorField({
           </button>
         );
       })}
-      {/* ตัวเลือกสีของเบราว์เซอร์ — กดแล้วเปิดถาดสีเต็ม */}
+      {/* ฟ้าใส: ตัวเลือกสีของเบราว์เซอร์ — กดแล้วเปิดถาดสีเต็ม */}
       <label
         title={tr("เลือกสีเอง", "Pick a custom color")}
         className={cn(
@@ -65,7 +73,7 @@ export function ColorField({
       >
         <Pipette className={cn("size-4", custom ? (whiteTextContrast(value) >= 3 ? "text-white" : "text-slate-900") : "text-white")} />
         <input
-          type="color" // ตัวเลือกสีของเบราว์เซอร์ ถาดเลือกสี
+          type="color" // ฟ้าใส: ตัวเลือกสีของเบราว์เซอร์ ถาดเลือกสี
           value={/^#[0-9A-F]{6}$/i.test(value) ? value : "#000000"}
           onChange={(e) => pick(e.target.value)}
           aria-label={`${label} ${tr("เลือกสีเอง", "custom color")}`}

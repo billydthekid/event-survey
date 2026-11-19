@@ -1,8 +1,8 @@
 "use client";
-// ส่วนแก้คำตอบในการ์ดคำถามของ Survey Builder (ใต้ชื่อคำถาม) — แยกตามประเภท 12 แบบ
-// - ตัวเลือก (single / multi / dropdown / opinion): แก้ / ลบ / เพิ่มในการ์ด
-// - ตาราง (mcgrid / cbgrid): แก้แถว (หัวข้อ) และคอลัมน์ (ตัวเลือก)
-// - linear: คำกำกับปลายซ้าย/ขวา · ประเภทอื่น: แสดงตัวอย่างช่องตอบ (AnswerSample)
+// ฟ้าใส: ส่วนแก้คำตอบในการ์ดคำถามของ Survey Builder (ใต้ชื่อคำถาม) — แยกตามประเภท 12 แบบ
+// ฟ้าใส: - ตัวเลือก (single / multi / dropdown / opinion): แก้ / ลบ / เพิ่มในการ์ด
+// ฟ้าใส: - ตาราง (mcgrid / cbgrid): แก้แถว (หัวข้อ) และคอลัมน์ (ตัวเลือก)
+// ฟ้าใส: - linear: คำกำกับปลายซ้าย/ขวา · ประเภทอื่น: แสดงตัวอย่างช่องตอบ (AnswerSample)
 
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import type { SurveyQuestion } from "@/types/event";
 import { AnswerSample } from "./survey-preview";
 import { useTr } from "@/lib/wizard-lang";
 
+// ฟ้าใส: ส่วนแก้คำตอบในการ์ดคำถาม (ตามประเภท)
 export function QuestionEditor({
   q,
   primary,
@@ -17,13 +18,19 @@ export function QuestionEditor({
 }: {
   q: SurveyQuestion;
   primary: string;
+  // ฟ้าใส: บันทึกการแก้
   update: (v: Partial<SurveyQuestion>) => void;
 }) {
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
   switch (q.type) {
+    // ฟ้าใส: ตัวเลือกเดียว
     case "single":
+    // ฟ้าใส: หลายตัวเลือก
     case "multi":
+    // ฟ้าใส: Dropdown
     case "dropdown":
+    // ฟ้าใส: ระดับความเห็น
     case "opinion":
       return (
         <ListEditor
@@ -40,7 +47,9 @@ export function QuestionEditor({
           newItem={(n) => (q.type === "opinion" ? tr(`ระดับ ${n}`, `Level ${n}`) : tr(`ตัวเลือก ${n}`, `Option ${n}`))}
         />
       );
+    // ฟ้าใส: ตารางเลือกข้อเดียว
     case "mcgrid":
+    // ฟ้าใส: ตารางเลือกหลายข้อ
     case "cbgrid":
       return (
         <div className="space-y-4">
@@ -70,6 +79,7 @@ export function QuestionEditor({
           <AnswerSample q={q} primary={primary} />
         </div>
       );
+    // ฟ้าใส: สเกลตัวเลข: ตั้งคำกำกับปลายทั้งสองข้าง
     case "linear":
       return (
         <div className="space-y-3">
@@ -92,13 +102,14 @@ export function QuestionEditor({
           </div>
         </div>
       );
+    // ฟ้าใส: ประเภทอื่น: แสดงตัวอย่างช่องตอบ
     default:
-      // short / long / date / rating / yesno → แสดงตัวอย่างอย่างเดียว (yesno = ใช่/ไม่ใช่ ตายตัว)
+      // ฟ้าใส: short / long / date / rating / yesno → แสดงตัวอย่างอย่างเดียว (yesno = ใช่/ไม่ใช่ ตายตัว)
       return <AnswerSample q={q} primary={primary} />;
   }
 }
 
-// รายการข้อความที่แก้ / ลบ / เพิ่มได้ (ตัวเลือก, แถว, คอลัมน์)
+// ฟ้าใส: รายการข้อความที่แก้ / ลบ / เพิ่มได้ (ตัวเลือก, แถว, คอลัมน์)
 function ListEditor({
   items,
   onChange,
@@ -108,12 +119,16 @@ function ListEditor({
   min = 2,
 }: {
   items: string[];
+  // ฟ้าใส: บันทึกรายการใหม่
   onChange: (next: string[]) => void;
+  // ฟ้าใส: สัญลักษณ์หน้ารายการ (วงกลม / สี่เหลี่ยม / เลข)
   marker: (k: number) => React.ReactNode;
   addLabel: string;
+  // ฟ้าใส: ข้อความของรายการใหม่
   newItem: (n: number) => string;
   min?: number;
 }) {
+  // ฟ้าใส: ตัวเลือกข้อความตามภาษา
   const tr = useTr();
   return (
     <div className="space-y-2">
