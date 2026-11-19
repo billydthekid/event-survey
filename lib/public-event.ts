@@ -66,6 +66,7 @@ export interface PublicEvent {
   surveyOpen: string;
   surveyClose: string;
   fields: PublicField[];
+  registration: { enabled: boolean }; // false = Event นี้ไม่รับลงทะเบียน (ฟอร์มใน Wizard ไม่มีช่อง)
   survey: { enabled: boolean; questions: PublicQuestion[] };
 }
 
@@ -152,11 +153,12 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
   const g = draft?.general;
   const report = getReportData(event.id);
 
-  // ฟอร์ม: Wizard → Event → ฟอร์มตั้งต้น (ชื่อ + อีเมล)
-  const fields =
-    draft && draft.form.fields.length > 0
-      ? fromWizard(draft.form.fields)
-      : event.registration.fields.length > 0
+  // ฟอร์ม:
+  // - มี draft ของ Wizard → ใช้ฟอร์มใน Wizard ตรง ๆ (ไม่มีช่องเลย = Event นี้ไม่รับลงทะเบียน · กติกาของ Wizard)
+  // - ไม่มี draft (งานตัวอย่างที่ยังไม่เคยเปิด Wizard) → ฟอร์มใน Event → ฟอร์มตั้งต้น
+  const fields = draft
+    ? fromWizard(draft.form.fields)
+    : event.registration.fields.length > 0
         ? [...event.registration.fields]
             .sort((a, b) => a.order - b.order)
             .map((f) => ({
@@ -167,11 +169,13 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
               required: f.required,
               options: f.options ?? [],
             }))
-        : defaultFields(draft?.allowList);
+        : defaultFields(undefined); // ไม่มี draft = ไม่มีรายชื่อ Event ปิด → ฟอร์มตั้งต้นแบบ Event เปิด
 
-  // Survey: Wizard (ถ้ามีคำถาม) → Event → mock ของ Report
+  // Survey:
+  // - มี draft ของ Wizard → ใช้คำถามใน Wizard ตรง ๆ (ไม่มีคำถาม = Event นี้ไม่มีแบบประเมิน · กติกาของ Wizard)
+  // - ไม่มี draft (งานตัวอย่าง) → คำถามใน Event → mock ของ Report
   let questions: PublicQuestion[] = [];
-  if (draft && draft.survey.questions.length > 0) {
+  if (draft) {
     // 12 ประเภทจาก Survey Builder (lib/survey-types.ts) · ข้อมูลเก่า rating ตัวเลข → linear
     questions = draft.survey.questions.map(normalizeQuestion).map((q) => ({
       id: q.id,
@@ -200,8 +204,8 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
         ratingLabels: report?.ratingLabels?.[q.id],
       }));
   }
-  const surveyEnabled =
-    !!draft?.survey.enabled || !!event.survey?.enabled || !!report?.survey.enabled;
+  // มี draft → มีคำถาม = มีแบบประเมิน (Wizard ไม่มีสวิตช์เปิด/ปิดแล้ว) · ไม่มี draft → ดูสวิตช์ใน Event / mock
+  const surveyEnabled = draft ? true : !!event.survey?.enabled || !!report?.survey.enabled;
 
   return {
     id: event.id,
@@ -230,6 +234,7 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
     surveyOpen: draft?.schedule.surveyOpen || event.surveyWindow.opensAt,
     surveyClose: draft?.schedule.surveyClose || event.surveyWindow.closesAt,
     fields,
+    registration: { enabled: fields.length > 0 },
     survey: { enabled: surveyEnabled && questions.length > 0, questions },
   };
 }
@@ -257,6 +262,7 @@ export interface ScheduleInfo {
   maxAttendees: number;
   surveyOpen: string;
   surveyClose: string;
+  registration: { enabled: boolean };
   survey: { enabled: boolean };
 }
 
@@ -285,9 +291,10 @@ export const regClosesAt = (e: ScheduleInfo) => e.regClose || eventEnd(e);
 export const surveyOpensAt = (e: ScheduleInfo) => e.surveyOpen || eventStart(e);
 export const surveyClosesAt = (e: ScheduleInfo) => e.surveyClose || eventEnd(e);
 
-// หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
-export type RegisterPhase = "open" | "notOpen" | "closed" | "full";
+// หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3) / งานนี้ไม่รับลงทะเบียน
+export type RegisterPhase = "open" | "notOpen" | "closed" | "full" | "none";
 export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: number): RegisterPhase {
+  if (!e.registration.enabled) return "none";
   const phase = getEventPhase(e, now);
   // ยังไม่เปิด: ถึงเวลาเปิดที่ตั้งไว้หรือยัง / ไม่ได้ตั้ง → รองานเริ่ม
   if (e.regOpen ? before(e.regOpen, now) : phase === "upcoming") return "notOpen";

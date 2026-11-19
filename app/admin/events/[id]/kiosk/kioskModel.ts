@@ -79,6 +79,7 @@ export function buildKioskModel(event: Event, draft?: EventDraft): KioskModel {
     maxAttendees: pub.maxAttendees,
     surveyOpen: pub.surveyOpen,
     surveyClose: pub.surveyClose,
+    registration: { enabled: pub.registration.enabled },
     survey: { enabled: pub.survey.enabled },
   };
 }

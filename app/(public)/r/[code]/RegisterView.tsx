@@ -5,7 +5,7 @@
 // กรอกซ้ำได้ ไม่ดักข้อมูลซ้ำ (ตาม scope) — กดส่งแล้วจบ
 "use client";
 import { use, useState } from "react";
-import { CircleCheck, Clock, Lock, QrCode, Search, Users } from "lucide-react";
+import { CircleCheck, Clock, Info, Lock, QrCode, Search, Users } from "lucide-react";
 import type { Lang } from "@/types";
 import { useStore } from "@/lib/store";
 import { useWizardStore } from "@/lib/wizard-store";
@@ -86,6 +86,8 @@ const TEXT = {
     closedTitle: "ปิดรับลงทะเบียนแล้ว",
     closedAt: (d: string) => `ปิดรับเมื่อ ${d}`,
     closedSub: "ขอบคุณที่ให้ความสนใจ",
+    noneTitle: "Event นี้ไม่เปิดรับลงทะเบียน",
+    noneSub: "เข้าร่วมงานได้เลย ไม่ต้องลงทะเบียน",
     fullTitle: "ที่นั่งเต็มแล้ว",
     fullSub: (n: number) => `รับครบ ${n} / ${n} คนแล้ว`,
     contact: (e: string) => `ติดต่อสอบถาม: ${e}`,
@@ -130,6 +132,8 @@ const TEXT = {
     closedTitle: "Registration is closed",
     closedAt: (d: string) => `Closed ${d}`,
     closedSub: "Thank you for your interest",
+    noneTitle: "This event doesn't take registrations",
+    noneSub: "You can join without registering",
     fullTitle: "This event is full",
     fullSub: (n: number) => `All ${n} / ${n} seats are taken`,
     contact: (e: string) => `Contact: ${e}`,
@@ -211,6 +215,15 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
   const phase = getRegisterPhase(e, now, registeredCount);
   const info = <EventInfo event={e} pal={pal} lang={lang} chip={t.chip} />;
 
+  // ฟอร์มใน Wizard ไม่มีช่องเลย = Event นี้ไม่รับลงทะเบียน (กติกาของ Wizard)
+  if (phase === "none") {
+    return shell(
+      <>
+        {info}
+        <StateMessage icon={Info} tone="slate" pal={pal} title={t.noneTitle} lines={[t.noneSub]} />
+      </>
+    );
+  }
   if (phase === "notOpen") {
     const opens = regOpensAt(e); // ไม่ได้ตั้งเวลาเปิด → เวลาเริ่มงาน
     return shell(

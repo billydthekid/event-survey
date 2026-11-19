@@ -330,7 +330,10 @@ export function KioskScreen({
                 />
               ) : (
                 // ไม่มี QR ให้แสดง → บอกเหตุผล (ยังไม่เปิด / ปิดแล้ว / เต็ม)
-                <InfoCard pal={pal} {...noQrMessage(m, info, lang, t)} />
+                (() => {
+                  const msg = noQrMessage(m, info, lang, t);
+                  return msg && <InfoCard pal={pal} {...msg} />;
+                })()
               )}
 
               {/* บรรทัดบอกเวลาปิด (ไม่ได้ตั้ง = เวลาจบงาน) */}
@@ -661,6 +664,8 @@ function QrLink({ url, color }: { url: string; color: string }) {
 function noQrMessage(m: KioskModel, info: KioskSceneResult, lang: Lang, t: Text) {
   const at = (iso: string, line: (d: string) => string) => (iso ? line(fmtDateTime(iso, lang, t)) : "");
   const wantsRegister = m.screen !== "survey";
+  const wantsSurvey = m.screen !== "register";
+  // งานไม่รับลงทะเบียน (reg = "none") → ข้ามไปดูแบบประเมิน
   if (wantsRegister) {
     if (info.reg === "notOpen") {
       // K1: ยังไม่ถึงเวลาเปิดรับ (ไม่ได้ตั้ง = เปิดเมื่องานเริ่ม)
@@ -669,10 +674,14 @@ function noQrMessage(m: KioskModel, info: KioskSceneResult, lang: Lang, t: Text)
     if (info.reg === "full") return { icon: "lock" as const, title: t.regFull, hint: t.regClosedHint };
     if (info.reg === "closed") return { icon: "lock" as const, title: t.regClosed, hint: t.regClosedHint };
   }
-  if (info.survey === "notOpen") {
-    return { icon: "clock" as const, title: t.surveyLater, hint: at(surveyOpensAt(m), t.surveyOpensAt) };
+  if (wantsSurvey) {
+    if (info.survey === "notOpen") {
+      return { icon: "clock" as const, title: t.surveyLater, hint: at(surveyOpensAt(m), t.surveyOpensAt) };
+    }
+    if (info.survey === "closed") return { icon: "lock" as const, title: t.surveyClosed, hint: t.regClosedHint };
   }
-  return { icon: "lock" as const, title: t.surveyClosed, hint: t.regClosedHint };
+  // ไม่มีทั้งลงทะเบียนและแบบประเมิน → ไม่ต้องมีการ์ดอะไร (จอแสดงแค่รายละเอียดงาน)
+  return null;
 }
 
 // ============ การ์ดข้อความ (ไม่มี QR ให้สแกน) ============
