@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LockedArea, PublishConfirm } from "./lock-dialogs";
 import { SaveStatus } from "./save-status";
+import { ResetEventButton } from "./reset-event-button";
 import { setMyLang } from "@/app/admin/settings/accountActions";
 import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
@@ -83,6 +84,8 @@ export function WizardShell(p: Props) {
         {/* เปลี่ยนทุกครั้งที่แก้: กำลังบันทึก… → บันทึกแล้ว */}
         <div className="flex items-center gap-3">
           <SaveStatus eventId={p.eventId} locked={p.locked} />
+          {/* รีเซ็ตทุกขั้นกลับเป็นตอนก่อนกรอก (ถามยืนยันก่อน) · Event ที่ล็อกแล้วไม่มีปุ่มนี้ */}
+          {!p.locked && <ResetEventButton eventId={p.eventId} eventName={p.eventName} />}
           {/* ปุ่มภาษา ไทย / EN — ค่าเดียวกับหน้า Dashboard (currentUser.lang) เปลี่ยนแล้วเปลี่ยนทั้งแอป */}
           <button
             type="button"

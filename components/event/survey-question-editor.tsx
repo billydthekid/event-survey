@@ -122,9 +122,10 @@ function ListEditor({
           {marker(k)}
           <input
             value={o}
+            placeholder={newItem(k + 1)}
             onChange={(e) => onChange(items.map((x, n) => (n === k ? e.target.value : x)))}
             aria-label={tr(`รายการที่ ${k + 1}`, `Item ${k + 1}`)}
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
           />
           <button
             type="button"

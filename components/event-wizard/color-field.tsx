@@ -77,6 +77,7 @@ export function ColorField({
         onChange={(e) => onHex(e.target.value)}
         onBlur={() => setHexDraft(null)}
         maxLength={7}
+        placeholder="#2563EB"
         aria-label={`${label} HEX`}
         aria-invalid={!/^#[0-9A-F]{6}$/i.test(hex)}
         className="ml-1 h-8 w-28 font-mono"

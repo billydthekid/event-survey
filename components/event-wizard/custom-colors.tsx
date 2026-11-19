@@ -32,7 +32,10 @@ interface Values {
   bgType: "color" | "image";
   bgColor?: string;
   bg: UploadedAsset | null;
+  bgBlur?: number;
 }
+
+const MAX_BLUR = 20; // เบลอรูปพื้นหลังได้สูงสุด 20 px
 
 export function CustomColors({ target }: { target: ColorTarget }) {
   const t = useWizardStore((s) => s.draft.theme);
@@ -144,6 +147,25 @@ function ColorEditor({
               onRemove={() => onChange({ bg: null })}
               className={landscapeBg ? "aspect-video w-40" : "aspect-[9/16] w-24"}
             />
+            {/* เบลอรูปพื้นหลัง (ตัวหนังสือไม่เบลอ) · มีรูปแล้วถึงจะปรับได้ */}
+            {v.bg?.dataUrl && (
+              <div className="flex max-w-md items-center gap-3 text-sm">
+                <span className="shrink-0 text-muted-foreground">{tr("เบลอพื้นหลัง", "Blur background")}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={MAX_BLUR}
+                  step={1}
+                  value={v.bgBlur ?? 0}
+                  onChange={(e) => onChange({ bgBlur: Number(e.target.value) })}
+                  aria-label={tr("เบลอพื้นหลัง", "Blur background")}
+                  className="flex-1 accent-foreground"
+                />
+                <span className="w-14 shrink-0 text-right tabular-nums text-muted-foreground">
+                  {(v.bgBlur ?? 0) === 0 ? tr("ไม่เบลอ", "Off") : `${v.bgBlur} px`}
+                </span>
+              </div>
+            )}
             {v.bg?.dataUrl && bgOrientation !== orientation && (
               <p className="text-xs text-amber-700">
                 {tr(

@@ -4,6 +4,7 @@ import type { EventDraft } from "@/types/event";
 import type { Event } from "@/types";
 import { createMockDrafts } from "@/lib/mock/event-draft";
 import { migrateField } from "@/lib/form-types";
+import { DEFAULT_PRESET, applyPreset } from "@/lib/theme-presets";
 
 type PatchValue<K extends keyof EventDraft> = EventDraft[K] extends object | null
   ? EventDraft[K] extends null ? EventDraft[K] : Partial<NonNullable<EventDraft[K]>> | EventDraft[K]
@@ -20,6 +21,8 @@ interface State {
   patchEvent: <K extends keyof EventDraft>(id: string, key: K, value: PatchValue<K>) => void;
   patch: <K extends keyof EventDraft>(key: K, value: PatchValue<K>) => void;
   publish: () => void;
+  /** ล้าง Event กลับเป็นตอนก่อนกรอกครั้งแรก (เก็บชื่อ Event ไว้) และกลับไปขั้นที่ 1 */
+  resetDraft: (id: string) => void;
 }
 
 const isPlain = (v: unknown): v is Record<string, unknown> =>
@@ -93,6 +96,49 @@ function migrateDraft(d: DraftV2): EventDraft {
   };
 }
 
+/**
+ * Event ว่างแบบตอนก่อนกรอกครั้งแรก — เก็บไว้แค่ id, รหัสงาน, สถานะ, ผู้มอบหมาย และชื่อ Event (ที่ Super ตั้งตอนสร้าง)
+ * ที่เหลือ: ข้อมูลทั่วไปว่าง · ธีมมินิมอล ไม่มีรูป · ไม่มีโฆษณา / ฟอร์ม / คำถาม / ช่วงเวลา · Event เปิด
+ */
+export function blankDraft(d: EventDraft): EventDraft {
+  return {
+    id: d.id,
+    code: d.code,
+    status: d.status,
+    assignedBy: d.assignedBy,
+    general: {
+      nameTh: d.general.nameTh,
+      nameEn: d.general.nameEn,
+      descTh: "",
+      descEn: "",
+      type: "seminar",
+      typeOther: "",
+      organizer: "",
+      phone: "",
+      email: "",
+      showContact: true,
+      mode: "onsite",
+      date: "",
+      startTime: "",
+      endDate: "",
+      endTime: "",
+      venue: "",
+      spot: "",
+      mapUrl: "",
+      cover: null,
+    },
+    theme: {
+      ...(applyPreset(DEFAULT_PRESET) as Pick<EventDraft["theme"], "primary" | "secondary" | "mode" | "bgType" | "bgColor" | "preset">),
+      bg: null,
+      logo: null,
+    },
+    ads: { items: [], seconds: DEFAULT_AD_SECONDS },
+    form: { fields: [] },
+    schedule: { regOpen: "", regClose: "", maxAttendees: "", surveyOpen: "", surveyClose: "", remindAfterEnd: false },
+    survey: { enabled: true, questions: [] },
+  };
+}
+
 const initial = createMockDrafts();
 
 export const useWizardStore = create<State>()(
@@ -124,6 +170,13 @@ export const useWizardStore = create<State>()(
         }),
       patch: (key, value) => get().patchEvent(get().draft.id, key, value),
       publish: () => get().patchEvent(get().draft.id, "status", "scheduled"),
+      resetDraft: (id) =>
+        set((s) => {
+          const cur = s.drafts[id];
+          if (!cur) return s;
+          const next = blankDraft(cur);
+          return { drafts: { ...s.drafts, [id]: next }, draft: s.draft.id === id ? next : s.draft, step: 1 };
+        }),
     }),
     {
       name: "event-admin-store-v2",

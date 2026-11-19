@@ -40,6 +40,7 @@ const alpha = (hex: string, a: number) => (/^#[0-9a-f]{6}$/i.test(hex) ? hex + M
 export interface PreviewColors {
   page: string; // พื้นหลังทั้งหน้า (สี) — ถ้ามีรูปพื้นหลังจะวางรูปทับ
   pageImage?: string;
+  pageBlur: number; // เบลอรูปพื้นหลัง (px)
   text: string;
   muted: string;
   button: { bg: string; text: string };
@@ -53,6 +54,7 @@ export function previewColors(t: Theme): PreviewColors {
   return {
     page: t.mode === "bold" && !t.bgColor ? t.primary : bg,
     pageImage: t.bgType === "image" ? t.bg?.dataUrl : undefined,
+    pageBlur: t.bgBlur ?? 0,
     // ตั้งสีตัวอักษรเอง → ใช้สีนั้น (ตัวรอง = สีเดียวกันจางลง) · ไม่ตั้ง = อัตโนมัติตามโหมด
     text: t.textColor || (onDark ? "#F8FAFC" : "#0F172A"),
     muted: t.textColor ? alpha(t.textColor, 0.72) : onDark ? "#CBD5E1" : "#64748B",
@@ -69,6 +71,7 @@ export interface PageLook {
   primary: string;
   bg: string;
   bgImage?: string;
+  bgBlur?: number; // เบลอรูปพื้นหลัง (px)
   text: string;
   muted: string;
   banner?: string; // แบนเนอร์หัวหน้า (data URL · 4:1) · ไม่มี = ไม่แสดง
@@ -86,7 +89,7 @@ export function pageLook(t: Theme, page: PageKey): PageLook {
   const banner = t.banners?.[page]?.dataUrl; // แบนเนอร์แยกจากสี: มีได้ทั้งตอนใช้สีเดียวกับ Kiosk และตอนตั้งสีแยก
   if (!own) {
     const c = previewColors(t);
-    return { primary: t.primary, bg: c.page, bgImage: c.pageImage, text: c.text, muted: c.muted, banner };
+    return { primary: t.primary, bg: c.page, bgImage: c.pageImage, bgBlur: c.pageBlur, text: c.text, muted: c.muted, banner };
   }
   const bg = own.bgColor || "#FFFFFF";
   const dark = whiteTextContrast(bg) >= 4.5; // พื้นเข้ม → ตัวอักษรขาว (อัตโนมัติ)
@@ -95,15 +98,29 @@ export function pageLook(t: Theme, page: PageKey): PageLook {
     primary: own.primary,
     bg,
     bgImage: own.bgType === "image" ? own.bg?.dataUrl : undefined,
+    bgBlur: own.bgBlur ?? 0,
     text,
     muted: own.textColor ? alpha(own.textColor, 0.72) : dark ? "#CBD5E1" : "#64748B",
     banner,
   };
 }
 
-/** style ของพื้นหน้า (สี + รูปพื้นหลังถ้ามี) */
+// ============ พื้นหลังแบบรูป + เบลอ ============
+// เบลอเฉพาะรูปพื้นหลัง ไม่เบลอตัวหนังสือ: วาดรูปไว้ใน ::before (ชั้นล่างสุด) แล้วใส่ filter blur ที่ชั้นนั้น
+// ใช้คู่กัน: className={BG_LAYER} + style={bgStyle(สี, รูป, เบลอ, สีตัวอักษร)} · ต้องมี overflow-hidden ที่กล่องด้วย
+export const BG_LAYER =
+  "relative isolate before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:scale-110 before:bg-cover before:bg-center before:[background-image:var(--bg-img)] before:[filter:blur(var(--bg-blur))]";
+
+export function bgStyle(color: string, image: string | undefined, blur: number, text: string): React.CSSProperties {
+  return {
+    backgroundColor: color,
+    color: text,
+    ["--bg-img" as string]: image ? `url(${image})` : "none",
+    ["--bg-blur" as string]: `${image ? blur : 0}px`,
+  };
+}
+
+/** style ของพื้นหน้า (สี + รูปพื้นหลังถ้ามี) · ใช้คู่กับ className={BG_LAYER} */
 export function lookStyle(l: PageLook): React.CSSProperties {
-  return l.bgImage
-    ? { backgroundColor: l.bg, backgroundImage: `url(${l.bgImage})`, backgroundSize: "cover", backgroundPosition: "center", color: l.text }
-    : { backgroundColor: l.bg, color: l.text };
+  return bgStyle(l.bg, l.bgImage, l.bgBlur ?? 0, l.text);
 }
