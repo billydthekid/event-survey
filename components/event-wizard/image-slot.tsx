@@ -7,6 +7,7 @@ import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UploadedAsset } from "@/types/event";
+import { useTr } from "@/lib/wizard-lang";
 
 export function ImageSlot({
   asset,
@@ -26,6 +27,7 @@ export function ImageSlot({
   contain?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const tr = useTr();
   const [error, setError] = useState("");
   return (
     <div className="flex items-center gap-3">
@@ -33,7 +35,7 @@ export function ImageSlot({
         type="button"
         onClick={() => ref.current?.click()}
         className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted/40 text-muted-foreground", className)}
-        aria-label="เลือกรูป"
+        aria-label={tr("เลือกรูป", "Choose an image")}
       >
         {asset?.dataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- data URL
@@ -43,16 +45,16 @@ export function ImageSlot({
         )}
       </button>
       <div className="min-w-0 text-sm">
-        <p className="truncate">{asset ? asset.name : "ยังไม่มีรูป"}</p>
+        <p className="truncate">{asset ? asset.name : tr("ยังไม่มีรูป", "No image yet")}</p>
         <p className="text-xs text-muted-foreground">{asset?.dataUrl ? `${asset.sizeKB} KB · ` : ""}{hint}</p>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="mt-1 flex gap-2">
           <Button size="sm" variant="outline" onClick={() => ref.current?.click()}>
-            {asset ? "เปลี่ยน" : "อัปโหลด"}
+            {asset ? tr("เปลี่ยน", "Change") : tr("อัปโหลด", "Upload")}
           </Button>
           {asset && (
             <Button size="sm" variant="ghost" className="text-destructive" onClick={onRemove}>
-              ลบ
+              {tr("ลบ", "Remove")}
             </Button>
           )}
         </div>
@@ -67,11 +69,11 @@ export function ImageSlot({
           e.target.value = "";
           if (!f) return;
           setError("");
-          if (f.size > 10 * 1024 * 1024) return setError("ไฟล์ใหญ่เกิน 10 MB");
+          if (f.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
           try {
             await onPick(f);
           } catch {
-            setError("อ่านรูปไม่ได้ หรือพื้นที่เก็บรูปเต็ม");
+            setError(tr("อ่านรูปไม่ได้ หรือพื้นที่เก็บรูปเต็ม", "Couldn't read the image, or storage is full"));
           }
         }}
       />

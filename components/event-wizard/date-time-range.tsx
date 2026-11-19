@@ -4,7 +4,9 @@
 // ใช้ 3 ที่: วันเวลาจัดงาน (ขั้น 1) · เปิด–ปิดรับลงทะเบียน (ขั้น 3) · เปิด–ปิดรับคำตอบ Survey (ขั้น 4)
 
 import { format, parseISO } from "date-fns";
-import { th } from "date-fns/locale";
+import { enGB, th } from "date-fns/locale";
+import { useTr, useWizardLang } from "@/lib/wizard-lang";
+import type { Lang } from "@/types";
 import { cn } from "@/lib/utils";
 import { FieldError } from "./field-error";
 
@@ -14,8 +16,9 @@ export interface DateTimeValue {
 }
 
 /** "2026-11-18" → "พุธ 18 พ.ย." */
-function dayLabel(iso: string) {
-  return iso ? format(parseISO(iso), "EEEE d MMM", { locale: th }) : "เลือกวันที่";
+function dayLabel(iso: string, lang: Lang) {
+  if (!iso) return lang === "en" ? "Pick a date" : "เลือกวันที่";
+  return format(parseISO(iso), lang === "en" ? "EEE d MMM" : "EEEE d MMM", { locale: lang === "en" ? enGB : th });
 }
 
 export function DateTimeRange({
@@ -23,8 +26,8 @@ export function DateTimeRange({
   end,
   onStart,
   onEnd,
-  startLabel = "เริ่ม",
-  endLabel = "จบ",
+  startLabel,
+  endLabel,
   minDate,
   startError,
   endError,
@@ -41,6 +44,9 @@ export function DateTimeRange({
   endError?: string;
   required?: boolean;
 }) {
+  const tr = useTr();
+  startLabel ??= tr("เริ่ม", "Start");
+  endLabel ??= tr("จบ", "End");
   return (
     <div className="space-y-1.5">
       <div className="rounded-xl bg-muted/60 p-1.5">
@@ -86,6 +92,8 @@ function Row({
   required?: boolean;
   dot: "filled" | "hollow";
 }) {
+  const tr = useTr();
+  const lang = useWizardLang();
   const box = cn(
     "relative flex h-10 items-center rounded-lg bg-background/70 px-3 text-sm font-medium transition hover:bg-background",
     invalid && "ring-1 ring-destructive"
@@ -116,10 +124,10 @@ function Row({
       </span>
 
       <label className={box}>
-        <span className={cn(!value.date && "text-muted-foreground")}>{dayLabel(value.date)}</span>
+        <span className={cn(!value.date && "text-muted-foreground")}>{dayLabel(value.date, lang)}</span>
         <input
           type="date"
-          aria-label={`${label}: วันที่`}
+          aria-label={`${label}: ${tr("วันที่", "date")}`}
           min={minDate}
           value={value.date}
           onClick={openPicker}
@@ -132,7 +140,7 @@ function Row({
         <span className={cn(!value.time && "text-muted-foreground")}>{value.time || "--:--"}</span>
         <input
           type="time"
-          aria-label={`${label}: เวลา`}
+          aria-label={`${label}: ${tr("เวลา", "time")}`}
           value={value.time}
           onClick={openPicker}
           onChange={(e) => onChange({ ...value, time: e.target.value })}

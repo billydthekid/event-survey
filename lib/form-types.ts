@@ -11,26 +11,29 @@ export const FORM_KINDS: {
   th: string; // ชื่อประเภท (ไทย)
   en: string; // ชื่อประเภทแบบ Google Form
   example: string; // ตัวอย่างการใช้งาน → ใช้เป็นชื่อช่องตั้งต้นตอนเพิ่ม
+  exampleEn: string; // ตัวอย่าง (อังกฤษ) ใช้ตอนหน้าตั้งค่าเป็น EN
   icon: LucideIcon;
   hasOptions: boolean; // ต้องตั้งตัวเลือก
 }[] = [
-  { value: "short", th: "ข้อความสั้น", en: "Short Answer", example: "ชื่อ – นามสกุล", icon: Type, hasOptions: false },
-  { value: "paragraph", th: "ข้อความยาว", en: "Paragraph", example: "ข้อมูลเพิ่มเติม", icon: AlignLeft, hasOptions: false },
-  { value: "email", th: "อีเมล", en: "Email", example: "อีเมล", icon: Mail, hasOptions: false },
-  { value: "phone", th: "เบอร์โทรศัพท์", en: "Phone Number", example: "เบอร์โทรศัพท์", icon: Phone, hasOptions: false },
-  { value: "number", th: "ตัวเลข", en: "Number", example: "อายุ", icon: Hash, hasOptions: false },
-  { value: "radio", th: "ตัวเลือกเดียว", en: "Multiple Choice", example: "เลือกรอบกิจกรรม", icon: CircleDot, hasOptions: true },
-  { value: "checkbox", th: "หลายตัวเลือก", en: "Checkboxes", example: "เลือกกิจกรรมที่สนใจ", icon: CheckSquare, hasOptions: true },
-  { value: "dropdown", th: "Dropdown", en: "Dropdown", example: "เลือกคณะ / สาขา", icon: ChevronDown, hasOptions: true },
-  { value: "date", th: "วันที่", en: "Date", example: "วันที่ต้องการเข้าร่วม", icon: Calendar, hasOptions: false },
-  { value: "time", th: "เวลา", en: "Time", example: "เวลาที่ต้องการเข้าร่วม", icon: Clock, hasOptions: false },
-  { value: "file", th: "แนบไฟล์", en: "File Upload", example: "แนบเอกสาร / รูปภาพ", icon: Paperclip, hasOptions: false },
-  { value: "address", th: "ที่อยู่", en: "Address", example: "ที่อยู่", icon: MapPin, hasOptions: false },
+  { value: "short", th: "ข้อความสั้น", en: "Short Answer", example: "ชื่อ – นามสกุล", exampleEn: "Full name", icon: Type, hasOptions: false },
+  { value: "paragraph", th: "ข้อความยาว", en: "Paragraph", example: "ข้อมูลเพิ่มเติม", exampleEn: "Additional info", icon: AlignLeft, hasOptions: false },
+  { value: "email", th: "อีเมล", en: "Email", example: "อีเมล", exampleEn: "Email", icon: Mail, hasOptions: false },
+  { value: "phone", th: "เบอร์โทรศัพท์", en: "Phone Number", example: "เบอร์โทรศัพท์", exampleEn: "Phone number", icon: Phone, hasOptions: false },
+  { value: "number", th: "ตัวเลข", en: "Number", example: "อายุ", exampleEn: "Age", icon: Hash, hasOptions: false },
+  { value: "radio", th: "ตัวเลือกเดียว", en: "Multiple Choice", example: "เลือกรอบกิจกรรม", exampleEn: "Choose a session", icon: CircleDot, hasOptions: true },
+  { value: "checkbox", th: "หลายตัวเลือก", en: "Checkboxes", example: "เลือกกิจกรรมที่สนใจ", exampleEn: "Activities you are interested in", icon: CheckSquare, hasOptions: true },
+  { value: "dropdown", th: "Dropdown", en: "Dropdown", example: "เลือกคณะ / สาขา", exampleEn: "Faculty / major", icon: ChevronDown, hasOptions: true },
+  { value: "date", th: "วันที่", en: "Date", example: "วันที่ต้องการเข้าร่วม", exampleEn: "Preferred date", icon: Calendar, hasOptions: false },
+  { value: "time", th: "เวลา", en: "Time", example: "เวลาที่ต้องการเข้าร่วม", exampleEn: "Preferred time", icon: Clock, hasOptions: false },
+  { value: "file", th: "แนบไฟล์", en: "File Upload", example: "แนบเอกสาร / รูปภาพ", exampleEn: "Attach a document / photo", icon: Paperclip, hasOptions: false },
+  { value: "address", th: "ที่อยู่", en: "Address", example: "ที่อยู่", exampleEn: "Address", icon: MapPin, hasOptions: false },
 ];
 
 export const formKind = (k: FieldKind) => FORM_KINDS.find((x) => x.value === k) ?? FORM_KINDS[0];
 
 export const DEFAULT_OPTIONS = ["ตัวเลือก 1", "ตัวเลือก 2"];
+/** ตัวเลือกตั้งต้นตามภาษาของหน้าตั้งค่า (lib/wizard-lang.ts) */
+export const defaultOptions = (lang: "th" | "en") => (lang === "en" ? ["Option 1", "Option 2"] : [...DEFAULT_OPTIONS]);
 
 // ============ ข้อมูลเก่า → ประเภทใหม่ ============
 // เดิมมี "ช่องพื้นฐาน" (basicKey) + 5 ประเภท (text/email/number/dropdown/multiselect)

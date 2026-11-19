@@ -9,8 +9,8 @@ import { CalendarDays, Lock, QrCode, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWizardStore } from "@/lib/wizard-store";
-import { formatThaiDate } from "@/lib/utils/date";
 import { hasRegistration, hasSurvey } from "@/lib/utils/wizard-rules";
+import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 
 function LockIcon() {
   return (
@@ -22,6 +22,7 @@ function LockIcon() {
 
 export function LockedArea({ locked, children }: { locked: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const tr = useTr();
   if (!locked) return <>{children}</>;
 
   return (
@@ -33,7 +34,7 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
       <div
         role="button"
         tabIndex={0}
-        aria-label="เนื้อหานี้ถูกล็อก"
+        aria-label={tr("เนื้อหานี้ถูกล็อก", "This content is locked")}
         className="absolute inset-0 z-10 cursor-not-allowed"
         onClick={() => setOpen(true)}
         onKeyDown={() => setOpen(true)}
@@ -42,13 +43,13 @@ export function LockedArea({ locked, children }: { locked: boolean; children: Re
         <DialogContent className="text-center sm:max-w-sm">
           <DialogHeader className="items-center text-center">
             <LockIcon />
-            <DialogTitle>Event เผยแพร่แล้ว แก้ไขไม่ได้</DialogTitle>
+            <DialogTitle>{tr("Event เผยแพร่แล้ว แก้ไขไม่ได้", "This event is published and can't be edited")}</DialogTitle>
             <DialogDescription>
-              Event ที่เป็น Active หรือ Ended ถูกล็อกทุกขั้นตอน · ดูข้อมูลและผลได้อย่างเดียว · ถ้าต้องแก้ ติดต่อ Admin
+              {tr("Event ที่เป็น Active หรือ Ended ถูกล็อกทุกขั้นตอน · ดูข้อมูลและผลได้อย่างเดียว · ถ้าต้องแก้ ติดต่อ Admin", "Active or Ended events are locked in every step · you can only view details and results · contact an Admin to make changes")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">
-            <Button onClick={() => setOpen(false)}>เข้าใจแล้ว</Button>
+            <Button onClick={() => setOpen(false)}>{tr("เข้าใจแล้ว", "Got it")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -71,12 +72,14 @@ export function PublishConfirm({
   onConfirm: () => void;
 }) {
   const d = useWizardStore((s) => s.draft);
+  const tr = useTr();
+  const lang = useWizardLang();
   const g = d.general;
-  const endDate = g.endDate && g.endDate !== g.date ? `${formatThaiDate(g.endDate, false)} ` : "";
-  const when = g.date ? `${formatThaiDate(g.date, false)} · ${g.startTime} – ${endDate}${g.endTime}` : "ยังไม่กำหนดวัน";
+  const endDate = g.endDate && g.endDate !== g.date ? `${fmtDate(g.endDate, lang)} ` : "";
+  const when = g.date ? `${fmtDate(g.date, lang)} · ${g.startTime} – ${endDate}${g.endTime}` : tr("ยังไม่กำหนดวัน", "No date yet");
   const where = g.venue ? (g.mode === "online" ? `Online · ${g.venue}` : g.venue) : "";
   // QR ที่จะได้ตามที่สร้างไว้ (ฟอร์ม / Survey ไม่บังคับ)
-  const qrs = [hasRegistration(d) && "QR ลงทะเบียน", hasSurvey(d) && "QR Survey"].filter(Boolean).join(" + ");
+  const qrs = [hasRegistration(d) && tr("QR ลงทะเบียน", "Registration QR"), hasSurvey(d) && tr("QR Survey", "Survey QR")].filter(Boolean).join(" + ");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,8 +89,10 @@ export function PublishConfirm({
             <Rocket className="size-5" />
           </span>
           <div className="min-w-0">
-            <DialogTitle className="truncate">พร้อมเผยแพร่ &quot;{eventName || "Event นี้"}&quot;</DialogTitle>
-            <DialogDescription>ตรวจสรุปด้านล่างก่อนยืนยัน</DialogDescription>
+            <DialogTitle className="truncate">
+              {tr("พร้อมเผยแพร่", "Ready to publish")} &quot;{eventName || tr("Event นี้", "this event")}&quot;
+            </DialogTitle>
+            <DialogDescription>{tr("ตรวจสรุปด้านล่างก่อนยืนยัน", "Check the summary below before you confirm")}</DialogDescription>
           </div>
         </DialogHeader>
 
@@ -96,8 +101,12 @@ export function PublishConfirm({
           <SummaryRow icon={CalendarDays} title={when} sub={where} />
           <SummaryRow
             icon={QrCode}
-            title={qrs || "ไม่มี QR"}
-            sub={qrs ? "ได้ QR ทันทีหลังเผยแพร่" : "ไม่มีฟอร์มและ Survey · จอ Kiosk แสดงแค่รายละเอียดงาน"}
+            title={qrs || tr("ไม่มี QR", "No QR codes")}
+            sub={
+              qrs
+                ? tr("ได้ QR ทันทีหลังเผยแพร่", "You get the QR codes right after publishing")
+                : tr("ไม่มีฟอร์มและ Survey · จอ Kiosk แสดงแค่รายละเอียดงาน", "No form or survey · the Kiosk shows event details only")
+            }
           />
         </ul>
 
@@ -105,17 +114,19 @@ export function PublishConfirm({
         <div role="note" className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <Lock className="mt-0.5 size-4 shrink-0" />
           <p>
-            สถานะเปลี่ยนเป็น <strong className="font-semibold">Active</strong> และ
-            <strong className="font-semibold">แก้ไข Event / Survey ไม่ได้อีก</strong>
+            {tr("สถานะเปลี่ยนเป็น ", "The status becomes ")}
+            <strong className="font-semibold">Active</strong>
+            {tr(" และ", " and ")}
+            <strong className="font-semibold">{tr("แก้ไข Event / Survey ไม่ได้อีก", "the event and survey can't be edited anymore")}</strong>
           </p>
         </div>
 
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            กลับไปแก้ไข
+            {tr("กลับไปแก้ไข", "Go back and edit")}
           </Button>
           <Button onClick={onConfirm}>
-            <Rocket className="size-4" /> เผยแพร่เลย
+            <Rocket className="size-4" /> {tr("เผยแพร่เลย", "Publish now")}
           </Button>
         </DialogFooter>
       </DialogContent>

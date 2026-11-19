@@ -7,6 +7,7 @@ import { useWizardStore } from "@/lib/wizard-store";
 import { useNow } from "@/lib/hooks/useNow";
 import { nowParts, validateDates } from "@/lib/utils/wizard-rules";
 import type { EventDraft } from "@/types/event";
+import { useWizardLang } from "@/lib/wizard-lang";
 import { DateTimeRange, joinDateTime, splitDateTime } from "./date-time-range";
 
 type Key = keyof Pick<EventDraft["schedule"], "regOpen" | "regClose" | "surveyOpen" | "surveyClose">;
@@ -28,7 +29,7 @@ export function TimeWindowFields({
   const patch = useWizardStore((s) => s.patch);
   const now = useNow();
   const { today } = nowParts(now);
-  const err = validateDates(draft, now);
+  const err = validateDates(draft, now, useWizardLang());
   const sc = draft.schedule;
   const open = splitDateTime(sc[openKey]);
   const close = splitDateTime(sc[closeKey]);

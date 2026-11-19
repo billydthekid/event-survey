@@ -21,10 +21,14 @@ import { cn } from "@/lib/utils";
 import type { RatingMax, SurveyQType, SurveyQuestion } from "@/types/event";
 import { TimeWindowFields } from "./time-window-fields";
 import { WizardSection } from "./wizard-section";
+import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
 export function StepSurvey() {
   const draft = useWizardStore((s) => s.draft);
   const patch = useWizardStore((s) => s.patch);
+  const lang = useWizardLang();
+  const tr = useTr();
+  const en = lang === "en";
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // ข้อมูลเก่า (rating ตัวเลข) → linear · แก้ครั้งถัดไปจะถูกบันทึกเป็นแบบใหม่
@@ -35,7 +39,7 @@ export function StepSurvey() {
 
   const add = (type: SurveyQType) => { // เพิ่มคำถามใหม่: ประเภท + ค่าตั้งต้นของประเภทนั้น + id ใหม่
     const nid = newId("q");
-    setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: [], ...defaultsFor(type) }]);
+    setQs([...qs, { id: nid, type, titleTh: "", titleEn: "", required: false, options: [], ...defaultsFor(type, undefined, lang) }]);
     setSelectedId(nid);
   };
 
@@ -49,33 +53,33 @@ export function StepSurvey() {
   };
 
   const remove = (qid: string) => setQs(qs.filter((q) => q.id !== qid));
-  const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q) });
+  const changeType = (q: SurveyQuestion, type: SurveyQType) => update(q.id, { type, ...defaultsFor(type, q, lang) });
 
 
   return (
     <>
       <WizardSection
-        title="เปิดตอบ Survey"
+        title={tr("เปิดตอบ Survey", "Survey window")}
         description={
           qs.length === 0
-            ? "Survey ไม่บังคับ · ไม่มีคำถาม = Event นี้ไม่มี Survey (ข้ามขั้นนี้ได้)"
-            : "ผู้เข้าร่วมตอบแบบประเมินผ่าน QR Survey ได้เฉพาะช่วงนี้"
+            ? tr("Survey ไม่บังคับ · ไม่มีคำถาม = Event นี้ไม่มี Survey (ข้ามขั้นนี้ได้)", "The survey is optional · no questions = no survey for this event (you can skip this step)")
+            : tr("ผู้เข้าร่วมตอบแบบประเมินผ่าน QR Survey ได้เฉพาะช่วงนี้", "Attendees can answer via the survey QR only during this time")
         }
       >
         <TimeWindowFields
           openKey="surveyOpen"
           closeKey="surveyClose"
-          openLabel="เปิดให้ตอบ"
-          closeLabel="ปิดรับคำตอบ"
+          openLabel={tr("เปิดให้ตอบ", "Opens")}
+          closeLabel={tr("ปิดรับคำตอบ", "Closes")}
           required={qs.length > 0}
         />
       </WizardSection>
 
       {/* พิมพ์คำถามภาษาไทยอย่างเดียว (ตัดปุ่มสลับ TH / EN ออกแล้ว · titleEn เดิมยังเก็บไว้) */}
-      <WizardSection title="คำถาม" description={`${qs.length} คำถาม · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`}>
+      <WizardSection title={tr("คำถาม", "Questions")} description={tr(`${qs.length} คำถาม · ลากที่ ⋮⋮ เพื่อเรียงลำดับ`, `${qs.length} questions · drag ⋮⋮ to reorder`)}>
         {qs.length === 0 && (
           <p className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-            ยังไม่มีคำถาม เลือกประเภทจากแถบด้านล่างเพื่อเริ่มสร้าง
+            {tr("ยังไม่มีคำถาม เลือกประเภทจากแถบด้านล่างเพื่อเริ่มสร้าง", "No questions yet. Pick a type from the bar below to start")}
           </p>
         )}
 
@@ -104,16 +108,16 @@ export function StepSurvey() {
                   <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
                     <meta.icon className="size-3.5" />
                   </span>
-                  {i + 1} · {meta.th}
+                  {i + 1} · {en ? meta.en : meta.th}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="icon" aria-label="ทำสำเนา" onClick={(e) => { e.stopPropagation(); duplicate(q.id); }}>
+                  <Button variant="outline" size="icon" aria-label={tr("ทำสำเนา", "Duplicate")} onClick={(e) => { e.stopPropagation(); duplicate(q.id); }}>
                     <Copy className="size-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label="ลบคำถามนี้"
+                    aria-label={tr("ลบคำถามนี้", "Delete this question")}
                     className="bg-red-50 text-red-600 hover:bg-red-100"
                     onClick={(e) => { e.stopPropagation(); remove(q.id); }}
                   >
@@ -127,8 +131,8 @@ export function StepSurvey() {
                 <input
                   value={q.titleTh}
                   onChange={(e) => update(q.id, { titleTh: e.target.value })}
-                  placeholder="พิมพ์คำถาม…"
-                  aria-label="ชื่อคำถาม"
+                  placeholder={tr("พิมพ์คำถาม…", "Type your question…")}
+                  aria-label={tr("ชื่อคำถาม", "Question")}
                   className="field-sizing-content min-w-[10ch] max-w-full bg-transparent text-lg font-bold outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
                 />
                 {q.required && <span className="text-lg font-bold text-destructive">*</span>}
@@ -141,7 +145,7 @@ export function StepSurvey() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">ประเภท</span>
+                    <span className="text-muted-foreground">{tr("ประเภท", "Type")}</span>
                     <select
                       value={q.type}
                       onChange={(e) => changeType(q, e.target.value as SurveyQType)}
@@ -149,14 +153,14 @@ export function StepSurvey() {
                     >
                       {QTYPES.map((qt) => (
                         <option key={qt.value} value={qt.value}>
-                          {qt.th}
+                          {en ? qt.en : qt.th}
                         </option>
                       ))}
                     </select>
                   </label>
                   {scale && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">{q.type === "rating" ? "จำนวนดาว" : "คะแนนเต็ม"}</span>
+                      <span className="text-muted-foreground">{q.type === "rating" ? tr("จำนวนดาว", "Stars") : tr("คะแนนเต็ม", "Max score")}</span>
                       <ToggleGroup
                         value={[String(ratingOf(q).max)]}
                         onValueChange={(v) => v[0] && update(q.id, { ratingMax: Number(v[0]) as RatingMax })}
@@ -170,7 +174,7 @@ export function StepSurvey() {
                   )}
                 </div>
                 <label className="flex items-center gap-2 text-sm">
-                  Required <span className="text-xs text-muted-foreground">(ต้องตอบก่อนส่ง)</span>
+                  Required <span className="text-xs text-muted-foreground">{tr("(ต้องตอบก่อนส่ง)", "(must be answered)")}</span>
                   <Switch checked={q.required} onCheckedChange={(v) => update(q.id, { required: v })} />
                 </label>
               </div>
@@ -180,7 +184,7 @@ export function StepSurvey() {
 
         {/* ===== แถบเพิ่มคำถาม: 12 ประเภท ===== */}
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed p-4">
-          <span className="mr-2 text-sm text-muted-foreground">เพิ่มคำถาม</span>
+          <span className="mr-2 text-sm text-muted-foreground">{tr("เพิ่มคำถาม", "Add question")}</span>
           {QTYPES.map((qt) => (
             <button
               key={qt.value}
@@ -188,7 +192,7 @@ export function StepSurvey() {
               onClick={() => add(qt.value)}
               className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-sm font-semibold transition hover:bg-foreground/15"
             >
-              <qt.icon className="size-4" /> {qt.th}
+              <qt.icon className="size-4" /> {en ? qt.en : qt.th}
             </button>
           ))}
         </div>

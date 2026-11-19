@@ -9,10 +9,12 @@ import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useWizardStore } from "@/lib/wizard-store";
 import { cn } from "@/lib/utils";
+import { useTr } from "@/lib/wizard-lang";
 
 type Status = { saving: boolean; savedAt: Date | null };
 
 export function SaveStatus({ eventId, locked }: { eventId: string; locked: boolean }) {
+  const tr = useTr();
   const [st, setSt] = useState<Status>({ saving: false, savedAt: null });
 
   useEffect(() => {
@@ -30,12 +32,12 @@ export function SaveStatus({ eventId, locked }: { eventId: string; locked: boole
     };
   }, [eventId]);
 
-  if (locked) return <span className="text-xs text-muted-foreground">เผยแพร่แล้ว · ดูอย่างเดียว</span>;
+  if (locked) return <span className="text-xs text-muted-foreground">{tr("เผยแพร่แล้ว · ดูอย่างเดียว", "Published · view only")}</span>;
 
   if (st.saving) {
     return (
       <span className="flex items-center gap-1 text-xs text-muted-foreground" aria-live="polite">
-        <Loader2 className="size-3.5 animate-spin" /> กำลังบันทึก…
+        <Loader2 className="size-3.5 animate-spin" /> {tr("กำลังบันทึก…", "Saving…")}
       </span>
     );
   }
@@ -50,7 +52,7 @@ export function SaveStatus({ eventId, locked }: { eventId: string; locked: boole
       )}
     >
       <Check className="size-3.5" />
-      {st.savedAt ? "บันทึกแล้ว" : "บันทึกอัตโนมัติ"}
+      {st.savedAt ? tr("บันทึกแล้ว", "Saved") : tr("บันทึกอัตโนมัติ", "Autosave on")}
       <style>{`@keyframes save-flash{0%{background:rgb(16 185 129 / .25)}100%{background:transparent}}`}</style>
     </span>
   );

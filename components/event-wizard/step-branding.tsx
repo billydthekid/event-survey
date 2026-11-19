@@ -26,14 +26,15 @@ import { CustomColors, type ColorTarget } from "./custom-colors";
 import { CropDialog } from "./crop-dialog";
 import { FileDrop } from "./file-drop";
 import { WizardSection } from "./wizard-section";
+import { useTr, useWizardLang } from "@/lib/wizard-lang";
 
 type Theme = EventDraft["theme"];
 type Media = "cover" | "ads";
 
-const TARGETS: { value: ColorTarget; label: string; hint: string; icon: typeof FileText }[] = [
-  { value: "kiosk", label: "จอ Kiosk", hint: "โลโก้ รูปปก โฆษณา ธีม สี", icon: MonitorSmartphone },
-  { value: "form", label: "ฟอร์มลงทะเบียน", hint: "แบนเนอร์ สี", icon: FileText },
-  { value: "survey", label: "Survey", hint: "แบนเนอร์ สี", icon: ClipboardList },
+const TARGETS: { value: ColorTarget; label: string; labelEn: string; hint: string; hintEn: string; icon: typeof FileText }[] = [
+  { value: "kiosk", label: "จอ Kiosk", labelEn: "Kiosk screen", hint: "โลโก้ รูปปก โฆษณา ธีม สี", hintEn: "Logo, cover, ads, theme, colors", icon: MonitorSmartphone },
+  { value: "form", label: "ฟอร์มลงทะเบียน", labelEn: "Registration form", hint: "แบนเนอร์ สี", hintEn: "Banner, colors", icon: FileText },
+  { value: "survey", label: "Survey", labelEn: "Survey", hint: "แบนเนอร์ สี", hintEn: "Banner, colors", icon: ClipboardList },
 ];
 
 export function StepBranding() {
@@ -44,7 +45,10 @@ export function StepBranding() {
   const landscape = t.kiosk === "landscape";
   const ratio = mediaRatioOf(t); // สัดส่วนที่ใช้ crop รูปปก / โฆษณา ตอนนี้
   const [target, setTarget] = useState<ColorTarget>("kiosk"); // หน้าที่กำลังแต่ง (เลือกที่บนสุด)
-  const current = TARGETS.find((x) => x.value === target)!;
+  const lang = useWizardLang();
+  const tr = useTr();
+  const currentT = TARGETS.find((x) => x.value === target)!;
+  const current = { ...currentT, label: lang === "en" ? currentT.labelEn : currentT.label };
 
   // Reset = ธีมมินิมอล + ล้างสีที่ตั้งแยกของฟอร์ม / Survey (รูปปก โฆษณา โลโก้ แบนเนอร์ไม่หาย)
   const reset = () => patch("theme", { ...applyPreset(DEFAULT_PRESET), bg: null, pages: {} });
@@ -52,7 +56,10 @@ export function StepBranding() {
   return (
     <>
       {/* ===== เลือกหน้าที่จะแต่ง (บนสุด) ===== */}
-      <WizardSection title="แต่งหน้าไหน" description="เลือกแล้วด้านล่างจะแสดงเฉพาะการตั้งค่าของหน้านั้น">
+      <WizardSection
+        title={tr("แต่งหน้าไหน", "Which page to style")}
+        description={tr("เลือกแล้วด้านล่างจะแสดงเฉพาะการตั้งค่าของหน้านั้น", "Only the settings for the chosen page are shown below")}
+      >
         <div className="grid gap-2 sm:grid-cols-3">
           {TARGETS.map((x) => (
             <button
@@ -67,8 +74,8 @@ export function StepBranding() {
             >
               <x.icon className="size-5 shrink-0" />
               <span className="min-w-0">
-                <span className="block text-sm font-semibold">{x.label}</span>
-                <span className={cn("block text-xs", target === x.value ? "text-background/70" : "text-muted-foreground")}>{x.hint}</span>
+                <span className="block text-sm font-semibold">{lang === "en" ? x.labelEn : x.label}</span>
+                <span className={cn("block text-xs", target === x.value ? "text-background/70" : "text-muted-foreground")}>{lang === "en" ? x.hintEn : x.hint}</span>
               </span>
             </button>
           ))}
@@ -77,7 +84,7 @@ export function StepBranding() {
 
       {/* ===== Live Preview ของหน้าที่เลือก ===== */}
       {/* Kiosk: ช่องรูปแสดงโฆษณา (เลื่อนวน) · ไม่มีโฆษณา = แสดงรูปปกแทน */}
-      <WizardSection title={`Live Preview · ${current.label}`} description="อัปเดตทันทีที่แก้ด้านล่าง">
+      <WizardSection title={`Live Preview · ${current.label}`} description={tr("อัปเดตทันทีที่แก้ด้านล่าง", "Updates as you edit below")}>
         {target === "kiosk" ? (
           <div className={cn("mx-auto w-full", landscape ? "max-w-2xl" : "max-w-xs")}>
             <KioskPreview d={draft} />
@@ -89,7 +96,7 @@ export function StepBranding() {
             questions={draft.survey.questions}
             lang="th"
             primary={t.primary}
-            title={`แบบประเมินงาน ${eventTypeLabel(draft.general.type, draft.general.typeOther)}`}
+            title={tr("แบบประเมินงาน ", "Feedback: ") + eventTypeLabel(draft.general.type, draft.general.typeOther, lang)}
             look={pageLook(t, "survey")}
           />
         )}
@@ -97,19 +104,19 @@ export function StepBranding() {
         {target === "kiosk" && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-muted/60 px-4 py-3 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">จอ Kiosk</span>
+              <span className="text-muted-foreground">{tr("จอ Kiosk", "Kiosk screen")}</span>
               <ToggleGroup
                 value={[t.kiosk ?? "portrait"]}
                 onValueChange={(v) => v[0] && patch("theme", { kiosk: v[0] as Theme["kiosk"] })}
                 variant="outline"
                 size="sm"
               >
-                <ToggleGroupItem value="portrait">แนวตั้ง</ToggleGroupItem>
-                <ToggleGroupItem value="landscape">แนวนอน</ToggleGroupItem>
+                <ToggleGroupItem value="portrait">{tr("แนวตั้ง", "Portrait")}</ToggleGroupItem>
+                <ToggleGroupItem value="landscape">{tr("แนวนอน", "Landscape")}</ToggleGroupItem>
               </ToggleGroup>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">สัดส่วนรูปปก / โฆษณา</span>
+              <span className="text-muted-foreground">{tr("สัดส่วนรูปปก / โฆษณา", "Cover / ad ratio")}</span>
               <ToggleGroup
                 value={[ratio]}
                 onValueChange={(v) => v[0] && patch("theme", { mediaRatio: v[0] as MediaRatio })}
@@ -121,7 +128,7 @@ export function StepBranding() {
               </ToggleGroup>
             </div>
             <p className="w-full text-xs text-muted-foreground">
-              ตอนนี้มีผลกับ Preview ใน Wizard · จอ Kiosk จริงต้องรอเพื่อนรองรับแนวนอน / รูป 3:4
+              {tr("ตอนนี้มีผลกับ Preview ใน Wizard · จอ Kiosk จริงต้องรอเพื่อนรองรับแนวนอน / รูป 3:4", "Applies to the preview in this wizard for now · the real Kiosk screen doesn't support landscape / 3:4 yet")}
             </p>
           </div>
         )}
@@ -131,11 +138,11 @@ export function StepBranding() {
         <>
   
         {/* ===== โลโก้ ===== */}
-        <WizardSection title="โลโก้" description="PNG/SVG พื้นใส · ไม่ใส่ = ใช้ตัวย่อรหัสงาน">
+        <WizardSection title={tr("โลโก้", "Logo")} description={tr("PNG/SVG พื้นใส · ไม่ใส่ = ใช้ตัวย่อรหัสงาน", "Transparent PNG/SVG · none = event code initials")}>
           <ImageSlot
             asset={t.logo}
             accept="image/png,image/svg+xml,image/jpeg"
-            hint="ย่อเหลือ 256 px"
+            hint={tr("ย่อเหลือ 256 px", "Resized to 256 px")}
             onPick={async (file) => {
               const url = await resizeToDataUrl(await readFileAsDataUrl(file), 256, 256, "image/png"); // โลโก้ใช้ PNG (คงพื้นใส) · ย่อเหลือ 256 px
               patch("theme", { logo: { name: file.name, sizeKB: dataUrlKB(url), dataUrl: url } });
@@ -148,11 +155,11 @@ export function StepBranding() {
   
         {/* ===== รูปภาพ: รูปปก / โฆษณา ===== */}
         <WizardSection
-          title="รูปภาพ"
+          title={tr("รูปภาพ", "Images")}
           action={
             <ToggleGroup value={[media]} onValueChange={(v) => v[0] && setMedia(v[0] as Media)} variant="outline" size="sm">
-              <ToggleGroupItem value="cover">รูปปก</ToggleGroupItem>
-              <ToggleGroupItem value="ads">โฆษณา</ToggleGroupItem>
+              <ToggleGroupItem value="cover">{tr("รูปปก", "Cover")}</ToggleGroupItem>
+              <ToggleGroupItem value="ads">{tr("โฆษณา", "Ads")}</ToggleGroupItem>
             </ToggleGroup>
           }
         >
@@ -161,9 +168,9 @@ export function StepBranding() {
   
         {/* ===== ธีมสำเร็จรูป ===== */}
         <WizardSection
-          title="ธีมสำเร็จรูป"
+          title={tr("ธีมสำเร็จรูป", "Theme presets")}
           action={
-            <Button variant="ghost" size="sm" onClick={reset} title="กลับเป็นธีมมินิมอล + ฟอร์ม / Survey ใช้สีเดียวกับ Kiosk (รูปปก โฆษณา และโลโก้ไม่หาย)">
+            <Button variant="ghost" size="sm" onClick={reset} title={tr("กลับเป็นธีมมินิมอล + ฟอร์ม / Survey ใช้สีเดียวกับ Kiosk (รูปปก โฆษณา และโลโก้ไม่หาย)", "Back to Minimal; form / survey use the Kiosk colors (cover, ads and logo stay)")}>
               <RotateCcw className="size-4" /> Reset
             </Button>
           }
@@ -187,7 +194,7 @@ export function StepBranding() {
                     <span className="h-2.5 w-4 rounded" style={{ background: p.secondary }} />
                     {on && <Check className="ml-auto size-4" style={{ color: p.mode === "light" ? p.primary : "#FFFFFF" }} />}
                   </span>
-                  {p.name}
+                  {lang === "en" ? p.nameEn : p.name}
                 </button>
               );
             })}
@@ -196,15 +203,22 @@ export function StepBranding() {
         </>
       ) : (
         // ===== ฟอร์ม / Survey: แบนเนอร์หัวหน้า แบบ Google Forms =====
-        <WizardSection title="แบนเนอร์" description={`รูปแนวนอน 4:1 ด้านบนหน้า${current.label} แบบ Google Forms · ไม่ใส่ = ไม่มีแบนเนอร์`}>
+        <WizardSection
+          title={tr("แบนเนอร์", "Banner")}
+          description={tr(`รูปแนวนอน 4:1 ด้านบนหน้า${current.label} แบบ Google Forms · ไม่ใส่ = ไม่มีแบนเนอร์`, `A 4:1 image at the top of the ${current.label.toLowerCase()} page, like Google Forms · none = no banner`)}
+        >
           <BannerEditor key={target} page={target} />
         </WizardSection>
       )}
 
       {/* ===== ปรับแต่งเอง (ของหน้าที่เลือก) ===== */}
       <WizardSection
-        title="ปรับแต่งเอง"
-        description={target === "kiosk" ? "สีของจอ Kiosk และหน้า Event" : `ตั้งสีหน้า${current.label}แยก หรือใช้สีเดียวกับ Kiosk`}
+        title={tr("ปรับแต่งเอง", "Customize")}
+        description={
+          target === "kiosk"
+            ? tr("สีของจอ Kiosk และหน้า Event", "Colors of the Kiosk screen and event page")
+            : tr(`ตั้งสีหน้า${current.label}แยก หรือใช้สีเดียวกับ Kiosk`, `Give the ${current.label.toLowerCase()} page its own colors, or use the Kiosk colors`)
+        }
       >
         <CustomColors target={target} />
       </WizardSection>
@@ -219,13 +233,14 @@ function CoverEditor() {
   const patch = useWizardStore((s) => s.patch);
   const size = MEDIA_SIZE[ratio];
   const coverRatio = cover?.ratio ?? "16:9"; // รูปเก่าไม่มีค่านี้ = 16:9
+  const tr = useTr();
   const [cropping, setCropping] = useState<{ src: string; name: string } | null>(null);
   const [error, setError] = useState("");
 
   const pick = async (file: File) => {
     setError("");
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError("รองรับเฉพาะ JPG / PNG");
-    if (file.size > 10 * 1024 * 1024) return setError("ไฟล์ใหญ่เกิน 10 MB");
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError(tr("รองรับเฉพาะ JPG / PNG", "Only JPG / PNG are supported"));
+    if (file.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
     setCropping({ src: await readFileAsDataUrl(file), name: file.name });
   };
 
@@ -235,27 +250,32 @@ function CoverEditor() {
       {cover?.dataUrl ? (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปปกที่ crop แล้ว */}
-          <img src={cover.dataUrl} alt="รูปปก" className={cn("w-20 shrink-0 rounded object-cover", coverRatio === "3:4" ? "aspect-[3/4] w-14" : "aspect-video")} />
+          <img src={cover.dataUrl} alt={tr("รูปปก", "Cover")} className={cn("w-20 shrink-0 rounded object-cover", coverRatio === "3:4" ? "aspect-[3/4] w-14" : "aspect-video")} />
           <div className="min-w-0 flex-1 text-sm">
             <p className="truncate font-semibold">{cover.name}</p>
             <p className="text-xs text-muted-foreground">{cover.sizeKB} KB · {coverRatio}</p>
-            {coverRatio !== ratio && <p className="text-xs text-amber-700">รูปนี้เป็น {coverRatio} · กด Crop ใหม่ให้เป็น {ratio}</p>}
+            {coverRatio !== ratio && <p className="text-xs text-amber-700">{tr(`รูปนี้เป็น ${coverRatio} · กด Crop ใหม่ให้เป็น ${ratio}`, `This image is ${coverRatio} · re-crop it to ${ratio}`)}</p>}
           </div>
-          <Button variant="ghost" size="icon" aria-label="Crop ใหม่" onClick={() => setCropping({ src: cover.dataUrl!, name: cover.name })}>
+          <Button variant="ghost" size="icon" aria-label={tr("Crop ใหม่", "Re-crop")} onClick={() => setCropping({ src: cover.dataUrl!, name: cover.name })}>
             <Crop className="size-4" />
           </Button>
           <ReplaceButton onFile={pick} />
-          <Button variant="ghost" size="icon" className="text-destructive" aria-label="ลบรูปปก" onClick={() => patch("general", { cover: null })}>
+          <Button variant="ghost" size="icon" className="text-destructive" aria-label={tr("ลบรูปปก", "Remove cover")} onClick={() => patch("general", { cover: null })}>
             <Trash2 className="size-4" />
           </Button>
         </div>
       ) : (
-        <FileDrop title="ลากรูปปกมาวาง หรือเลือกไฟล์" hint={`${ratio} · ${size.w}×${size.h} px · ไม่ใส่ก็ได้`} onFile={pick} className="py-6" />
+        <FileDrop
+          title={tr("ลากรูปปกมาวาง หรือเลือกไฟล์", "Drop a cover image here, or choose a file")}
+          hint={`${ratio} · ${size.w}×${size.h} px · ${tr("ไม่ใส่ก็ได้", "optional")}`}
+          onFile={pick}
+          className="py-6"
+        />
       )}
-      {cover && !cover.dataUrl && <p className="text-xs text-amber-700">{cover.name} · ไม่มีไฟล์รูป อัปโหลดใหม่</p>}
+      {cover && !cover.dataUrl && <p className="text-xs text-amber-700">{cover.name} · {tr("ไม่มีไฟล์รูป อัปโหลดใหม่", "image file missing, upload again")}</p>}
       {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       <CropDialog
-        title={`Crop รูปปก ${ratio}`}
+        title={`${tr("Crop รูปปก", "Crop cover")} ${ratio}`}
         ratio={ratio}
         src={cropping?.src ?? null}
         fileName={cropping?.name ?? ""}
@@ -270,10 +290,11 @@ function CoverEditor() {
 }
 
 function ReplaceButton({ onFile }: { onFile: (f: File) => void }) {
+  const tr = useTr();
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Button variant="ghost" size="icon" aria-label="เปลี่ยนรูป" title="เปลี่ยนรูป" onClick={() => ref.current?.click()}>
+      <Button variant="ghost" size="icon" aria-label={tr("เปลี่ยนรูป", "Replace image")} title={tr("เปลี่ยนรูป", "Replace image")} onClick={() => ref.current?.click()}>
         <ImagePlus className="size-4" />
       </Button>
       <input
@@ -299,12 +320,13 @@ function BannerEditor({ page }: { page: PageKey }) {
   const [cropping, setCropping] = useState<{ src: string; name: string } | null>(null);
   const [error, setError] = useState("");
   const size = MEDIA_SIZE["4:1"];
+  const tr = useTr();
   const save = (next: EventDraft["general"]["cover"]) => patch("theme", { banners: { ...banners, [page]: next } });
 
   const pick = async (file: File) => {
     setError("");
-    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError("รองรับเฉพาะ JPG / PNG");
-    if (file.size > 10 * 1024 * 1024) return setError("ไฟล์ใหญ่เกิน 10 MB");
+    if (!/^image\/(png|jpeg)$/.test(file.type)) return setError(tr("รองรับเฉพาะ JPG / PNG", "Only JPG / PNG are supported"));
+    if (file.size > 10 * 1024 * 1024) return setError(tr("ไฟล์ใหญ่เกิน 10 MB", "File is larger than 10 MB"));
     setCropping({ src: await readFileAsDataUrl(file), name: file.name });
   };
 
@@ -313,25 +335,30 @@ function BannerEditor({ page }: { page: PageKey }) {
       {banner?.dataUrl ? (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว */}
-          <img src={banner.dataUrl} alt="แบนเนอร์" className="aspect-[4/1] w-32 shrink-0 rounded object-cover" />
+          <img src={banner.dataUrl} alt={tr("แบนเนอร์", "Banner")} className="aspect-[4/1] w-32 shrink-0 rounded object-cover" />
           <div className="min-w-0 flex-1 text-sm">
             <p className="truncate font-semibold">{banner.name}</p>
             <p className="text-xs text-muted-foreground">{banner.sizeKB} KB · 4:1</p>
           </div>
-          <Button variant="ghost" size="icon" aria-label="Crop ใหม่" onClick={() => setCropping({ src: banner.dataUrl!, name: banner.name })}>
+          <Button variant="ghost" size="icon" aria-label={tr("Crop ใหม่", "Re-crop")} onClick={() => setCropping({ src: banner.dataUrl!, name: banner.name })}>
             <Crop className="size-4" />
           </Button>
           <ReplaceButton onFile={pick} />
-          <Button variant="ghost" size="icon" className="text-destructive" aria-label="ลบแบนเนอร์" onClick={() => save(null)}>
+          <Button variant="ghost" size="icon" className="text-destructive" aria-label={tr("ลบแบนเนอร์", "Remove banner")} onClick={() => save(null)}>
             <Trash2 className="size-4" />
           </Button>
         </div>
       ) : (
-        <FileDrop title="ลากรูปแบนเนอร์มาวาง หรือเลือกไฟล์" hint={`4:1 · ${size.w}×${size.h} px · ไม่ใส่ก็ได้`} onFile={pick} className="py-6" />
+        <FileDrop
+          title={tr("ลากรูปแบนเนอร์มาวาง หรือเลือกไฟล์", "Drop a banner image here, or choose a file")}
+          hint={`4:1 · ${size.w}×${size.h} px · ${tr("ไม่ใส่ก็ได้", "optional")}`}
+          onFile={pick}
+          className="py-6"
+        />
       )}
       {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       <CropDialog
-        title="Crop แบนเนอร์ 4:1"
+        title={tr("Crop แบนเนอร์ 4:1", "Crop banner 4:1")}
         ratio="4:1"
         src={cropping?.src ?? null}
         fileName={cropping?.name ?? ""}

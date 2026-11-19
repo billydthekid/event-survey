@@ -9,6 +9,7 @@ type Theme = EventDraft["theme"];
 export interface ThemePreset {
   id: string;
   name: string;
+  nameEn: string;
   primary: string;
   secondary: string;
   bgColor: string;
@@ -17,12 +18,12 @@ export interface ThemePreset {
 
 // สีหลักทุกธีมผ่าน contrast ≥ 4.5 กับตัวหนังสือสีขาว (ไม่ขึ้นคำเตือนเอง)
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "minimal", name: "มินิมอล", primary: "#2563EB", secondary: "#DBEAFE", bgColor: "#FFFFFF", mode: "light" },
-  { id: "sky", name: "ฟ้าใส", primary: "#0369A1", secondary: "#BAE6FD", bgColor: "#E0F2FE", mode: "light" },
-  { id: "pastel", name: "พาสเทล", primary: "#DB2777", secondary: "#FBCFE8", bgColor: "#FDF2F8", mode: "light" },
-  { id: "nature", name: "ธรรมชาติ", primary: "#0F766E", secondary: "#BBF7D0", bgColor: "#F0FDF4", mode: "light" },
-  { id: "night", name: "กลางคืน", primary: "#7C3AED", secondary: "#1E293B", bgColor: "#0F172A", mode: "dark" },
-  { id: "vivid", name: "สดใส", primary: "#C2410C", secondary: "#FED7AA", bgColor: "#C2410C", mode: "bold" },
+  { id: "minimal", name: "มินิมอล", nameEn: "Minimal", primary: "#2563EB", secondary: "#DBEAFE", bgColor: "#FFFFFF", mode: "light" },
+  { id: "sky", name: "ฟ้าใส", nameEn: "Sky", primary: "#0369A1", secondary: "#BAE6FD", bgColor: "#E0F2FE", mode: "light" },
+  { id: "pastel", name: "พาสเทล", nameEn: "Pastel", primary: "#DB2777", secondary: "#FBCFE8", bgColor: "#FDF2F8", mode: "light" },
+  { id: "nature", name: "ธรรมชาติ", nameEn: "Nature", primary: "#0F766E", secondary: "#BBF7D0", bgColor: "#F0FDF4", mode: "light" },
+  { id: "night", name: "กลางคืน", nameEn: "Night", primary: "#7C3AED", secondary: "#1E293B", bgColor: "#0F172A", mode: "dark" },
+  { id: "vivid", name: "สดใส", nameEn: "Vivid", primary: "#C2410C", secondary: "#FED7AA", bgColor: "#C2410C", mode: "bold" },
 ];
 
 export const DEFAULT_PRESET = THEME_PRESETS[0];

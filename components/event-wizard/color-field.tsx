@@ -6,6 +6,7 @@ import { Check, Pipette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { whiteTextContrast } from "@/lib/utils/color";
 import { cn } from "@/lib/utils";
+import { useTr } from "@/lib/wizard-lang";
 
 // ============ เลือกสี: ถาดสีสำเร็จรูป + ตัวเลือกสีอิสระ (color picker) + พิมพ์ HEX ============
 // เก็บเป็นข้อความ HEX "#RRGGBB" ใน theme.primary / theme.secondary
@@ -22,6 +23,7 @@ export function ColorField({
 }) {
   // hexDraft = ข้อความที่กำลังพิมพ์ (null = แสดงค่าปัจจุบัน) · ใช้ค่าเมื่อเป็น #RRGGBB ที่ถูกต้องเท่านั้น
   const [hexDraft, setHexDraft] = useState<string | null>(null);
+  const tr = useTr();
   const hex = hexDraft ?? value;
   const pick = (c: string) => {
     setHexDraft(null);
@@ -54,7 +56,7 @@ export function ColorField({
       })}
       {/* ตัวเลือกสีของเบราว์เซอร์ — กดแล้วเปิดถาดสีเต็ม */}
       <label
-        title="เลือกสีเอง"
+        title={tr("เลือกสีเอง", "Pick a custom color")}
         className={cn(
           "relative flex size-8 cursor-pointer items-center justify-center rounded-lg border ring-offset-2",
           custom && "ring-2 ring-foreground"
@@ -66,7 +68,7 @@ export function ColorField({
           type="color" // ตัวเลือกสีของเบราว์เซอร์ ถาดเลือกสี
           value={/^#[0-9A-F]{6}$/i.test(value) ? value : "#000000"}
           onChange={(e) => pick(e.target.value)}
-          aria-label={`${label} เลือกสีเอง`}
+          aria-label={`${label} ${tr("เลือกสีเอง", "custom color")}`}
           className="absolute inset-0 cursor-pointer opacity-0"
         />
       </label>

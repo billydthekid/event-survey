@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MEDIA_SIZE, cropToDataUrl, loadImage } from "@/lib/image-crop";
 import type { CropRatio } from "@/types/event";
+import { useTr } from "@/lib/wizard-lang";
 
 // ขนาดกรอบบนจอ (px): 16:9 = 560 × 315 · 3:4 = 315 × 420
 const FRAME: Record<CropRatio, { w: number; h: number }> = {
@@ -31,6 +32,7 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
   const FRAME_W = FRAME[ratio].w;
   const FRAME_H = FRAME[ratio].h;
   const { w: OUT_W, h: OUT_H } = MEDIA_SIZE[ratio];
+  const tr = useTr();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // มุมซ้ายบนของรูป เทียบกับกรอบ
@@ -84,10 +86,10 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
     <Dialog open={src !== null} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="sm:max-w-[620px]">
         <DialogHeader>
-          <DialogTitle>{title ?? `Crop รูปโฆษณา ${ratio}`}</DialogTitle>
+          <DialogTitle>{title ?? `${tr("Crop รูปโฆษณา", "Crop ad")} ${ratio}`}</DialogTitle>
           <DialogDescription>
             {fileName}
-            {img && ` · ต้นฉบับ ${img.naturalWidth} × ${img.naturalHeight} px`} · ผลลัพธ์ {OUT_W} × {OUT_H} px
+            {img && ` · ${tr("ต้นฉบับ", "original")} ${img.naturalWidth} × ${img.naturalHeight} px`} · {tr("ผลลัพธ์", "output")} {OUT_W} × {OUT_H} px
           </DialogDescription>
         </DialogHeader>
 
@@ -138,20 +140,20 @@ export function CropDialog({ src, title, ratio = "16:9", fileName, onCancel, onD
           <span className="w-12 text-right tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Move className="size-3.5" /> ลากรูปเพื่อเลือกส่วนที่จะแสดง
+          <Move className="size-3.5" /> {tr("ลากรูปเพื่อเลือกส่วนที่จะแสดง", "Drag the image to choose what shows")}
         </p>
         {small && (
           <p className="flex items-center gap-1.5 text-xs text-amber-700">
-            <AlertTriangle className="size-3.5" /> รูปเล็กกว่า {OUT_W} × {OUT_H} px อาจไม่คมชัด
+            <AlertTriangle className="size-3.5" /> {tr(`รูปเล็กกว่า ${OUT_W} × ${OUT_H} px อาจไม่คมชัด`, `Smaller than ${OUT_W} × ${OUT_H} px, may look blurry`)}
           </p>
         )}
 
         <DialogFooter>
           <Button variant="secondary" onClick={onCancel}>
-            ยกเลิก
+            {tr("ยกเลิก", "Cancel")}
           </Button>
           <Button onClick={confirm} disabled={!img}>
-            ใช้รูปนี้
+            {tr("ใช้รูปนี้", "Use this image")}
           </Button>
         </DialogFooter>
       </DialogContent>

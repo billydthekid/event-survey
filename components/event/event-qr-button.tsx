@@ -9,14 +9,16 @@ import { useWizardStore } from "@/lib/wizard-store";
 import type { Event } from "@/types";
 import { hasRegistration, hasSurvey } from "@/lib/utils/wizard-rules";
 import { QrDialog } from "./qr-dialog";
+import { useTr } from "@/lib/wizard-lang";
 
 export function EventQrButton({ event }: { event: Event }) {
   const [open, setOpen] = useState(false);
+  const tr = useTr();
   const draft = useWizardStore((s) => s.drafts[event.id]); // ช่วงเวลาที่ตั้งใน Wizard (ใหม่กว่า store หลัก)
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} aria-label="QR ลงทะเบียน / Survey">
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} aria-label={tr("QR ลงทะเบียน / Survey", "Registration / survey QR")}>
         <QrCode className="size-4" /> QR
       </Button>
       {open && (

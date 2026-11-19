@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SurveyQuestion } from "@/types/event";
 import { AnswerSample } from "./survey-preview";
+import { useTr } from "@/lib/wizard-lang";
 
 export function QuestionEditor({
   q,
@@ -18,6 +19,7 @@ export function QuestionEditor({
   primary: string;
   update: (v: Partial<SurveyQuestion>) => void;
 }) {
+  const tr = useTr();
   switch (q.type) {
     case "single":
     case "multi":
@@ -34,8 +36,8 @@ export function QuestionEditor({
               <span className={cn("size-4 shrink-0 border", q.type === "multi" ? "rounded" : "rounded-full")} />
             )
           }
-          addLabel={q.type === "opinion" ? "+ เพิ่มระดับ" : "+ เพิ่มตัวเลือก"}
-          newItem={(n) => (q.type === "opinion" ? `ระดับ ${n}` : `ตัวเลือก ${n}`)}
+          addLabel={q.type === "opinion" ? tr("+ เพิ่มระดับ", "+ Add level") : tr("+ เพิ่มตัวเลือก", "+ Add option")}
+          newItem={(n) => (q.type === "opinion" ? tr(`ระดับ ${n}`, `Level ${n}`) : tr(`ตัวเลือก ${n}`, `Option ${n}`))}
         />
       );
     case "mcgrid":
@@ -44,24 +46,24 @@ export function QuestionEditor({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">แถว (หัวข้อที่ให้ประเมิน)</p>
+              <p className="text-xs font-semibold text-muted-foreground">{tr("แถว (หัวข้อที่ให้ประเมิน)", "Rows (topics to rate)")}</p>
               <ListEditor
                 items={q.rows ?? []}
                 onChange={(rows) => update({ rows })}
                 marker={(k) => <span className="w-4 text-center text-xs text-muted-foreground">{k + 1}</span>}
-                addLabel="+ เพิ่มแถว"
-                newItem={(n) => `หัวข้อ ${n}`}
+                addLabel={tr("+ เพิ่มแถว", "+ Add row")}
+                newItem={(n) => tr(`หัวข้อ ${n}`, `Topic ${n}`)}
                 min={1}
               />
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">คอลัมน์ (ตัวเลือก)</p>
+              <p className="text-xs font-semibold text-muted-foreground">{tr("คอลัมน์ (ตัวเลือก)", "Columns (choices)")}</p>
               <ListEditor
                 items={q.options}
                 onChange={(options) => update({ options })}
                 marker={() => <span className={cn("size-4 shrink-0 border", q.type === "cbgrid" ? "rounded" : "rounded-full")} />}
-                addLabel="+ เพิ่มคอลัมน์"
-                newItem={(n) => `ตัวเลือก ${n}`}
+                addLabel={tr("+ เพิ่มคอลัมน์", "+ Add column")}
+                newItem={(n) => tr(`ตัวเลือก ${n}`, `Option ${n}`)}
               />
             </div>
           </div>
@@ -76,15 +78,15 @@ export function QuestionEditor({
             <input
               value={q.scaleLabels?.min ?? ""}
               onChange={(e) => update({ scaleLabels: { min: e.target.value, max: q.scaleLabels?.max ?? "" } })}
-              placeholder="คำกำกับเลข 1 เช่น น้อยที่สุด"
-              aria-label="คำกำกับคะแนนต่ำสุด"
+              placeholder={tr("คำกำกับเลข 1 เช่น น้อยที่สุด", "Label for 1, e.g. least")}
+              aria-label={tr("คำกำกับคะแนนต่ำสุด", "Lowest score label")}
               className="rounded-lg border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <input
               value={q.scaleLabels?.max ?? ""}
               onChange={(e) => update({ scaleLabels: { min: q.scaleLabels?.min ?? "", max: e.target.value } })}
-              placeholder={`คำกำกับเลข ${q.ratingMax ?? 5} เช่น มากที่สุด`}
-              aria-label="คำกำกับคะแนนสูงสุด"
+              placeholder={tr(`คำกำกับเลข ${q.ratingMax ?? 5} เช่น มากที่สุด`, `Label for ${q.ratingMax ?? 5}, e.g. most`)}
+              aria-label={tr("คำกำกับคะแนนสูงสุด", "Highest score label")}
               className="rounded-lg border px-3 py-2 text-right text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -112,6 +114,7 @@ function ListEditor({
   newItem: (n: number) => string;
   min?: number;
 }) {
+  const tr = useTr();
   return (
     <div className="space-y-2">
       {items.map((o, k) => (
@@ -120,12 +123,12 @@ function ListEditor({
           <input
             value={o}
             onChange={(e) => onChange(items.map((x, n) => (n === k ? e.target.value : x)))}
-            aria-label={`รายการที่ ${k + 1}`}
+            aria-label={tr(`รายการที่ ${k + 1}`, `Item ${k + 1}`)}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
           <button
             type="button"
-            aria-label="ลบ"
+            aria-label={tr("ลบ", "Remove")}
             disabled={items.length <= min}
             onClick={() => onChange(items.filter((_, n) => n !== k))}
             className="text-muted-foreground opacity-0 transition hover:text-foreground focus:opacity-100 group-hover:opacity-100 disabled:hidden"

@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useWizardStore } from "@/lib/wizard-store";
-import { ALLOW_KIND_LABEL, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
+import { ALLOW_KIND_LABEL, ALLOW_KIND_LABEL_EN, allowListProblem, parseRows, readRows, templateCsv, type ParseResult } from "@/lib/allow-list";
 import { formatThaiDateTime } from "@/lib/utils/date";
+import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import type { AllowList, AllowListKind } from "@/types/event";
 import { WizardSection } from "./wizard-section";
 
@@ -24,8 +25,10 @@ export function AllowListCard() {
   const [busy, setBusy] = useState(false);
 
   const list: AllowList = draft.allowList ?? { closed: false, kind: "email", values: [], fileName: "", importedAt: "" };
-  const label = ALLOW_KIND_LABEL[list.kind];
-  const problem = allowListProblem(draft);
+  const lang = useWizardLang();
+  const tr = useTr();
+  const label = (lang === "en" ? ALLOW_KIND_LABEL_EN : ALLOW_KIND_LABEL)[list.kind];
+  const problem = allowListProblem(draft, lang);
   const set = (v: Partial<AllowList>) => patch("allowList", { ...list, ...v });
 
   // เปลี่ยนชนิด → รายชื่อเดิมใช้ไม่ได้ ต้อง import ใหม่
@@ -40,7 +43,7 @@ export function AllowListCard() {
     setError("");
     setReport(null);
     if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
-      setError("รองรับเฉพาะไฟล์ .csv, .xlsx หรือ .xls");
+      setError(tr("รองรับเฉพาะไฟล์ .csv, .xlsx หรือ .xls", "Only .csv, .xlsx or .xls files are supported"));
       return;
     }
     setBusy(true);
@@ -48,12 +51,12 @@ export function AllowListCard() {
       const result = parseRows(list.kind, await readRows(file));
       setReport({ ...result, fileName: file.name });
       if (result.values.length === 0) {
-        setError(`ไม่พบ${label}ที่ถูกต้องในไฟล์`);
+        setError(tr(`ไม่พบ${label}ที่ถูกต้องในไฟล์`, `No valid ${label} found in the file`));
         return;
       }
       set({ values: result.values, fileName: file.name, importedAt: new Date().toISOString() });
     } catch {
-      setError("อ่านไฟล์ไม่ได้ ตรวจว่าไฟล์ไม่เสียหายและเป็น CSV / Excel");
+      setError(tr("อ่านไฟล์ไม่ได้ ตรวจว่าไฟล์ไม่เสียหายและเป็น CSV / Excel", "Couldn't read the file. Check it's a valid CSV / Excel file"));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = ""; // เลือกไฟล์เดิมซ้ำได้
@@ -71,11 +74,11 @@ export function AllowListCard() {
 
   return (
     <WizardSection
-      title="ผู้ที่ลงทะเบียนได้"
+      title={tr("ผู้ที่ลงทะเบียนได้", "Who can register")}
       description={
         list.closed
-          ? `Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`
-          : "Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน"
+          ? tr(`Event ปิด · รับเฉพาะคนที่มี${label}อยู่ในไฟล์ที่ import`, `Closed event · only people whose ${label} is in the imported file`)
+          : tr("Event เปิด · ใครสแกน QR ก็ลงทะเบียนได้ ไม่จำกัดจำนวน", "Open event · anyone who scans the QR can register, no limit")
       }
       action={
         <ToggleGroup
@@ -84,18 +87,18 @@ export function AllowListCard() {
           variant="outline"
           size="sm"
         >
-          <ToggleGroupItem value="open">เปิด (ทุกคน)</ToggleGroupItem>
-          <ToggleGroupItem value="closed">ปิด (เฉพาะรายชื่อ)</ToggleGroupItem>
+          <ToggleGroupItem value="open">{tr("เปิด (ทุกคน)", "Open (everyone)")}</ToggleGroupItem>
+          <ToggleGroupItem value="closed">{tr("ปิด (เฉพาะรายชื่อ)", "Closed (list only)")}</ToggleGroupItem>
         </ToggleGroup>
       }
     >
       {list.closed && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Label>ตรวจสิทธิ์ด้วย</Label>
+            <Label>{tr("ตรวจสิทธิ์ด้วย", "Check by")}</Label>
             <ToggleGroup value={[list.kind]} onValueChange={(v) => v[0] && changeKind(v[0] as AllowListKind)} variant="outline" size="sm">
-              <ToggleGroupItem value="email">อีเมล</ToggleGroupItem>
-              <ToggleGroupItem value="phone">เบอร์มือถือ</ToggleGroupItem>
+              <ToggleGroupItem value="email">{tr("อีเมล", "Email")}</ToggleGroupItem>
+              <ToggleGroupItem value="phone">{tr("เบอร์มือถือ", "Mobile number")}</ToggleGroupItem>
             </ToggleGroup>
           </div>
 
@@ -104,14 +107,16 @@ export function AllowListCard() {
             <div className="min-w-0 flex-1 text-sm">
               {list.values.length > 0 ? (
                 <>
-                  <p className="font-semibold">{list.fileName} · {list.values.length} รายชื่อ</p>
-                  <p className="text-xs text-muted-foreground">import เมื่อ {formatThaiDateTime(list.importedAt)}</p>
+                  <p className="font-semibold">{list.fileName} · {list.values.length} {tr("รายชื่อ", "names")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "en" ? `Imported ${fmtDate(list.importedAt, lang)}` : `import เมื่อ ${formatThaiDateTime(list.importedAt)}`}
+                  </p>
                 </>
               ) : (
                 <>
-                  <p className="font-semibold">ยังไม่มีรายชื่อ</p>
+                  <p className="font-semibold">{tr("ยังไม่มีรายชื่อ", "No list yet")}</p>
                   <p className="text-xs text-muted-foreground">
-                    ไฟล์ .csv / .xlsx · มีคอลัมน์หัวตาราง &quot;{list.kind}&quot; หรือใส่{label}ไว้คอลัมน์แรก
+                    {tr(`ไฟล์ .csv / .xlsx · มีคอลัมน์หัวตาราง "${list.kind}" หรือใส่${label}ไว้คอลัมน์แรก`, `.csv / .xlsx file · a "${list.kind}" header column, or ${label} in the first column`)}
                   </p>
                 </>
               )}
@@ -124,17 +129,17 @@ export function AllowListCard() {
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
             <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
-              <Download className="size-4" /> ไฟล์ตัวอย่าง
+              <Download className="size-4" /> {tr("ไฟล์ตัวอย่าง", "Sample file")}
             </Button>
             <Button type="button" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-              <Upload className="size-4" /> {busy ? "กำลังอ่าน…" : list.values.length > 0 ? "Import ใหม่" : "Import ไฟล์"}
+              <Upload className="size-4" /> {busy ? tr("กำลังอ่าน…", "Reading…") : list.values.length > 0 ? tr("Import ใหม่", "Re-import") : tr("Import ไฟล์", "Import file")}
             </Button>
             {list.values.length > 0 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="ล้างรายชื่อ"
+                aria-label={tr("ล้างรายชื่อ", "Clear list")}
                 className="text-red-600"
                 onClick={() => {
                   set({ values: [], fileName: "", importedAt: "" });
@@ -148,9 +153,11 @@ export function AllowListCard() {
 
           {report && !error && (
             <p className="text-sm text-muted-foreground">
-              ใช้คอลัมน์ &quot;{report.column}&quot; · นำเข้า {report.values.length} รายชื่อ
-              {report.duplicates > 0 && ` · ตัดซ้ำ ${report.duplicates}`}
-              {report.invalid.length > 0 && ` · ข้าม ${report.invalid.length} แถวที่รูปแบบผิด (${report.invalid.slice(0, 3).join(", ")}${report.invalid.length > 3 ? ", …" : ""})`}
+              {tr(`ใช้คอลัมน์ "${report.column}" · นำเข้า ${report.values.length} รายชื่อ`, `Column "${report.column}" · imported ${report.values.length} names`)}
+              {report.duplicates > 0 && tr(` · ตัดซ้ำ ${report.duplicates}`, ` · ${report.duplicates} duplicates removed`)}
+              {report.invalid.length > 0 &&
+                tr(` · ข้าม ${report.invalid.length} แถวที่รูปแบบผิด`, ` · skipped ${report.invalid.length} invalid rows`) +
+                  ` (${report.invalid.slice(0, 3).join(", ")}${report.invalid.length > 3 ? ", …" : ""})`}
             </p>
           )}
           {(error || problem) && (

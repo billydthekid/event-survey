@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { ImageIcon, QrCode } from "lucide-react";
 import { eventTypeLabel } from "@/lib/event-types";
-import { formatThaiDate } from "@/lib/utils/date";
+import { fmtDate, useTr, useWizardLang } from "@/lib/wizard-lang";
 import { previewColors } from "@/lib/theme-presets";
 import type { EventDraft } from "@/types/event";
 
@@ -35,6 +35,8 @@ function Logo({ d, size }: { d: EventDraft; size: number }) {
 }
 
 export function PhonePreview({ d }: { d: EventDraft }) {
+  const tr = useTr();
+  const lang = useWizardLang();
   const g = d.general;
   const c = previewColors(d.theme);
   return (
@@ -55,18 +57,18 @@ export function PhonePreview({ d }: { d: EventDraft }) {
       </div>
       <div className="space-y-1 p-4">
         <span className="inline-block rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: c.chip.bg, color: c.chip.text }}>
-          {eventTypeLabel(g.type, g.typeOther)}
+          {eventTypeLabel(g.type, g.typeOther, lang)}
         </span>
-        <p className="text-base font-bold">{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>
+        <p className="text-base font-bold">{g.nameTh || tr("(ยังไม่ตั้งชื่อ Event)", "(Untitled event)")}</p>
         <p className="text-xs" style={{ color: c.muted }}>
           {/* งานข้ามวัน → แสดงวันจบด้วย */}
-          {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} –{" "}
-          {g.endDate && g.endDate !== g.date ? `${formatThaiDate(g.endDate, false)} · ` : ""}
+          {fmtDate(g.date, lang) || tr("ยังไม่กำหนด", "No date")} · {g.startTime || "--:--"} –{" "}
+          {g.endDate && g.endDate !== g.date ? `${fmtDate(g.endDate, lang)} · ` : ""}
           {g.endTime || "--:--"}
         </p>
         {g.venue && <p className="text-xs" style={{ color: c.muted }}>{g.venue}</p>}
         <div className="mt-3 rounded-lg py-2.5 text-center text-sm font-semibold" style={{ background: c.button.bg, color: c.button.text }}>
-          ลงทะเบียนเข้างาน
+          {tr("ลงทะเบียนเข้างาน", "Register")}
         </div>
       </div>
     </div>
@@ -79,6 +81,8 @@ export function PhonePreview({ d }: { d: EventDraft }) {
 // แนวนอน + 3:4  (แบบ B): รูปแนวตั้งซ้าย · ฝั่งขวากว้าง วาง QR ลงทะเบียน + Survey คู่กันได้
 // QR แสดงเฉพาะที่มีจริง (ฟอร์ม / Survey ไม่บังคับ) · ไม่มีทั้งคู่ = รายละเอียดงานอย่างเดียว
 export function KioskPreview({ d }: { d: EventDraft }) {
+  const tr = useTr();
+  const lang = useWizardLang();
   const g = d.general;
   const c = previewColors(d.theme);
   const srcs = d.ads.items.map((a) => a.dataUrl).filter((s): s is string => !!s);
@@ -99,7 +103,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
   const header = (
     <div className="flex items-center gap-2">
       <Logo d={d} size={22} />
-      <span className="truncate text-[11px] font-semibold">{g.organizer || "ผู้จัดงาน"}</span>
+      <span className="truncate text-[11px] font-semibold">{g.organizer || tr("ผู้จัดงาน", "Organizer")}</span>
     </div>
   );
 
@@ -122,7 +126,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
         // eslint-disable-next-line @next/next/no-img-element -- data URL ของรูปปก
         <img src={g.cover.dataUrl} alt="" className="absolute inset-0 size-full object-cover" />
       ) : (
-        <div className="flex size-full items-center justify-center text-[10px] opacity-60">ยังไม่มีโฆษณา / รูปปก</div>
+        <div className="flex size-full items-center justify-center text-[10px] opacity-60">{tr("ยังไม่มีโฆษณา / รูปปก", "No ads / cover yet")}</div>
       )}
     </div>
   );
@@ -145,7 +149,7 @@ export function KioskPreview({ d }: { d: EventDraft }) {
   const details = (
     <div className="space-y-1 text-[11px] leading-snug" style={{ color: c.muted }}>
       <p>
-        {formatThaiDate(g.date, false)} · {g.startTime || "--:--"} – {g.endTime || "--:--"}
+        {fmtDate(g.date, lang) || tr("ยังไม่กำหนด", "No date")} · {g.startTime || "--:--"} – {g.endTime || "--:--"}
       </p>
       {g.venue && <p className="line-clamp-2">{g.venue}</p>}
     </div>
@@ -153,23 +157,23 @@ export function KioskPreview({ d }: { d: EventDraft }) {
 
   // QR หลัก 1 อัน (แนวตั้ง / แบบ A): ลงทะเบียนก่อน · ไม่มีฟอร์ม = Survey · ไม่มีทั้งคู่ = กล่องรายละเอียดงาน
   const mainQr = hasReg
-    ? qr("สแกนลงทะเบียน", `รหัส ${d.code}`)
+    ? qr(tr("สแกนลงทะเบียน", "Scan to register"), `${tr("รหัส", "Code")} ${d.code}`)
     : hasSur
-      ? qr("สแกนตอบแบบประเมิน", `รหัส ${d.code}`)
+      ? qr(tr("สแกนตอบแบบประเมิน", "Scan for the survey"), `${tr("รหัส", "Code")} ${d.code}`)
       : <div className="rounded-xl border p-3" style={{ borderColor: c.muted }}>{details}</div>;
 
   const dots = srcs.length > 1 && (
     <p className="text-center text-[10px]" style={{ color: c.muted }}>
-      รูป {current + 1}/{srcs.length} · ทุก {Math.round(ms / 1000)} วิ
+      {tr("รูป", "Image")} {current + 1}/{srcs.length} · {tr("ทุก", "every")} {Math.round(ms / 1000)} {tr("วิ", "s")}
     </p>
   );
 
   const typeChip = (
     <span className="inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: c.chip.bg, color: c.chip.text }}>
-      {eventTypeLabel(g.type, g.typeOther)}
+      {eventTypeLabel(g.type, g.typeOther, lang)}
     </span>
   );
-  const name = (size: string) => <p className={`line-clamp-2 font-bold ${size}`}>{g.nameTh || "(ยังไม่ตั้งชื่อ Event)"}</p>;
+  const name = (size: string) => <p className={`line-clamp-2 font-bold ${size}`}>{g.nameTh || tr("(ยังไม่ตั้งชื่อ Event)", "(Untitled event)")}</p>;
 
   // ===== แนวนอน + 3:4 (แบบ B) =====
   if (landscape && ratio === "3:4") {
@@ -184,8 +188,8 @@ export function KioskPreview({ d }: { d: EventDraft }) {
             {(hasReg || hasSur) && details}
           </div>
           <div className="mt-auto flex gap-2">
-            {hasReg && qr("สแกนลงทะเบียน", d.code)}
-            {hasSur && qr("ตอบแบบประเมิน", "หลังจบงาน", !hasReg)}
+            {hasReg && qr(tr("สแกนลงทะเบียน", "Scan to register"), d.code)}
+            {hasSur && qr(tr("ตอบแบบประเมิน", "Take the survey"), tr("หลังจบงาน", "after the event"), !hasReg)}
             {!hasReg && !hasSur && <div className="flex-1 rounded-xl border p-3" style={{ borderColor: c.muted }}>{details}</div>}
           </div>
           {dots}

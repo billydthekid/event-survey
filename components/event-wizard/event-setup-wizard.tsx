@@ -15,6 +15,11 @@ import { firstBlockedStep, hasRegistration, hasSurvey, isWizardLocked, stepBlock
 import { QrDialog } from "@/components/event/qr-dialog";
 import { PHASE_META, getPhase } from "@/lib/utils/event-phase";
 import { STATUS_LABEL } from "@/lib/utils/status";
+import { makeTr, useTr, useWizardLang } from "@/lib/wizard-lang";
+import type { Event } from "@/types";
+
+// ป้ายสถานะภาษาอังกฤษ (STATUS_LABEL ของเพื่อนมีแค่ไทย)
+const STATUS_EN: Record<Event["status"], string> = { draft: "Draft", scheduled: "Scheduled", active: "Active", ended: "Ended", deleted: "Deleted" };
 import { STEPS, WizardShell, stepHref } from "@/components/event-wizard/wizard-shell";
 import { StepGeneral } from "@/components/event-wizard/step-general";
 import { StepBranding } from "@/components/event-wizard/step-branding";
@@ -22,12 +27,12 @@ import { StepForm } from "@/components/event-wizard/step-form";
 import { StepSurvey } from "@/components/event-wizard/step-survey";
 import { StepPreview } from "@/components/event-wizard/step-preview";
 
-const META: Record<number, { title: string; subtitle: string }> = {
-  1: { title: "ข้อมูล Event", subtitle: "รายละเอียดที่ผู้เข้าร่วมเห็นบนหน้า Event และจอ Kiosk" },
-  2: { title: "Branding", subtitle: "รูปปก โฆษณา สี และโลโก้ ที่ผู้เข้าร่วมเห็นบนมือถือและจอ Kiosk" },
-  3: { title: "ฟอร์มลงทะเบียน", subtitle: "ช่วงเปิดรับ และข้อมูลที่ผู้เข้าร่วมต้องกรอกตอนสแกน QR ลงทะเบียน" },
-  4: { title: "Survey", subtitle: "ช่วงเปิดให้ตอบ และแบบประเมินของ Event นี้ · 1 Event มีได้ 1 Survey" },
-  5: { title: "Preview และเผยแพร่", subtitle: "หน้าตาที่ผู้เข้าร่วมเห็น ก่อนกดเผยแพร่" },
+const META: Record<number, { title: string; subtitle: string; titleEn: string; subtitleEn: string }> = {
+  1: { title: "ข้อมูล Event", subtitle: "รายละเอียดที่ผู้เข้าร่วมเห็นบนหน้า Event และจอ Kiosk", titleEn: "Event details", subtitleEn: "What attendees see on the event page and the Kiosk screen" },
+  2: { title: "Branding", subtitle: "รูปปก โฆษณา สี และโลโก้ ที่ผู้เข้าร่วมเห็นบนมือถือและจอ Kiosk", titleEn: "Branding", subtitleEn: "Cover, ads, colors and logo attendees see on mobile and the Kiosk" },
+  3: { title: "ฟอร์มลงทะเบียน", subtitle: "ช่วงเปิดรับ และข้อมูลที่ผู้เข้าร่วมต้องกรอกตอนสแกน QR ลงทะเบียน", titleEn: "Registration form", subtitleEn: "When registration is open and what attendees fill in after scanning the QR" },
+  4: { title: "Survey", subtitle: "ช่วงเปิดให้ตอบ และแบบประเมินของ Event นี้ · 1 Event มีได้ 1 Survey", titleEn: "Survey", subtitleEn: "When the survey is open and its questions · one survey per event" },
+  5: { title: "Preview และเผยแพร่", subtitle: "หน้าตาที่ผู้เข้าร่วมเห็น ก่อนกดเผยแพร่", titleEn: "Preview and publish", subtitleEn: "What attendees will see, before you publish" },
 };
 
 export function EventSetupWizard({ step }: { step: number }) {
@@ -66,6 +71,8 @@ export function EventSetupWizard({ step }: { step: number }) {
   }, [current, locked, id, updateEvent]);
 
   const now = useNow();
+  const lang = useWizardLang();
+  const tr = makeTr(lang);
   const [qrOpen, setQrOpen] = useState(false); // popup QR หลังกดเผยแพร่
 
   // ---- ด่านทีละขั้น ----
@@ -84,10 +91,10 @@ export function EventSetupWizard({ step }: { step: number }) {
   if (!drafts[id] || !current || !mainEvent || maxStep === null) return null;
   if (tooFar) return null; // กำลังพาไปขั้นที่ถูกต้อง
 
-  const nextBlock = stepBlock(current, step, now);
+  const nextBlock = stepBlock(current, step, now, lang);
 
   // เหตุผลที่ยังเผยแพร่ไม่ได้ = ขั้นแรกที่ยังไม่ครบ (ปกติมาถึงขั้นสุดท้ายได้ก็ครบแล้ว · กันไว้อีกชั้น)
-  const publishBlock = maxStep < STEPS.length ? `${stepBlock(current, maxStep, now)} (ขั้นที่ ${maxStep})` : undefined;
+  const publishBlock = maxStep < STEPS.length ? `${stepBlock(current, maxStep, now, lang)} ${tr(`(ขั้นที่ ${maxStep})`, `(step ${maxStep})`)}` : undefined;
 
   return (
     <>
@@ -96,12 +103,12 @@ export function EventSetupWizard({ step }: { step: number }) {
       eventName={current.general.nameTh}
       createdBy={creatorName || current.assignedBy}
       // ล็อกแล้ว → สถานะจริงใน store หลัก (กำลังจัดงาน / จบแล้ว) · ยังแก้ได้ → สถานะจากวันเวลา (Draft / รอเปิดรับ / …)
-      status={locked ? STATUS_LABEL[mainEvent.status].text : PHASE_META[getPhase(current)].th}
+      status={locked ? (lang === "en" ? STATUS_EN[mainEvent.status] : STATUS_LABEL[mainEvent.status].text) : PHASE_META[getPhase(current)][lang]}
       statusCls={locked ? STATUS_LABEL[mainEvent.status].color : PHASE_META[getPhase(current)].cls}
       step={step}
       onStep={(n) => router.push(stepHref(id, n))} // เปลี่ยนขั้น = เปลี่ยนหน้า (URL)
-      title={META[step].title}
-      subtitle={META[step].subtitle}
+      title={lang === "en" ? META[step].titleEn : META[step].title}
+      subtitle={lang === "en" ? META[step].subtitleEn : META[step].subtitle}
       locked={locked}
       nextBlock={nextBlock}
       publishBlock={publishBlock}
@@ -140,11 +147,12 @@ export function EventSetupWizard({ step }: { step: number }) {
 }
 
 function NoAccess() {
+  const tr = useTr();
   return (
     <div className="p-8">
-      <p className="font-semibold">ไม่พบ Event นี้ หรือคุณไม่ได้รับมอบหมายให้ดูแล</p>
+      <p className="font-semibold">{tr("ไม่พบ Event นี้ หรือคุณไม่ได้รับมอบหมายให้ดูแล", "Event not found, or you are not assigned to it")}</p>
       <Link href="/admin/events" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
-        กลับไป Event ของฉัน
+        {tr("กลับไป Event ของฉัน", "Back to My events")}
       </Link>
     </div>
   );
