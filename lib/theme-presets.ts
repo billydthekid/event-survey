@@ -70,6 +70,7 @@ export interface PageLook {
   bgImage?: string;
   text: string;
   muted: string;
+  banner?: string; // แบนเนอร์หัวหน้า (data URL · 4:1) · ไม่มี = ไม่แสดง
 }
 
 /** ค่าเริ่มต้นตอนเปิด "ตั้งสีแยก" = คัดลอกจาก Kiosk (รูปพื้นหลัง Kiosk ไม่คัดลอก เพราะคนละแนว) */
@@ -81,9 +82,10 @@ export function pageThemeFromKiosk(t: Theme): PageTheme {
 /** สีที่ใช้วาดหน้าฟอร์ม / Survey: ตั้งแยกไว้ → ใช้ค่านั้น · ไม่ได้ตั้ง → เหมือน Kiosk */
 export function pageLook(t: Theme, page: PageKey): PageLook {
   const own = t.pages?.[page];
+  const banner = t.banners?.[page]?.dataUrl; // แบนเนอร์แยกจากสี: มีได้ทั้งตอนใช้สีเดียวกับ Kiosk และตอนตั้งสีแยก
   if (!own) {
     const c = previewColors(t);
-    return { primary: t.primary, bg: c.page, bgImage: c.pageImage, text: c.text, muted: c.muted };
+    return { primary: t.primary, bg: c.page, bgImage: c.pageImage, text: c.text, muted: c.muted, banner };
   }
   const bg = own.bgColor || "#FFFFFF";
   const dark = whiteTextContrast(bg) >= 4.5; // พื้นเข้ม → ตัวอักษรขาว (อัตโนมัติ)
@@ -94,6 +96,7 @@ export function pageLook(t: Theme, page: PageKey): PageLook {
     bgImage: own.bgType === "image" ? own.bg?.dataUrl : undefined,
     text,
     muted: own.textColor ? alpha(own.textColor, 0.72) : dark ? "#CBD5E1" : "#64748B",
+    banner,
   };
 }
 

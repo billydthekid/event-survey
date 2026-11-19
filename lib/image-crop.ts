@@ -3,16 +3,17 @@
 // รูปโฆษณาบน Kiosk = 16:9 ขนาด 1920 × 1080 px บีบอัดเป็น JPEG เพื่อไม่ให้ localStorage เต็ม (~200–400 KB ต่อรูป)
 
 // จอ Kiosk แนวนอนเลือกรูป 3:4 ได้ (1080 × 1440 px) · ขนาดเดิม 16:9 ยังเป็นค่าเริ่มต้น
-import type { EventDraft, MediaRatio } from "@/types/event";
+import type { CropRatio, EventDraft, MediaRatio } from "@/types/event";
 
 export const AD_WIDTH = 1920;
 export const AD_HEIGHT = 1080;
 export const AD_RATIO = AD_WIDTH / AD_HEIGHT; // 16:9
 
 /** ขนาดผลลัพธ์ของแต่ละสัดส่วน (px) */
-export const MEDIA_SIZE: Record<MediaRatio, { w: number; h: number }> = {
+export const MEDIA_SIZE: Record<CropRatio, { w: number; h: number }> = {
   "16:9": { w: AD_WIDTH, h: AD_HEIGHT },
   "3:4": { w: 1080, h: 1440 },
+  "4:1": { w: 1600, h: 400 }, // แบนเนอร์หัวฟอร์ม / Survey
 };
 
 /** สัดส่วนรูปที่ใช้ตอนนี้: ตามที่เลือก (ไม่มี = 16:9) · ได้ทั้งจอแนวตั้งและแนวนอน */
@@ -47,7 +48,7 @@ export interface CropRect {
 }
 
 /** ตัดรูปตาม rect แล้วย่อ/ขยายเป็นขนาดของสัดส่วนนั้น (16:9 = 1920×1080, 3:4 = 1080×1440) → data URL (JPEG) */
-export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, ratio: MediaRatio = "16:9", quality = 0.85): string {
+export function cropToDataUrl(img: HTMLImageElement, rect: CropRect, ratio: CropRatio = "16:9", quality = 0.85): string {
   const { w, h } = MEDIA_SIZE[ratio];
   const canvas = document.createElement("canvas");
   canvas.width = w;

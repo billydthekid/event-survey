@@ -9,10 +9,11 @@ import { AlertTriangle, Move, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MEDIA_SIZE, cropToDataUrl, loadImage } from "@/lib/image-crop";
-import type { MediaRatio } from "@/types/event";
+import type { CropRatio } from "@/types/event";
 
 // ขนาดกรอบบนจอ (px): 16:9 = 560 × 315 · 3:4 = 315 × 420
-const FRAME: Record<MediaRatio, { w: number; h: number }> = {
+const FRAME: Record<CropRatio, { w: number; h: number }> = {
+  "4:1": { w: 560, h: 140 }, // แบนเนอร์
   "16:9": { w: 560, h: 315 },
   "3:4": { w: 315, h: 420 },
 };
@@ -20,7 +21,7 @@ const FRAME: Record<MediaRatio, { w: number; h: number }> = {
 interface Props {
   src: string | null; // data URL ของรูปต้นฉบับ (null = ปิด)
   title?: string; // ค่าเริ่มต้น "Crop รูปโฆษณา <สัดส่วน>"
-  ratio?: MediaRatio; // ไม่ส่ง = 16:9
+  ratio?: CropRatio; // ไม่ส่ง = 16:9
   fileName: string;
   onCancel: () => void;
   onDone: (dataUrl: string) => void;

@@ -138,6 +138,11 @@ export function SurveyPreview({
 
   return (
     <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
+      {/* แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
+      {look?.banner && (
+        // eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว
+        <img src={look.banner} alt="" className="-mx-1 mb-4 aspect-[4/1] w-[calc(100%+0.5rem)] rounded-xl object-cover" />
+      )}
       <p className="mb-4 text-base font-bold">{title}</p>
       {questions.length === 0 && <p className="text-sm text-muted-foreground" style={{ color: look?.muted }}>ยังไม่มีคำถาม</p>}
       <div className="space-y-5">

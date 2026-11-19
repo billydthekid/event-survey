@@ -17,6 +17,8 @@ export type SurveyQType =
 
 /** สัดส่วนรูปปก / โฆษณา · เลือกได้ 16:9 หรือ 3:4 (ทั้งจอแนวตั้งและแนวนอน) */
 export type MediaRatio = "16:9" | "3:4";
+/** สัดส่วนที่หน้าต่าง Crop รองรับ = รูปปก / โฆษณา + แบนเนอร์หัวฟอร์ม / Survey (4:1 แบบ Google Forms) */
+export type CropRatio = MediaRatio | "4:1";
 export type KioskOrientation = "portrait" | "landscape";
 
 /** สีของหน้าฟอร์ม / Survey ที่ตั้งแยกเอง (ขั้น Branding → ปรับแต่งเอง แท็บ ฟอร์ม / Survey) */
@@ -33,7 +35,7 @@ export interface UploadedAsset {
   sizeKB: number;
   cropped?: boolean;
   /** สัดส่วนที่ crop ไว้ (ไม่มี = 16:9 ของเดิม) · ไม่ตรงกับที่ตั้งตอนนี้ → เตือนให้ crop ใหม่ */
-  ratio?: MediaRatio;
+  ratio?: CropRatio;
   /** รูปพื้นหลัง Kiosk: ทำไว้สำหรับจอแนวไหน (ไม่มี = แนวตั้ง) · ไม่ตรงกับจอตอนนี้ → เตือนให้อัปโหลดใหม่ */
   orientation?: KioskOrientation;
   /** ตัวรูปจริง (data URL) — ตอนนี้เก็บเฉพาะรูปโฆษณาที่ crop เป็น 16:9 แล้ว · ไม่มี = เก็บแค่ชื่อไฟล์ (mock) */
@@ -117,6 +119,8 @@ export interface EventDraft {
     textColor?: string;
     /** สีของหน้าฟอร์มลงทะเบียน / Survey แยกจาก Kiosk · ไม่มี = ใช้แบบเดียวกับ Kiosk */
     pages?: { form?: PageTheme; survey?: PageTheme };
+    /** แบนเนอร์หัวหน้าฟอร์ม / Survey (4:1 · 1600×400) แบบ Google Forms · ไม่มี = ไม่แสดงแบนเนอร์ */
+    banners?: { form?: UploadedAsset | null; survey?: UploadedAsset | null };
   };
   ads: AdSettings;
   form: { fields: FormField[] };

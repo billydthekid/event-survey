@@ -79,6 +79,11 @@ export function FormPreview({
   const primary = look?.primary ?? primaryProp;
   return (
     <div className="mx-auto w-full max-w-sm rounded-[2rem] border bg-background p-5 shadow-lg" style={look ? lookStyle(look) : undefined}>
+      {/* แบนเนอร์หัวหน้า 4:1 แบบ Google Forms (ตั้งในขั้น Branding) */}
+      {look?.banner && (
+        // eslint-disable-next-line @next/next/no-img-element -- data URL ของแบนเนอร์ที่ crop แล้ว
+        <img src={look.banner} alt="" className="-mx-1 mb-4 aspect-[4/1] w-[calc(100%+0.5rem)] rounded-xl object-cover" />
+      )}
       <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: `${primary}1A`, color: primary }}>
         ลงทะเบียนเข้าร่วม
       </span>
