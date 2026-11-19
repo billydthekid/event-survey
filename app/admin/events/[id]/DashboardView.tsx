@@ -189,12 +189,14 @@ export function DashboardView({ params }: { params: Promise<{ id: string }> }) {
             <RespondedDonut data={access.data} t={t} />
           </div>
           {/* ซ้าย (3 ส่วน): ลงทะเบียนล่าสุด + สถานะ Event | ขวา (2 ส่วน): เมื่อไหร่และที่ไหน + ความพึงพอใจ */}
-          <div className="grid items-start gap-4 md:grid-cols-5">
-            <div className="grid gap-4 md:col-span-3">
+          {/* lg: (≥1024px) เท่านั้นที่แบ่ง 3:2 — ที่ 768–1023px คอลัมน์ขวา (2/5) แคบเหลือ ~170px
+              แต่แถว HBar ในการ์ดความพึงพอใจต้องการอย่างน้อย ~216px → หน้าล้น จึงให้ซ้อนเป็นคอลัมน์เดียวก่อน */}
+          <div className="grid items-start gap-4 lg:grid-cols-5">
+            <div className="grid gap-4 lg:col-span-3">
               <LatestRegistrations eventId={event.id} data={access.data} lang={lang} t={t} />
               <StatusTable event={event} data={access.data} t={t} />
             </div>
-            <div className="grid gap-4 md:col-span-2">
+            <div className="grid gap-4 lg:col-span-2">
               <WhenWhere event={event} lang={lang} t={t} />
               <Satisfaction data={access.data} lang={lang} t={t} />
             </div>
@@ -274,7 +276,18 @@ function KpiBar({ event, data, lang, t }: { event: Event; data: ReportData; lang
   const latestTime = latest ? formatTime(latest, lang) : "—";
 
   return (
-    <div className="grid rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:grid-cols-4 md:divide-x md:divide-slate-100">
+    // จำนวนช่องตามความกว้างจอ:
+    // - < 768px : 1 คอลัมน์ (ไม่มีเส้นคั่น เหมือนเดิม)
+    // - 768–1023px (md): 2×2 — 4 ช่องเรียงกันแคบเกิน ตัวเลขนับถอยหลัง "12:59:59" ล้นออกนอกช่อง
+    //     เส้นคั่น: ช่องคี่ (ซ้าย) มีเส้นขวา | 2 ช่องแถวบนมีเส้นล่าง
+    //     ┌──────┬──────┐
+    //     │  46  │  31  │
+    //     ├──────┼──────┤
+    //     │ 67%  │  —   │
+    //     └──────┴──────┘
+    // - ≥ 1024px (lg): 4 คอลัมน์ + divide-x เหมือนเดิมทุกอย่าง (ล้างเส้นล่างของแบบ 2×2 ออก)
+    //     ล้างด้วย selector เดียวกัน [&>*:nth-child(-n+2)] — ถ้าใช้ [&>*] จะ "อ่อนกว่า" (specificity ต่ำกว่า) แล้วล้างไม่ออก
+    <div className="grid rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 md:grid-cols-2 md:[&>*]:border-slate-100 md:[&>*:nth-child(odd)]:border-r md:[&>*:nth-child(-n+2)]:border-b lg:grid-cols-4 lg:divide-x lg:divide-slate-100 lg:[&>*:nth-child(-n+2)]:border-b-0">
       <KpiCell label={t.registered} value={String(regs)} sub={t.latestAt(latestTime)} />
       {/* ยังไม่ตอบ = ผู้ลงทะเบียน − ผู้ตอบ เช่น 46 − 31 = 15 · มีคำตอบไม่ระบุชื่อ → บรรทัดย่อย "ไม่ระบุชื่อ 1" */}
       <KpiCell
