@@ -213,19 +213,27 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
   //        (AUTO_LANDSCAPE = true → จอกว้างใช้แนวนอนเองอัตโนมัติ)
   const layout: KioskLayout =
     model.orientation === "landscape" || (wide && AUTO_LANDSCAPE) ? "landscape" : "portrait";
+  // framed = โปสเตอร์ไม่เต็มจอ (แนวตั้งบนจอกว้าง / แนวนอนบนจอแนวตั้ง)
+  // → วางเป็น "กรอบโปสเตอร์" กลางจอ: เว้นขอบ + มุมมน + เงา บนพื้นสีเข้มกว่า (ขอบโปสเตอร์ไม่กลืนกับพื้นข้าง ๆ)
+  // จอ Kiosk จริงที่สัดส่วนตรง → เต็มจอเหมือนเดิม ไม่มีกรอบ
+  const framed = layout === "landscape" ? !wide : wide;
+  const pad = framed ? Math.round(Math.min(vw, vh) * 0.03) : 0; // ระยะห่างจากขอบจอ (~3%)
+  const aw = vw - pad * 2;
+  const ah = vh - pad * 2;
   let scale: number;
   let canvasW: number;
   let canvasH: number;
   if (layout === "landscape") {
-    // จอกว้าง → สูงเต็มจอ กว้างตามจอ · จอแนวตั้ง (เช่น เปิดบนมือถือ) → ผืน 1920×1080 วางกลาง ขอบบน-ล่างเป็นสีพื้นหลัง
-    scale = wide ? vh / LANDSCAPE_H : Math.min(vw / (LANDSCAPE_H * 16 / 9), vh / LANDSCAPE_H);
+    // จอกว้าง → สูงเต็มจอ กว้างตามจอ · จอแนวตั้ง (เช่น เปิดบนมือถือ) → ผืน 1920×1080 วางกลาง
+    scale = wide ? vh / LANDSCAPE_H : Math.min(aw / (LANDSCAPE_H * 16 / 9), ah / LANDSCAPE_H);
     canvasW = wide ? vw / scale : (LANDSCAPE_H * 16) / 9;
     canvasH = LANDSCAPE_H;
   } else {
-    scale = wide ? Math.min(vw / CANVAS_W, vh / CANVAS_H) : Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
+    scale = wide ? Math.min(aw / CANVAS_W, ah / CANVAS_H) : Math.min(vw / CANVAS_W, vh / PORTRAIT_MIN_H);
     canvasW = wide ? CANVAS_W : vw / scale;
-    canvasH = vh / scale;
+    canvasH = wide ? CANVAS_H : vh / scale;
   }
+  const page = pageColor(model);
 
   return (
     <div
@@ -235,15 +243,20 @@ export function KioskView({ params }: { params: Promise<{ id: string }> }) {
       // overflow-clip (ไม่ใช่ hidden): กล่อง hidden ยังถูกเลื่อนได้ (โฟกัสปุ่ม / ลากเลือกข้อความ) → หัวจอหายขึ้นไป
       // clip ตัดส่วนเกินทิ้งเฉย ๆ เลื่อนไม่ได้เลย
       className="fixed inset-0 z-50 flex items-center justify-center overflow-clip"
-      style={{ background: pageColor(model) }}
+      // พื้นข้างโปสเตอร์: สีธีมผสมกรมท่าเข้ม → เข้มกว่าโปสเตอร์ชัด ๆ แต่ยังโทนเดียวกับงาน
+      style={{ background: framed ? `color-mix(in oklab, ${page} 35%, #0B1220)` : page }}
     >
       {/* กล่องขนาดจริงหลังย่อ → flex จัดไว้กลางจอ (โปสเตอร์แนวตั้งบนจอกว้าง / แนวนอนบนจอแนวตั้ง) */}
-      <div className="shrink-0" style={{ width: canvasW * scale, height: canvasH * scale }}>
+      <div
+        className={framed ? "shrink-0 overflow-hidden rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/15" : "shrink-0"}
+        style={{ width: canvasW * scale, height: canvasH * scale }}
+      >
         <div style={{ width: canvasW, height: canvasH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           <KioskScreen
             model={model}
             info={sceneInfo}
             layout={layout}
+            height={canvasH}
             lang={lang}
             setLang={setOverride}
             now={now}
