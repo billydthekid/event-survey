@@ -10,9 +10,9 @@ import type { EventDraft } from "@/types/event";
 import {
   buildPublicEvent,
   getEventPhase,
-  getRegisterPhase,
+  getRegisterState,
   getSurveyPhase,
-  type RegisterPhase,
+  type RegisterState,
   type ScheduleInfo,
   type SurveyPhase,
   type ThemeBackground,
@@ -95,13 +95,13 @@ export interface KioskSceneResult {
   scene: KioskScene;
   showRegister: boolean;
   showSurvey: boolean;
-  reg: RegisterPhase; // ใช้บอกเหตุผลเมื่อไม่มี QR (ยังไม่เปิด / ปิดแล้ว / เต็ม)
+  reg: RegisterState; // ใช้บอกเหตุผลเมื่อไม่มี QR (ยังไม่เปิด / ปิดแล้ว / เต็ม / ไม่รับลงทะเบียน)
   survey: SurveyPhase;
 }
 
 export function getKioskScene(m: KioskModel, now: Date, registeredCount: number): KioskSceneResult {
   // QR โผล่ก็ต่อเมื่อหน้ามือถือที่ QR พาไป "เปิดรับอยู่จริง" (กฎเดียวกับ /r และ /s)
-  const reg = getRegisterPhase(m, now, registeredCount);
+  const reg = getRegisterState(m, now, registeredCount);
   const survey = getSurveyPhase(m, now);
 
   const wantsRegister = m.screen === "register" || m.screen === "both";

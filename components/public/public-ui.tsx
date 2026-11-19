@@ -3,10 +3,10 @@
 // ดีไซน์ตาม Figma: A5/A2/A4 (ลงทะเบียน), B1/B2 (แบบประเมิน), C1–C4 (สถานะ), E1 (โหลดไม่สำเร็จ), T-A1 (Dark/Bold)
 // Mobile first: กว้างสุด 28rem (ตรงกับจอมือถือ) บนจอใหญ่วางกลางจอ
 "use client";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { format } from "date-fns";
 import { th as thLocale } from "date-fns/locale";
-import { CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import type { Lang } from "@/types";
 import { useNow } from "@/lib/hooks/useNow";
 import { PublicEvent, pick } from "@/lib/public-event";
@@ -231,9 +231,20 @@ export function EventInfo({
         // eslint-disable-next-line @next/next/no-img-element -- รูปจาก Wizard เป็น data URL / URL ภายนอก
         <img src={event.cover} alt="" className="mb-4 aspect-video w-full rounded-xl object-cover" />
       )}
-      <span className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: pal.chip.bg, color: pal.chip.text }}>
-        {chip}
-      </span>
+      {/* ป้าย: หน้านี้คืออะไร (ลงทะเบียน / แบบประเมิน) + ประเภทงาน (เหมือนตัวอย่างใน Wizard) */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="inline-block rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: pal.chip.bg, color: pal.chip.text }}>
+          {chip}
+        </span>
+        {pick(event.typeLabel, lang) && (
+          <span
+            className="inline-block rounded-full border px-2.5 py-1 text-xs font-medium"
+            style={{ borderColor: pal.head.line, color: pal.head.muted }}
+          >
+            {pick(event.typeLabel, lang)}
+          </span>
+        )}
+      </div>
       <h1 className="mt-2.5 text-2xl leading-snug font-bold break-words">{pick(event.name, lang)}</h1>
       <div className="mt-2 space-y-1 text-sm" style={{ color: pal.head.muted }}>
         <p className="flex items-center gap-2">
@@ -242,11 +253,63 @@ export function EventInfo({
         {event.venue && (
           <p className="flex items-center gap-2">
             <MapPin className="size-4 shrink-0" /> <span className="min-w-0 break-words">{event.venue}</span>
+            {/* ลิงก์แผนที่จาก Wizard → เปิดแอปแผนที่ในมือถือ */}
+            {event.mapUrl && (
+              <a
+                href={event.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
+                style={{ color: pal.mode === "light" ? pal.primary : pal.head.text }}
+              >
+                {lang === "th" ? "ดูแผนที่" : "Map"} <ExternalLink className="size-3" />
+              </a>
+            )}
           </p>
         )}
         {extra && <div className="pt-1">{extra}</div>}
       </div>
+      {/* รายละเอียดงาน (REQ-12: หน้าลงทะเบียนแสดงรายละเอียดงานก่อนแบบฟอร์ม) */}
+      <EventDescription text={pick(event.desc, lang)} pal={pal} lang={lang} />
+      {/* ช่องทางติดต่อ: แสดงเมื่อ Event Admin เปิดสวิตช์ "แสดงช่องทางติดต่อบนหน้า Event" */}
+      {(event.contactPhone || event.contactEmail) && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm" style={{ color: pal.head.muted }}>
+          {event.contactPhone && (
+            <a href={`tel:${event.contactPhone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1.5 hover:underline">
+              <Phone className="size-4 shrink-0" /> {event.contactPhone}
+            </a>
+          )}
+          {event.contactEmail && (
+            <a href={`mailto:${event.contactEmail}`} className="inline-flex min-w-0 items-center gap-1.5 break-all hover:underline">
+              <Mail className="size-4 shrink-0" /> {event.contactEmail}
+            </a>
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+// รายละเอียดงาน: ยาวเกิน 3 บรรทัด → ย่อไว้ มีปุ่ม "ดูเพิ่ม" (ฟอร์มจะได้ไม่ถูกดันลงไปไกล)
+function EventDescription({ text, pal, lang }: { text: string; pal: Palette; lang: Lang }) {
+  const [open, setOpen] = useState(false);
+  const clean = text.trim();
+  if (!clean) return null;
+  const long = clean.length > 140 || clean.split("\n").length > 3;
+  return (
+    <div className="mt-3 text-sm leading-relaxed" style={{ color: pal.head.text }}>
+      <p className={`break-words whitespace-pre-line ${long && !open ? "line-clamp-3" : ""}`}>{clean}</p>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-1 text-xs font-semibold"
+          style={{ color: pal.mode === "light" ? pal.primary : pal.head.muted }}
+        >
+          {open ? (lang === "th" ? "ย่อ" : "Show less") : lang === "th" ? "ดูเพิ่ม" : "Read more"}
+        </button>
+      )}
+    </div>
   );
 }
 

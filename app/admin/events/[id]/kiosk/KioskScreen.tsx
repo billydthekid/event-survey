@@ -283,7 +283,8 @@ export function KioskScreen({
                   </span>
                 )}
               </div>
-              {scene === "live" && desc && (
+              {/* รายละเอียดงาน: ก่อนงานเริ่ม + ระหว่างงาน (ช่วงที่คนเดินผ่านอยากรู้ว่างานนี้คืออะไร) */}
+              {(scene === "live" || scene === "upcoming") && desc && (
                 <p className="mt-6 line-clamp-3 text-[28px] leading-relaxed break-words" style={{ color: pal.muted }}>
                   {desc}
                 </p>

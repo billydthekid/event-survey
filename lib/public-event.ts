@@ -9,6 +9,7 @@
 import type { BiText, Event, FieldType, QuestionType, Registration } from "@/types";
 import type { AllowListKind, BasicFieldKey, EventDraft, FieldKind, FormField as WizardField } from "@/types/event";
 import { answerKeys } from "@/lib/form-types";
+import { eventTypeLabel } from "@/lib/event-types";
 import { isActive, normalizeContact } from "@/lib/allow-list";
 import { normalizeQuestion } from "@/lib/survey-types";
 import { getReportData } from "@/app/admin/events/[id]/report/mockData";
@@ -49,7 +50,10 @@ export interface PublicEvent {
   name: BiText;
   desc: BiText;
   organizer: string;
-  contactEmail: string;
+  contactEmail: string; // "" = ไม่แสดง (ไม่ได้กรอก หรือ Event Admin ปิดสวิตช์แสดงช่องทางติดต่อ)
+  contactPhone: string; // "" = ไม่แสดง
+  mapUrl: string; // ลิงก์แผนที่ "" = ไม่มี
+  typeLabel: BiText; // ประเภทงาน เช่น สัมมนา / Workshop
   date: string; // yyyy-MM-dd
   endDate: string; // วันจบ (งานหลายวัน) "" = วันเดียวกับวันเริ่ม
   startTime: string;
@@ -206,6 +210,9 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
   }
   // มี draft → มีคำถาม = มีแบบประเมิน (Wizard ไม่มีสวิตช์เปิด/ปิดแล้ว) · ไม่มี draft → ดูสวิตช์ใน Event / mock
   const surveyEnabled = draft ? true : !!event.survey?.enabled || !!report?.survey.enabled;
+  // ช่องทางติดต่อ: แสดงเฉพาะเมื่อ Event Admin เปิดสวิตช์ "แสดงช่องทางติดต่อบนหน้า Event"
+  const showContact = g ? g.showContact : event.showContact;
+  const type = (g?.type || event.type) as EventDraft["general"]["type"];
 
   return {
     id: event.id,
@@ -214,7 +221,13 @@ export function buildPublicEvent(event: Event, draft?: EventDraft): PublicEvent 
     name: { th: g?.nameTh || event.name.th, en: g?.nameEn || event.name.en },
     desc: { th: g?.descTh || event.description.th, en: g?.descEn || event.description.en },
     organizer: g?.organizer || event.organizerName || "",
-    contactEmail: (g ? g.showContact : event.showContact) ? g?.email || event.email || "" : "",
+    contactEmail: showContact ? g?.email || event.email || "" : "",
+    contactPhone: showContact ? g?.phone || event.phone || "" : "",
+    mapUrl: g?.mapUrl || event.mapUrl || "",
+    typeLabel: {
+      th: eventTypeLabel(type, g?.typeOther, "th"),
+      en: eventTypeLabel(type, g?.typeOther, "en"),
+    },
     date: g?.date || event.date,
     endDate: g?.endDate || "", // มีเฉพาะใน Wizard (store หลักยังไม่มีช่องนี้)
     startTime: g?.startTime || event.startTime,
@@ -291,10 +304,10 @@ export const regClosesAt = (e: ScheduleInfo) => e.regClose || eventEnd(e);
 export const surveyOpensAt = (e: ScheduleInfo) => e.surveyOpen || eventStart(e);
 export const surveyClosesAt = (e: ScheduleInfo) => e.surveyClose || eventEnd(e);
 
-// หน้าลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3) / งานนี้ไม่รับลงทะเบียน
-export type RegisterPhase = "open" | "notOpen" | "closed" | "full" | "none";
+// ช่วงลงทะเบียน: เปิดฟอร์ม / ยังไม่เปิด (C1) / ปิดแล้ว (C2) / เต็ม (C3)
+// (ใช้ร่วมกับการ์ดสถานะของเพื่อน components/dashboard/EventStatusCard.tsx → คงไว้ 4 ค่าเหมือนเดิม)
+export type RegisterPhase = "open" | "notOpen" | "closed" | "full";
 export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: number): RegisterPhase {
-  if (!e.registration.enabled) return "none";
   const phase = getEventPhase(e, now);
   // ยังไม่เปิด: ถึงเวลาเปิดที่ตั้งไว้หรือยัง / ไม่ได้ตั้ง → รองานเริ่ม
   if (e.regOpen ? before(e.regOpen, now) : phase === "upcoming") return "notOpen";
@@ -302,6 +315,13 @@ export function getRegisterPhase(e: ScheduleInfo, now: Date, registeredCount: nu
   if (e.regClose ? after(e.regClose, now) : phase === "ended") return "closed";
   if (e.maxAttendees > 0 && registeredCount >= e.maxAttendees) return "full";
   return "open";
+}
+
+// สถานะของหน้า /r และจอ Kiosk = ช่วงลงทะเบียน + "none" (งานนี้ไม่รับลงทะเบียน: ฟอร์มใน Wizard ไม่มีช่อง)
+export type RegisterState = RegisterPhase | "none";
+export function getRegisterState(e: ScheduleInfo, now: Date, registeredCount: number): RegisterState {
+  if (!e.registration.enabled) return "none";
+  return getRegisterPhase(e, now, registeredCount);
 }
 
 // หน้าแบบประเมิน: เปิด / ยังไม่เปิด / ปิดแล้ว / งานนี้ไม่มีแบบประเมิน

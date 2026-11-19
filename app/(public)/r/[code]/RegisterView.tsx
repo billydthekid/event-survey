@@ -17,7 +17,7 @@ import {
   PublicField,
   buildPublicEvent,
   findPublicEvent,
-  getRegisterPhase,
+  getRegisterState,
   pick,
   regClosesAt,
   regOpensAt,
@@ -212,7 +212,7 @@ export function RegisterView({ params }: { params: Promise<{ code: string }> }) 
     return shell(<Success e={e} pal={pal} lang={lang} t={t} name={done.name} at={done.at} />);
   }
 
-  const phase = getRegisterPhase(e, now, registeredCount);
+  const phase = getRegisterState(e, now, registeredCount);
   const info = <EventInfo event={e} pal={pal} lang={lang} chip={t.chip} />;
 
   // ฟอร์มใน Wizard ไม่มีช่องเลย = Event นี้ไม่รับลงทะเบียน (กติกาของ Wizard)
