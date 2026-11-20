@@ -43,7 +43,7 @@ export const mockEvents: Event[] = [
     status: "active",
     date: MOCK_DATES.workshop,
     startTime: "08:00", // ช่วงกว้าง: เปิดเดโม่ช่วงกลางวันเมื่อไหร่ก็ "กำลังจัดงาน"
-    endTime: "20:00",
+    endTime: "12:00",
     venue: "ห้อง Lab 4 อาคาร 11",
     organizerName: "คณะ IT",
     adImage: WORKSHOP_AD,
