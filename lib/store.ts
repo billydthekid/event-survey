@@ -111,7 +111,7 @@ export const useStore = create<StoreState>()(
       logout: () => set({ currentUser: null }),
       setHydrated: (v) => set({ hydrated: v }),
 
-      // ---------- สร้างบัญชี ----------
+      //  สร้างบัญชี 
       addUser: (input) => {
         const user: User = {
           id: "u-" + Date.now(),
@@ -130,7 +130,7 @@ export const useStore = create<StoreState>()(
         return user;
       },
 
-      // ---------- ลบบัญชี (hard delete) ----------
+      //  ลบบัญชี hard delete
       // กันลบตัวเอง: ให้ UI เช็กก่อนเรียก; ถ้าหลุดเข้ามาก็ไม่ทำอะไร
       deleteUser: (userId) => {
         const me = get().currentUser;
@@ -150,7 +150,7 @@ export const useStore = create<StoreState>()(
         get().addLog("delete_user", "user", userId, `ลบบัญชี ${target.username}`);
       },
 
-      // ---------- สร้าง Draft Event ----------
+      //  สร้าง Draft Event 
       // adminId = null → ยังไม่เลือกผู้ดูแล (Admin จะไป assign ที่หน้า /super/events)
       createDraftEvent: (eventName, adminId) => {
         const me = get().currentUser;
@@ -177,7 +177,7 @@ export const useStore = create<StoreState>()(
         return event;
       },
 
-      // ---------- เปลี่ยน/เพิ่มผู้ดูแล Event ----------
+      // - เปลี่ยน/เพิ่มผู้ดูแล Event 
       // ลบ event id ออกจาก organizer คนเดิม + ใส่ให้คนใหม่ + ตั้ง adminIds = [newAdminId]
       setEventAdmin: (eventId, newAdminId) => {
         const event = get().events.find((e) => e.id === eventId);
@@ -242,7 +242,7 @@ export const useStore = create<StoreState>()(
         );
       },
 
-      // ---------- Action Log ----------
+      //  Action Log 
       addLog: (action, targetType, targetId, detail) => {
         const log: ActionLog = {
           id: "log-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
@@ -256,7 +256,7 @@ export const useStore = create<StoreState>()(
         set({ logs: [log, ...get().logs] });
       },
 
-      // ---------- ลบ Event (Soft delete เก็บ 30 วัน) ----------
+      // ลบ Event (Soft delete เก็บ 30 วัน) 
       deleteEvent: (eventId) => {
         const ev = get().events.find((e) => e.id === eventId);
         if (!ev || ev.status === "deleted") return;
@@ -296,7 +296,7 @@ export const useStore = create<StoreState>()(
         get().addLog("restore_event", "event", eventId, "กู้คืน Event");
       },
 
-      // ---------- ลบถาวร (เรียกตอนเปิดหน้า ไม่มี scheduled job) ----------
+      //  ลบถาวร (เรียกตอนเปิดหน้า ไม่มี scheduled job) 
       purgeExpired: () => {
         const now = Date.now();
         const expired = get().events.filter(
@@ -313,7 +313,7 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      // ---------- ผู้เข้าร่วมลงทะเบียน (หน้า /r/<code>) ----------
+      //  ผู้เข้าร่วมลงทะเบียน (หน้า /r/<code>) 
       submitRegistration: (eventId, answers) => {
         const reg: Registration = {
           id: newId("reg"),
@@ -325,7 +325,7 @@ export const useStore = create<StoreState>()(
         return reg;
       },
 
-      // ---------- ผู้เข้าร่วมส่งแบบประเมิน (หน้า /s/<code>) ----------
+      //  ผู้เข้าร่วมส่งแบบประเมิน (หน้า /s/<code>) 
       submitSurveyResponse: (eventId, answers) => {
         const res: SurveyResponse = {
           id: newId("res"),

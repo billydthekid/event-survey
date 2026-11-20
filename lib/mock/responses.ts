@@ -274,7 +274,7 @@ const REGISTRATIONS: Record<string, Registration[]> = {
     "e-workshop", MOCK_DATES.workshop,
     [["male", 24], ["female", 19], ["unspecified", 3]],
     [["u18", 3], ["a19", 31], ["a23", 8], ["a31", 4]],
-    { startMinute: 8 * 60, slots: [[600, 12], [630, 14], [660, 8], [690, 6], [720, 4], [750, 2]] }
+    { startMinute: 8 * 60, slots: [[480, 24], [510, 22]] }
   ),
   "e-openhouse": makeRegistrations(
     "e-openhouse", MOCK_DATES.openhouse,
